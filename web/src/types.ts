@@ -136,6 +136,9 @@ export interface Usage {
   requests: number;
   prompt_tokens: number;
   completion_tokens: number;
+  cost_usd?: number;
+  cost_by_model?: Record<string, number>;
+  cost_by_agent?: Record<string, number>;
   by_model: UsageByModel[];
   by_agent: UsageByAgent[];
   rate_limit?: RateLimitStats;
