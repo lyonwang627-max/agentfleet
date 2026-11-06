@@ -8,6 +8,8 @@ import type {
   AutomationCreate,
   AutomationCreated,
   ChatResponse,
+  ConversationDetail,
+  ConversationSummary,
   EvalDataset,
   EvalDetail,
   EvalSummary,
@@ -135,6 +137,10 @@ export const api = {
   rollbackAgent: (id: number, version: number) =>
     post<{ agent_id: number; rolled_back_from: number; new_version: number }>(
       `/agents/${id}/versions/${version}/rollback`),
+
+  // 会话回放（v1.4，F6）
+  listConversations: () => request<Page<ConversationSummary>>('/conversations'),
+  getConversation: (id: number) => request<ConversationDetail>(`/conversations/${id}`),
 
   // 执行环境维度（v1.4）
   listArtifacts: (taskId?: number) =>

@@ -232,6 +232,40 @@ export interface AgentVersion {
   created_at: string;
 }
 
+// ---------- 会话回放（v1.4，F6） ----------
+export interface ConversationSummary {
+  id: number;
+  agent_id: number;
+  agent_name?: string;
+  title: string;
+  message_count: number;
+  run_count: number;
+  created_at: string;
+}
+export interface ReplayMessage {
+  id: number;
+  role: string;
+  content: string;
+  created_at: string;
+}
+export interface ReplayRun {
+  run_id: number;
+  task_id: number;
+  task_title?: string;
+  status: string;
+  total_tokens: number;
+  started_at: string;
+}
+export interface ConversationDetail {
+  id: number;
+  agent_id: number;
+  agent_name?: string;
+  title: string;
+  created_at: string;
+  messages: ReplayMessage[];
+  runs: ReplayRun[];
+}
+
 // ---------- 执行环境维度（v1.4）：artifacts / workspaces / skills ----------
 export interface Artifact {
   id: number;

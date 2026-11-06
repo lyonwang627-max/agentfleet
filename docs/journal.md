@@ -61,3 +61,7 @@
 ## 2026-11-07 F6 会话回放（切片 a）
 
 - **F6-a/2 完成**：会话回放数据层——GET /conversations（列表带 message_count/run_count/agent_name）+ GET /conversations/{id}（全量消息+agent 名+关联 runs）；store 双实现。实弹：chat 真模型对话→列表→详情全通。遗留：F6-b 前端回放视图。验证：go 4 包全绿
+
+## 2026-11-07 F6 会话回放（切片 b，F6 收口）
+
+- **F6-b 完成（F6 整体收口）**：/replays 回放页——左侧会话列表（agent 名/标题/消息数/run 数/时间，点击切换），右侧气泡时间线（user 右对齐蓝、agent 左对齐面板色，逐条带时间戳）+ 关联 Runs 面板（链到任务 Trace 瀑布图）。路由+导航接入，前端构建零报错（233KB JS）。F6 全链路：试聊台对话 → 会话列表 → 时间线回放 → 点 run 看执行轨迹。验证：前端构建零报错 + go 全绿（数据层上轮已实弹）

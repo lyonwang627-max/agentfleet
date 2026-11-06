@@ -21,7 +21,7 @@
 - [x] F3: 人工审批门增强——审批时可改写 prompt 备注，审批记录落 run_steps（kind=gate）**[完成 2026-11-06：approve 可带 note（意见注入 [审批记录] 段）；gate 步 approved-by-human 落产生方案那次 run 的 trace（审批发生在该 run 之后，语义正确）；实弹验证意见注入+trace 留痕；契约 approve body 已补充说明]**
 - [x] F4: MCP 工具接入——runner 工具注册支持 stdio MCP server，工具列表从 MCP 动态发现（对齐 2026 MCP 生态）**[a: internal/mcp stdio 客户端（re-exec 假 server 四场景单测）| b: fleetd --mcp 注册（auto=复用自身作内置 demo server，re-exec 模式）+ GET /mcp/servers 动态发现端点 + mock 剧本 MCP:server/tool 指令真实调用 + 实弹 task → trace `mcp:demo/echo → echo: hello-fleet`。全部完成 2026-11-06]**
 - [x] F5: Token 预算与熔断——agent 级预算配置，超限自动 pause + 告警事件 **[完成 2026-11-06：agents.token_budget_24h（0=不限）+ AgentTokensSince 双实现 + 调度器 sweepBudgets（达预算自动停用+agent.budget_exceeded 事件，停用后不再命中=无事件风暴；人工 enable 恢复）+ run 完成自动回填 usage（修了 token 累加在存储侧而本地副本为旧值的真 bug——从 store 取回最新 run 再回填）；实弹：预算 100 的 agent 累计 1680 tokens 后 enabled=False]**
-- [ ] F6: 会话回放页——conversation 消息 + run steps 合成时间线，前端回放视图 **[F6-a/2 完成 2026-11-07：GET /conversations（消息数/run 数）+ GET /conversations/{id}（全量消息）+ 契约 v1.4；实弹全通。剩余 F6-b：前端回放视图]**
+- [x] F6: 会话回放页——conversation 消息 + run steps 合成时间线，前端回放视图 **[a: 数据层 API | b: /replays 页（会话列表+气泡时间线+关联 runs 链 Trace）全部完成 2026-11-07，前端构建零报错]**
 - [ ] F7: Eino 适配器——可选 runner=eino（字节开源框架），编译隔离在 build tag 后
 - [ ] F8: 网关限流——API key 级 token bucket + 429 响应 + 用量看板标红
 - [ ] F9: 评测作答长度控制——作答 prompt 加「分点作答、每点一句、总量 ≤400 字」指令 + 复测截断率（目标评语提及截断 ≤1/8）；必要时作答与 judge 分级预算（数据支撑见 eval#57/#67）
