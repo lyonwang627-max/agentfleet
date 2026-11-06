@@ -1,0 +1,14 @@
+# Go
+agentfleet
+fleetd
+*.test
+*.out
+
+# Node
+node_modules/
+dist/
+
+# 运行时
+*.log
+.DS_Store
+fleetd-release

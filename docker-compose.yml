@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: fleet
+      POSTGRES_PASSWORD: fleet
+      POSTGRES_DB: fleet
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fleet"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  fleetd:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      FLEET_DB: postgres://fleet:fleet@postgres:5432/fleet?sslmode=disable
+      FLEET_SEED: "1"
+      FLEET_MODEL: qwen3.5
+    ports:
+      - "8090:8090"
+    # 宿主机 Ollama 可达（容器内 127.0.0.1 不是宿主机）
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  web:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm install --no-audit --no-fund && npm run dev -- --host 0.0.0.0 --port 5174"
+    volumes:
+      - ./web:/app
+    ports:
+      - "5174:5174"
+    depends_on:
+      - fleetd
+
+volumes:
+  pgdata:
