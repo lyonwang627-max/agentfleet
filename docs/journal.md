@@ -85,3 +85,7 @@
 ## 2026-11-07 F10 成本核算
 
 - **F10 完成**：gateway/pricing.go——定价表（$/1M tokens）：本地 Ollama 恒 0（私有化叙事核心数字），云端模型 FLEET_PRICING env 覆写，未知模型恒 0（宁不显示钱不编价，面板定位量级感知非财务结算）；/usage 聚合层算 cost_usd/cost_by_model/cost_by_agent（agent 按当前模型映射，诚实近似）；看板新增 Cost 卡。单测：已知/未知/大小写/env 覆写四场景。实弹：本地模型 cost_usd=0 ✓。验证：go 6 包全绿 + 前端构建
+
+## 2026-11-07 F11 多轮工具循环（切片 a）
+
+- **F11-a/2 完成**：decision 协议扩展 tool/tool_args——LLM runner 从单次决策升级为「决策→工具→观察→再决策」循环（maxSteps=4 防膨胀）。关键工程决策：**runToolLoop 抽成纯函数**（decide/callTool 回调注入）——生产侧接网关+MCP 注册中心，测试侧用 fake 序列驱动四种轨迹（直达/观察回灌/步数耗尽强制收尾/工具错误转观察不中断）。修两个失误：totalTokens 初版写成包级变量（并发竞态+不复位→改 Execute 局部闭包）、测试 Fatalf format 参数类型。验证：go 7 包全绿。遗留：F11-b 上下文 Spill

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -24,13 +23,58 @@ type LLMRunner struct {
 func NewLLM(llm *gateway.LLM) *LLMRunner { return &LLMRunner{LLM: llm} }
 
 type decision struct {
-	Reply         string `json:"reply"`
-	HandoffTo     string `json:"handoff_to"`
-	NeedsApproval bool   `json:"needs_approval"`
-	Note          string `json:"note"`
+	Reply         string         `json:"reply"`
+	HandoffTo     string         `json:"handoff_to"`
+	NeedsApproval bool           `json:"needs_approval"`
+	Note          string         `json:"note"`
+	Tool          string         `json:"tool"`      // 非空 = 请求调用工具（F11-a 多轮循环）
+	ToolArgs      map[string]any `json:"tool_args"` // 工具参数（如 {"msg": "…"}）
+}
+
+const maxToolSteps = 4 // 多轮工具循环上限（防上下文膨胀与死循环）
+
+// runToolLoop 多轮工具循环（F11-a）：决策 →（要工具则执行→观察→再决策）→ … → 最终决策。
+// 抽成纯函数：decide/callTool 由调用方注入（生产=网关+MCP 注册中心，测试=fake）。
+// 返回最终决策、完整观察轨迹、实际步数；步数耗尽用最后一次决策收尾（不失败——已有信息仍可用）。
+func runToolLoop(
+	baseSystem, baseUser string,
+	decide func(system, user string) (decision, error),
+	callTool func(ref string, args map[string]any) (string, error),
+	onToolTurn func(turn int, d decision, observation string),
+) (decision, []string, int, error) {
+	user := baseUser
+	observations := []string{}
+	var last decision
+	for step := 1; step <= maxToolSteps; step++ {
+		d, err := decide(baseSystem, user)
+		if err != nil {
+			return last, observations, step, err
+		}
+		last = d
+		if d.Tool == "" {
+			return d, observations, step, nil
+		}
+		out, toolErr := callTool(d.Tool, d.ToolArgs)
+		observation := out
+		if toolErr != nil {
+			observation = "工具执行失败: " + toolErr.Error()
+		}
+		observations = append(observations, observation)
+		if onToolTurn != nil {
+			onToolTurn(step, d, observation)
+		}
+		user = baseUser + "\n\n---\n已执行工具 " + d.Tool + "，观察结果：\n" + observation +
+			"\n\n请基于以上观察继续：可再调用工具，或给出最终 reply（此时 tool 留空）。"
+	}
+	// 步数耗尽：强制收尾（最后一次决策已有 reply 则用之，否则带说明）
+	if last.Reply == "" {
+		last.Reply = "（已达工具调用步数上限，基于已有观察收尾）"
+	}
+	return last, observations, maxToolSteps, nil
 }
 
 func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error) {
+	totalTokens := 0 // 多轮工具循环的 token 合计（本 run 内）
 	emit := func(kind model.StepKind, name string, in, out map[string]any, latencyMS int64, tokens int) {
 		if req.Recorder == nil {
 			return
@@ -39,26 +83,48 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 			LatencyMS: latencyMS, Tokens: tokens})
 	}
 
-	system := buildSystemPrompt(req.Agent)
+	system := buildSystemPrompt(req.Agent) + `
+
+工具协作协议：若需要外部信息或动作，可先输出 {"tool": "mcp:<server>/<tool>", "tool_args": {...}, "reply": ""} 请求调用工具；` +
+		"系统会执行并把观察结果回给你（最多 " + itoa(maxToolSteps) + " 轮）。拿到足够信息后输出最终决策（tool 留空）。"
+
 	user := fmt.Sprintf("# 任务\n%s\n\n# 详细说明\n%s\n\n只输出一个 JSON 对象。", req.Task.Title, req.Task.Prompt)
 
-	start := timeNow()
-	raw, tokens, err := r.LLM.ChatJSON(ctx, system, user, 900)
-	latency := timeNow().Sub(start).Milliseconds()
-	if err != nil {
-		emit(model.StepLLM, "llm-failed", map[string]any{"model": req.Agent.Model}, map[string]any{"error": err.Error()}, latency, tokens)
-		return Result{}, fmt.Errorf("llm: %w", err)
+	decide := func(system, user string) (decision, error) {
+		raw, tokens, err := r.LLM.ChatJSON(ctx, system, user, 900)
+		if err != nil {
+			return decision{}, err
+		}
+		totalTokens += tokens
+		var d decision
+		if err := json.Unmarshal(raw, &d); err != nil || strings.TrimSpace(d.Reply) == "" {
+			if d.Tool == "" {
+				// 模型给了非预期结构且未请求工具：原文当 reply，不让任务失败
+				d = decision{Reply: string(raw), Note: "（模型输出非 JSON，已按原文采用）"}
+			}
+		}
+		return d, nil
+	}
+	callTool := func(ref string, args map[string]any) (string, error) {
+		return CallMCPTool(ref, args)
+	}
+	onToolTurn := func(turn int, d decision, observation string) {
+		emit(model.StepTool, d.Tool, d.ToolArgs, map[string]any{"result_head": head(observation, 200),
+			"turn": turn, "transport": "stdio", "protocol": "mcp"}, 60, 0)
 	}
 
-	d := decision{}
-	if err := json.Unmarshal(raw, &d); err != nil || strings.TrimSpace(d.Reply) == "" {
-		// 模型给了非预期结构：原文当 reply，不让任务失败
-		log.Printf("[runner/llm] 非 JSON 输出降级为 reply: %v", err)
-		d = decision{Reply: string(raw), Note: "（模型输出非 JSON，已按原文采用）"}
+	start := timeNow()
+	d, observations, steps, loopErr := runToolLoop(system, user, decide, callTool, onToolTurn)
+	latency := timeNow().Sub(start).Milliseconds()
+	if loopErr != nil {
+		emit(model.StepLLM, "llm-failed", map[string]any{"model": req.Agent.Model}, map[string]any{"error": loopErr.Error()}, latency, totalTokens)
+		return Result{}, fmt.Errorf("llm: %w", loopErr)
 	}
-	emit(model.StepLLM, "decide", map[string]any{"model": req.Agent.Model},
+
+	emit(model.StepLLM, "decide", map[string]any{"model": req.Agent.Model, "steps": steps,
+		"observations": len(observations)},
 		map[string]any{"handoff_to": d.HandoffTo, "needs_approval": d.NeedsApproval, "reply_head": head(d.Reply, 200)},
-		latency, tokens)
+		latency, totalTokens)
 
 	// 长回复自动固化为报告产物（不再只是 result 文本）
 	artifacts := []ArtifactDraft{}
@@ -68,6 +134,8 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 	return Result{Reply: d.Reply, HandoffTo: d.HandoffTo, NeedsApproval: d.NeedsApproval, Note: d.Note,
 		Artifacts: artifacts}, nil
 }
+
+func itoa(n int) string { return fmt.Sprintf("%d", n) }
 
 func runeLen(s string) int { return len([]rune(s)) }
 

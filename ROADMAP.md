@@ -27,7 +27,7 @@
 - [ ] F9: 评测作答长度控制——作答 prompt 加「分点作答、每点一句、总量 ≤400 字」指令 + 复测截断率（目标评语提及截断 ≤1/8）；必要时作答与 judge 分级预算（数据支撑见 eval#57/#67）
 - [x] F10: cost_usd 真实核算 **[完成 2026-11-07：gateway/pricing.go 定价表（$/1M tokens，本地=0，FLEET_PRICING env 覆写云端价，未知模型恒 0 不编价）+ /usage 聚合层算 cost（total/by_model/by_agent，agent 按当前模型映射）+ 看板 Cost 卡；单测覆盖已知/未知/env 覆写；实弹本地模型 cost_usd=0]**
 - [ ] F18: 模型分层路由（ADR-0002 完整设计已采纳，见 docs/adr/0002-model-routing.md）——**F18-a**：gateway SelectFor(purpose) 步骤级分流（判断走 S=lfm25:2.7B，执行走 M，审查走 L；改造看门狗/预审/handoff 调用点）+ by_purpose 用量维度；**F18-b**：任务级打分器（纯规则：priority/prompt 长度/risk_level/近期成功率/预算余量）+ 升降级通道（失败 2 次或停滞→升档；余量<20%→降档）+ trace 留痕；**F18-c**：路由 A/B 评测报告（质量差<1 分 / 决策 p99 / 一致率>85% / 升级率 5-15% 健康区间）
-- [ ] F11: LLM runner 多轮工具循环——决策→工具→观察→再决策（max_steps 防膨胀，复用 MCP 工具池），trace 每轮落 step；**扩充（ADR-0001）：上下文 Spill——handoff/多轮后旧上下文压缩为一行摘要+run#ID 引用，按需链式召回（治 prompt 膨胀）**
+- [ ] F11: LLM runner 多轮工具循环——决策→工具→观察→再决策（max_steps 防膨胀，复用 MCP 工具池），trace 每轮落 step；**扩充（ADR-0001）：上下文 Spill——handoff/多轮后旧上下文压缩为一行摘要+run#ID 引用，按需链式召回（治 prompt 膨胀）** **[F11-a/2 完成 2026-11-07：decision 协议扩展 tool/tool_args 字段；runToolLoop 纯函数（decide/callTool fake 注入）maxSteps=4；观察回灌下一轮 prompt、工具错误转观察不中断循环、步数耗尽强制收尾；4 组单测全过。剩余 F11-b：上下文 Spill]**
 - [ ] F12: OTel trace 导出——自有 run_steps 映射 OpenTelemetry span，OTLP HTTP 导出（可选项）
 - [ ] F13: 调度事件驱动——tick 轮询改 PG LISTEN/NOTIFY 唤醒（对齐 ARCHITECTURE 写明的升级触发条件），MemStore 保持 tick；**扩充（ADR-0001）：加两级事件过滤——规则 Fast Path（来源/类型白名单）初筛 + LLM Slow Path 复核（借鉴 dsh-superagent）**
 - [x] F14: 进展看门狗——定时扫 running 超阈值任务，run_steps 摘要喂模型判断「有无实质进展」，跑偏则触发重试/告警事件（借鉴 dsh-superagent Watchdog；与 F11 多轮循环互为安全网；现有资源看门狗 sweepBudgets 只看预算不看进展）**[完成 2026-11-06：watchdog.go（JudgeProgress 独立函数+fail-open 单测：judge 缺失/不健康/输出异常一律放行）+ 2min 流控 + task.stalled 事件 + failTask 重试；mock 环境实测不误杀]**
