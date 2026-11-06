@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/lyonwang/agentfleet/internal/gateway"
 	"github.com/lyonwang/agentfleet/internal/model"
 	"github.com/lyonwang/agentfleet/internal/runner"
 	"github.com/lyonwang/agentfleet/internal/store"
@@ -46,10 +47,67 @@ func spillIfNeeded(composed, title string, handoffCount int, runID int64, lastNo
 		runID, title, handoffCount, lastNote)
 }
 
+// TaskTier 任务级路由档位（F18-b，ADR-0002）。
+type TaskTier string
+
+const (
+	TierS TaskTier = "S" // 简单任务：小模型执行
+	TierM TaskTier = "M" // 标准任务：主力模型
+	TierL TaskTier = "L" // 复杂/高风险：最强模型
+)
+
+// ScoreTier 任务级打分器（纯规则，零模型调用——可解释可调试）：
+// 基础 M；加权信号升/降档。信号全部来自已有数据（priority/长度/handoff 指令/近期成功率）。
+func ScoreTier(title, prompt string, priority int, successRate float64, recentRuns int) TaskTier {
+	if recentRuns >= 3 && successRate < 0.5 {
+		return TierL // 近期表现差的任务交给最强模型（质量问题先升级）
+	}
+	score := 0
+	if priority >= 8 {
+		score += 2 // 高优任务质量优先
+	}
+	if runeLen(prompt) > 2000 {
+		score += 1 // 长任务说明复杂度高
+	}
+	if strings.Contains(prompt, "审批") || strings.Contains(title, "发布") {
+		score += 1 // 涉及审批/发布的任务质量优先
+	}
+	if strings.Contains(prompt, "handoff:") {
+		score += 1 // 协作任务链路长
+	}
+	switch {
+	case score >= 3:
+		return TierL
+	case score == 0 && priority <= 3 && runeLen(prompt) < 200:
+		return TierS // 低优短任务才降档到 S
+	default:
+		return TierM
+	}
+}
+
+// TierToModel 档位 → 执行模型（经 gateway 分流；S 档执行用小模型，L 档用最强可用）。
+func (s *Scheduler) TierToModel(tier TaskTier, fallback string) string {
+	if s.llm == nil {
+		return fallback
+	}
+	switch tier {
+	case TierS:
+		if m := s.llm.SelectFor(gateway.PurposeJudge); m != "" {
+			return m
+		}
+	case TierL:
+		if m := s.llm.SelectFor(gateway.PurposeReview); m != "" {
+			return m
+		}
+	}
+	return fallback // M 档 = agent 自带模型
+}
+
 type Scheduler struct {
 	store      store.Store
 	events     *Hub
 	judge      LLMJudge // 进展看门狗用（nil 或不健康时 fail-open）
+	llm        *gateway.LLM // ADR-0002 分流：档位 → 模型解析
 	mu         sync.Mutex
 	semaphores map[int64]chan struct{} // agent_id -> 并发闸
 	wg         sync.WaitGroup
@@ -63,6 +121,9 @@ func New(st store.Store, hub *Hub) *Scheduler {
 	return &Scheduler{store: st, events: hub, semaphores: map[int64]chan struct{}{},
 		running: map[int64]bool{}, wake: make(chan struct{}, 1)}
 }
+
+// SetLLM 注入网关（F18-b 任务级分流用）。
+func (s *Scheduler) SetLLM(l *gateway.LLM) { s.llm = l }
 
 // Wake 事件驱动唤醒（非阻塞；已有待处理唤醒时合并）。建任务/审批放行等状态变化后调用。
 func (s *Scheduler) Wake() {
@@ -224,8 +285,22 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 		return err
 	}
 
+	// F18-b 任务级分流：纯规则打分选档，失败重试自动升档（escalation）；模型覆盖落 trace
+	tier := ScoreTier(task.Title, execTask.Prompt, task.Priority, 1.0, 0)
+	if task.RetryCount > 0 {
+		tier = TierL
+	}
+	modelOverride := s.TierToModel(tier, agent.Model)
+	routedModel := agent.Model
+	if modelOverride != agent.Model {
+		routedModel = modelOverride
+	}
+	_, _ = s.store.AppendStep(ctx, runID, &model.RunStep{Kind: model.StepLLM, Name: "route",
+		Input: map[string]any{"tier": string(tier), "model": routedModel, "retry": task.RetryCount},
+		Note: "F18-b 任务级路由"})
+
 	res, execErr := rn.Execute(ctx, runner.ExecRequest{Agent: *agent, Task: execTask, Recorder: recorder,
-		Workspace: ws, Skills: skills})
+		Workspace: ws, Skills: skills, ModelOverride: routedModel})
 
 	// 结构化产物落库（artifacts：报告/补丁/执行记录）
 	for _, d := range res.Artifacts {

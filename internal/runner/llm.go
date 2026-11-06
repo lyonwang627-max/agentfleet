@@ -75,6 +75,11 @@ func runToolLoop(
 
 func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error) {
 	totalTokens := 0 // 多轮工具循环的 token 合计（本 run 内）
+	// F18-b 任务级路由：调度器按档位覆盖模型（空=agent 自带模型）
+	execLLM := r.LLM
+	if req.ModelOverride != "" {
+		execLLM = r.LLM.WithModel(req.ModelOverride)
+	}
 	emit := func(kind model.StepKind, name string, in, out map[string]any, latencyMS int64, tokens int) {
 		if req.Recorder == nil {
 			return
@@ -91,7 +96,7 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 	user := fmt.Sprintf("# 任务\n%s\n\n# 详细说明\n%s\n\n只输出一个 JSON 对象。", req.Task.Title, req.Task.Prompt)
 
 	decide := func(system, user string) (decision, error) {
-		raw, tokens, err := r.LLM.ChatJSON(ctx, system, user, 900)
+		raw, tokens, err := execLLM.ChatJSON(ctx, system, user, 900)
 		if err != nil {
 			return decision{}, err
 		}

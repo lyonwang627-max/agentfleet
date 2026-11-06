@@ -27,6 +27,8 @@ type ExecRequest struct {
 	Recorder  Recorder
 	Workspace *model.Workspace // 任务绑定的执行环境（nil=未绑定）
 	Skills    []model.Skill    // 任务引用的经验（已由调度器解析，注入参考信息）
+	// ModelOverride 任务级路由的模型覆盖（F18-b；空=用 agent.Model）
+	ModelOverride string
 }
 
 type Result struct {

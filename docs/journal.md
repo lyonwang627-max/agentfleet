@@ -105,3 +105,7 @@
 ## 2026-11-07 F18 模型分层路由（切片 a，ADR-0002 落地）
 
 - **F18-a/3 完成**：gateway.SelectFor(purpose)——judge 走 S 档（lfm25:latest，env 可覆写）、execute/review 默认 M/L；S 档不可用自动回退 M（只慢不错）；WithModel 派生视图不污染原客户端（并发安全）。接线：进展看门狗走 S 档（高频判断，延迟敏感）、AI 预审走 L 档（质量最敏感）；启动日志打印三档分流表。3 组单测（分档/回退/隔离）。遗留：by_purpose 用量维度、F18-b 任务级打分器、F18-c A/B 报告。验证：go 7 包全绿
+
+## 2026-11-07 F18 任务级路由（切片 b）
+
+- **F18-b/3 完成**：ScoreTier 纯规则打分器（priority≥8 +2、prompt>2000 字 +1、含审批/发布 +1、含 handoff +1；score≥3→L，全 0 且低优短文→S，否则 M；近期成功率<50% 直接 L——质量问题先升级）+ 失败重试自动升 L 档 + TierToModel（S/L 档经 gateway 分流，无网关回退 agent 模型）+ ExecRequest.ModelOverride + trace route 步（档位/模型/重试次数可观测）。4 组单测。插曲：一次编辑把 Scheduler struct 覆盖掉（即时发现重建）。验证：go 7 包全绿
