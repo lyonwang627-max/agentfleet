@@ -28,7 +28,11 @@ type Server struct {
 	Eval      *eval.Engine
 	Sched     *scheduler.Scheduler
 	StartedAt time.Time
+	limiter   *RateLimiter
 }
+
+// SetRateLimit 开启 IP 级限流（次/分钟；<=0 关闭）。在 Routes() 前调用。
+func (s *Server) SetRateLimit(perMinute int) { s.limiter = NewRateLimiter(perMinute) }
 
 func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
@@ -109,7 +113,7 @@ func (s *Server) Routes() http.Handler {
 		mux.Handle("/", h)
 	}
 
-	return logMiddleware(mux)
+	return logMiddleware(s.rateLimitMiddleware(mux))
 }
 
 // ---- 通用 ----

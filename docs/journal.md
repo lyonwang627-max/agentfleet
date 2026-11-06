@@ -69,3 +69,7 @@
 ## 2026-11-07 F7 Eino 适配器
 
 - **F7 完成**：eino（字节开源，v0.9.22）适配器落地，build tag `eino` 隔离——①EinoChatModel：把 fleetd gateway 包装成 eino model.BaseChatModel（Generate 多消息 → gateway.ChatRaw native 通道；方向是「eino 编排复用我们的网关」，降级/计量/预算全继承）；②EinoRunner：eino schema 消息流 + 同款 JSON 决策协议，`-tags eino` 构建时经 EinoRunnerFactory hook 注册；③gateway.New("mock") 语义修复：显式 mock 模型 = 强制 mock 模式（修测试 404）；④Makefile eino target。双构建（主/eino）双 vet 全过，eino 单测（Generate 消息转换 + Execute 协议）全绿。探查中学到：eino 已废弃 BindTools 改用不可变 WithTools（并发安全），适配器文档可引用
+
+## 2026-11-07 F8 网关限流（切片 a）
+
+- **F8-a/2 完成**：IP 级 token bucket 限流——仅变更类方法（POST/PATCH/DELETE）受限，查询不限；默认关闭（FLEET_RATE_LIMIT=次/分钟开启）；429 + Retry-After；闲置桶 10 分钟回收防内存膨胀；X-Forwarded-For 反代感知。修一个语义 bug：新建桶免费放行不消耗导致限流数偏移一次（改创建即消耗标准语义）。3 组单测：桶算法回填/IP 隔离/middleware 429+GET 不受限。验证：go 5 包全绿。遗留：F8-b 用量看板限流标红

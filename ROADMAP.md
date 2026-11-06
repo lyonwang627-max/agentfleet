@@ -23,7 +23,7 @@
 - [x] F5: Token 预算与熔断——agent 级预算配置，超限自动 pause + 告警事件 **[完成 2026-11-06：agents.token_budget_24h（0=不限）+ AgentTokensSince 双实现 + 调度器 sweepBudgets（达预算自动停用+agent.budget_exceeded 事件，停用后不再命中=无事件风暴；人工 enable 恢复）+ run 完成自动回填 usage（修了 token 累加在存储侧而本地副本为旧值的真 bug——从 store 取回最新 run 再回填）；实弹：预算 100 的 agent 累计 1680 tokens 后 enabled=False]**
 - [x] F6: 会话回放页——conversation 消息 + run steps 合成时间线，前端回放视图 **[a: 数据层 API | b: /replays 页（会话列表+气泡时间线+关联 runs 链 Trace）全部完成 2026-11-07，前端构建零报错]**
 - [x] F7: Eino 适配器——可选 runner=eino（字节开源框架），编译隔离在 build tag 后 **[完成 2026-11-07：EinoChatModel 把 fleetd gateway 包装为 eino model.BaseChatModel（Generate 走 native 通道），EinoRunner 同款 JSON 决策协议；EinoRunnerFactory hook 注册；gateway.New("mock") 语义修复；双构建双 vet 全过 + eino 单测全绿]**
-- [ ] F8: 网关限流——API key 级 token bucket + 429 响应 + 用量看板标红
+- [ ] F8: 网关限流——API key 级 token bucket + 429 响应 + 用量看板标红 **[F8-a/2 完成 2026-11-07：IP 级 token bucket（变更类接口限流，默认关闭 FLEET_RATE_LIMIT 开启）+ 429/Retry-After + 闲置桶回收 + 3 组单测（桶算法/IP 隔离/middleware 429）；限流键升级路径=API key 认证后换键。剩余 F8-b：用量看板限流标红]**
 - [ ] F9: 评测作答长度控制——作答 prompt 加「分点作答、每点一句、总量 ≤400 字」指令 + 复测截断率（目标评语提及截断 ≤1/8）；必要时作答与 judge 分级预算（数据支撑见 eval#57/#67）
 - [ ] F10: cost_usd 真实核算——模型定价表（内置 qwen3.5=0 本地 + 可配 API 价），run/用量看板从 token 数升级为成本口径
 - [ ] F18: 模型分层路由（ADR-0002 完整设计已采纳，见 docs/adr/0002-model-routing.md）——**F18-a**：gateway SelectFor(purpose) 步骤级分流（判断走 S=lfm25:2.7B，执行走 M，审查走 L；改造看门狗/预审/handoff 调用点）+ by_purpose 用量维度；**F18-b**：任务级打分器（纯规则：priority/prompt 长度/risk_level/近期成功率/预算余量）+ 升降级通道（失败 2 次或停滞→升档；余量<20%→降档）+ trace 留痕；**F18-c**：路由 A/B 评测报告（质量差<1 分 / 决策 p99 / 一致率>85% / 升级率 5-15% 健康区间）
