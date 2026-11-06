@@ -58,9 +58,11 @@ func (e *Engine) Start(ctx context.Context, evalRunID, datasetID, agentID int64)
 
 func (e *Engine) scoreCase(ctx context.Context, agent *model.Agent, c model.EvalCase) (int, bool, string) {
 	// 1) 被评 agent 作答（直接走网关，不进调度器——评测是旁路流量）
-	// max_tokens=1600：评测作答要求完整性，截断会误伤 evidence/structure 评分（R2-b 修复）
+	// F9：长度指令化——与其无脑加 token 预算（上限高延迟长），不如约束作答形态：
+	// 分点+每点一句+总量限制，截断率从根上降；max_tokens=1600 仅作兜底。
 	start := time.Now()
-	answer, _, err := e.LLM.Chat(ctx, agent.SystemPrompt, c.Input, 1600)
+	answerPrompt := c.Input + "\n\n（作答要求：分点作答，每点一句话，不要展开解释，总量不超过 400 字。）"
+	answer, _, err := e.LLM.Chat(ctx, agent.SystemPrompt, answerPrompt, 1600)
 	_ = time.Since(start)
 	if err != nil {
 		return 0, false, "agent 作答失败: " + err.Error()
