@@ -5,7 +5,12 @@ Go 控制面 + React 管理台，本地 LLM 驱动（零 API 成本），`--mem`
 
 > 定位：对标 [Multica](https://github.com/multica-ai/multica)/Orca 类「agent 劳动力管控面」——
 > 不是又一个 Dify 仿品，而是管理**一支 agent 舰队**的生产级控制面。
-> 当前状态：5 agent 舰队、双业务任务链、3 个评测数据集、Automations 定时派活，全部真机验证。
+
+**核心能力**：任务队列（优先级/依赖/并发闸/重试退避）· Handoff 状态机（指令一次性消费）·
+审批门 + AI 预审 · 全链路 Trace（SSE）· **执行环境 Workspaces**（对标 worktree）·
+**产物 Artifacts**（报告/补丁/日志落盘浏览）· **经验沉淀 Skills**（SOP 复用，注入不污染指令通道）·
+Automations 定时派活 · LLM-as-judge 评测 · 预算熔断 + 进展看门狗 · Agent 版本管理（发布/回滚）·
+MCP 工具接入 · 优雅停机 drain · 单二进制交付（16MB）。
 
 ## 30 秒上手
 

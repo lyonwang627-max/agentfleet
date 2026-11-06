@@ -6,6 +6,7 @@ const NAV = [
   { to: '/', label: '舰队总览' },
   { to: '/tasks', label: '任务看板' },
   { to: '/automations', label: '自动化规则' },
+  { to: '/studio', label: '工作台' },
   { to: '/chat', label: '试聊台' },
   { to: '/evals', label: '评测中心' },
   { to: '/usage', label: '用量看板' },

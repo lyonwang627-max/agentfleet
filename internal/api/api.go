@@ -82,6 +82,20 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/v1/automations/{id}/enable", s.setAutomation(true))
 	mux.HandleFunc("POST /api/v1/automations/{id}/disable", s.setAutomation(false))
 
+	// artifacts / workspaces / skills（v1.4：执行环境维度三模块）
+	mux.HandleFunc("GET /api/v1/artifacts", s.listArtifacts)
+	mux.HandleFunc("GET /api/v1/artifacts/{id}", s.getArtifact)
+	mux.HandleFunc("GET /api/v1/workspaces", s.listWorkspaces)
+	mux.HandleFunc("POST /api/v1/workspaces", s.createWorkspace)
+	mux.HandleFunc("GET /api/v1/workspaces/{id}", s.getWorkspace)
+	mux.HandleFunc("PATCH /api/v1/workspaces/{id}", s.patchWorkspace)
+	mux.HandleFunc("DELETE /api/v1/workspaces/{id}", s.deleteWorkspace)
+	mux.HandleFunc("GET /api/v1/skills", s.listSkills)
+	mux.HandleFunc("POST /api/v1/skills", s.createSkill)
+	mux.HandleFunc("GET /api/v1/skills/{id}", s.getSkill)
+	mux.HandleFunc("PATCH /api/v1/skills/{id}", s.patchSkill)
+	mux.HandleFunc("DELETE /api/v1/skills/{id}", s.deleteSkill)
+
 	// eval
 	mux.HandleFunc("GET /api/v1/eval-datasets", s.listDatasets)
 	mux.HandleFunc("GET /api/v1/evals", s.listEvals)
@@ -304,11 +318,13 @@ func (s *Server) setAgent(enabled bool) http.HandlerFunc {
 // ---- tasks ----
 
 type taskIn struct {
-	Title     string  `json:"title"`
-	Prompt    string  `json:"prompt"`
-	AgentID   int64   `json:"agent_id"`
-	Priority  int     `json:"priority"`
-	DependsOn []int64 `json:"depends_on"`
+	Title       string  `json:"title"`
+	Prompt      string  `json:"prompt"`
+	AgentID     int64   `json:"agent_id"`
+	Priority    int     `json:"priority"`
+	DependsOn   []int64 `json:"depends_on"`
+	WorkspaceID int64   `json:"workspace_id"`
+	SkillIDs    []int64 `json:"skill_ids"`
 }
 
 func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
@@ -325,7 +341,8 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		in.Priority = 5
 	}
 	t := &model.Task{Title: in.Title, Prompt: in.Prompt, AgentID: in.AgentID,
-		Priority: in.Priority, DependsOn: in.DependsOn}
+		Priority: in.Priority, DependsOn: in.DependsOn,
+		WorkspaceID: in.WorkspaceID, SkillIDs: in.SkillIDs}
 	id, err := s.Store.CreateTask(r.Context(), t)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err)

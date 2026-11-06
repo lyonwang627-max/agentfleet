@@ -60,6 +60,7 @@ export default function TaskDetail() {
 
   return (
     <div className="space-y-4">
+      <TaskArtifacts taskId={t.id} />
       <div className="flex items-center gap-2 text-xs text-muted">
         <Link to="/tasks" className="hover:text-sky-300">
           任务看板
@@ -314,4 +315,37 @@ function KindBadge2({ kind }: { kind: string }) {
             ? 'bg-yellow-500/70'
             : 'bg-slate-500/70';
   return <span className={`block h-3 w-full rounded-sm ${color}`} />;
+}
+
+// TaskArtifacts 任务产物面板（v1.4）：报告/补丁/执行记录，点击查看内容。
+function TaskArtifacts({ taskId }: { taskId: number }) {
+  const list = useApi(() => api.listArtifacts(taskId), [taskId]);
+  const items = list.data?.items ?? [];
+  const [openId, setOpenId] = useState<number | null>(null);
+  const detail = useApi(() => api.getArtifact(openId!), [openId], openId !== null);
+
+  if (items.length === 0) return null;
+  return (
+    <Panel title={`产物 Artifacts（${items.length}）`} bodyClass="p-0">
+      {items.map((a) => (
+        <div key={a.id} className="border-b border-border/60 px-4 py-2 text-xs last:border-b-0">
+          <button
+            type="button"
+            onClick={() => setOpenId(openId === a.id ? null : a.id)}
+            className="flex w-full flex-wrap items-center gap-3 text-left"
+          >
+            <span className="rounded border border-blue-500/30 bg-blue-500/10 px-1.5 py-0.5 text-[11px] text-blue-300">{a.kind}</span>
+            <span className="font-mono text-fg">{a.name}</span>
+            <span className="text-muted">{a.size}B</span>
+            <span className="ml-auto font-mono text-[10px] text-muted">{fmtTime(a.created_at)}</span>
+          </button>
+          {openId === a.id && (
+            <pre className="mt-2 max-h-64 overflow-auto rounded border border-border bg-bg p-2 font-mono text-[11px] leading-relaxed text-slate-300">
+              {detail.data?.content ?? '加载中…'}
+            </pre>
+          )}
+        </div>
+      ))}
+    </Panel>
+  );
 }

@@ -39,6 +39,8 @@ type Task struct {
 	Priority      int        `json:"priority"` // 1-9，9 最高
 	Status        TaskStatus `json:"status"`
 	DependsOn     []int64    `json:"depends_on"`
+	WorkspaceID   int64      `json:"workspace_id,omitempty"` // 绑定执行环境（0=不绑定）
+	SkillIDs      []int64    `json:"skill_ids,omitempty"`    // 引用的经验（创建时注入 prompt）
 	HandoffCount  int        `json:"-"`
 	MaxHandoffs   int        `json:"-"`
 	RetryCount    int        `json:"-"`
@@ -187,6 +189,42 @@ type Automation struct {
 	LastRun   *time.Time `json:"last_run"`
 	NextRun   *time.Time `json:"next_run"`
 	CreatedAt time.Time  `json:"created_at"`
+}
+
+// Artifact 任务产物：报告/补丁/diff/数据文件等落盘产出（对标 Orca artifacts）。
+type Artifact struct {
+	ID        int64     `json:"id"`
+	TaskID    int64     `json:"task_id"`
+	RunID     int64     `json:"run_id"`
+	Kind      string    `json:"kind"` // report | patch | diff | data | log
+	Name      string    `json:"name"`
+	MimeType  string    `json:"mime_type"`
+	Size      int       `json:"size"`
+	Content   string    `json:"content,omitempty"` // 列表不带，详情带
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// Workspace 执行环境：任务绑定的独立工作目录（对标 Multica worktree / Orca folder context）。
+type Workspace struct {
+	ID        int64      `json:"id"`
+	Name      string     `json:"name"`
+	RootPath  string     `json:"root_path"`
+	Branch    string     `json:"branch"`
+	Note      string     `json:"note"`
+	Status    string     `json:"status"` // active | archived
+	CreatedAt time.Time  `json:"created_at"`
+}
+
+// Skill 经验沉淀：任务完成后固化的可复用 SOP/要点，创建任务时可引用注入（对标 Multica compound skills）。
+type Skill struct {
+	ID         int64     `json:"id"`
+	Name       string    `json:"name"`
+	Content    string    `json:"content"`
+	Tags       []string  `json:"tags"`
+	UsageCount int       `json:"usage_count"`
+	SourceTask int64     `json:"source_task,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // SSE 事件

@@ -33,6 +33,9 @@ CREATE TABLE IF NOT EXISTS tasks (
   started_at    TIMESTAMPTZ,
   finished_at   TIMESTAMPTZ
 );
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS workspace_id BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS skill_ids JSONB NOT NULL DEFAULT '[]';
+
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status, priority DESC, id);
 
 CREATE TABLE IF NOT EXISTS runs (
@@ -137,6 +140,40 @@ CREATE TABLE IF NOT EXISTS agent_versions (
   note       TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (agent_id, version)
+);
+
+CREATE TABLE IF NOT EXISTS workspaces (
+  id         BIGSERIAL PRIMARY KEY,
+  name       TEXT NOT NULL,
+  root_path  TEXT NOT NULL DEFAULT '',
+  branch     TEXT NOT NULL DEFAULT '',
+  note       TEXT NOT NULL DEFAULT '',
+  status     TEXT NOT NULL DEFAULT 'active',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS artifacts (
+  id         BIGSERIAL PRIMARY KEY,
+  task_id    BIGINT NOT NULL,
+  run_id     BIGINT NOT NULL DEFAULT 0,
+  kind       TEXT NOT NULL DEFAULT 'report',
+  name       TEXT NOT NULL,
+  mime_type  TEXT NOT NULL DEFAULT 'text/plain',
+  size       INT NOT NULL DEFAULT 0,
+  content    TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_artifacts_task ON artifacts(task_id);
+
+CREATE TABLE IF NOT EXISTS skills (
+  id           BIGSERIAL PRIMARY KEY,
+  name         TEXT NOT NULL,
+  content      TEXT NOT NULL,
+  tags         JSONB NOT NULL DEFAULT '[]',
+  usage_count  INT NOT NULL DEFAULT 0,
+  source_task  BIGINT NOT NULL DEFAULT 0,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS events (

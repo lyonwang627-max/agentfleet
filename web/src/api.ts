@@ -3,6 +3,7 @@ import type {
   AgentPatch,
   AgentSummary,
   AgentVersion,
+  Artifact,
   Automation,
   AutomationCreate,
   AutomationCreated,
@@ -14,12 +15,14 @@ import type {
   Page,
   RunSummary,
   RunTrace,
+  Skill,
   TaskCreate,
   TaskCreated,
   TaskDetail,
   TaskStatus,
   TaskSummary,
   Usage,
+  Workspace,
 } from './types';
 
 const BASE = '/api/v1';
@@ -130,4 +133,19 @@ export const api = {
   rollbackAgent: (id: number, version: number) =>
     post<{ agent_id: number; rolled_back_from: number; new_version: number }>(
       `/agents/${id}/versions/${version}/rollback`),
+
+  // 执行环境维度（v1.4）
+  listArtifacts: (taskId?: number) =>
+    request<Page<Artifact>>(`/artifacts${taskId ? `?task_id=${taskId}` : '?page_size=100'}`),
+  getArtifact: (id: number) => request<Artifact>(`/artifacts/${id}`),
+  listWorkspaces: () => request<Page<Workspace>>('/workspaces?page_size=100'),
+  createWorkspace: (body: { name: string; root_path?: string; branch?: string; note?: string }) =>
+    post<{ id: number }>('/workspaces', body),
+  deleteWorkspace: (id: number) =>
+    request<{ id: number }>(`/workspaces/${id}`, { method: 'DELETE' }),
+  listSkills: () => request<Page<Skill>>('/skills?page_size=100'),
+  createSkill: (body: { name: string; content: string; tags?: string[] }) =>
+    post<{ id: number }>('/skills', body),
+  deleteSkill: (id: number) =>
+    request<{ id: number }>(`/skills/${id}`, { method: 'DELETE' }),
 };

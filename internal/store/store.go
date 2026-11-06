@@ -74,12 +74,39 @@ type Store interface {
 	ListAgentVersions(ctx context.Context, agentID int64) ([]model.AgentVersion, error)
 	GetAgentVersion(ctx context.Context, agentID int64, version int) (*model.AgentVersion, error)
 
+	// artifacts（任务产物）
+	SaveArtifact(ctx context.Context, a *model.Artifact) (int64, error)
+	ListArtifacts(ctx context.Context, taskID int64, withContent bool) ([]model.Artifact, error)
+	GetArtifact(ctx context.Context, id int64) (*model.Artifact, error)
+
+	// workspaces（执行环境）
+	CreateWorkspace(ctx context.Context, w *model.Workspace) (int64, error)
+	GetWorkspace(ctx context.Context, id int64) (*model.Workspace, error)
+	ListWorkspaces(ctx context.Context, activeOnly bool) ([]model.Workspace, error)
+	UpdateWorkspace(ctx context.Context, id int64, patch WorkspacePatch) error
+	DeleteWorkspace(ctx context.Context, id int64) error
+
+	// skills（经验沉淀）
+	SaveSkill(ctx context.Context, s *model.Skill) (int64, error)
+	GetSkill(ctx context.Context, id int64) (*model.Skill, error)
+	ListSkills(ctx context.Context, tag string) ([]model.Skill, error)
+	UpdateSkill(ctx context.Context, s *model.Skill) error
+	DeleteSkill(ctx context.Context, id int64) error
+	IncrSkillUsage(ctx context.Context, id int64) error
+
 	// events（SSE 增量拉取用）
 	AppendEvent(ctx context.Context, e *model.Event) (int64, error)
 	EventsSince(ctx context.Context, since int64, limit int) ([]model.Event, error)
 
 	Close() error
 	Ping(ctx context.Context) error
+}
+
+type WorkspacePatch struct {
+	Name   *string
+	Branch *string
+	Note   *string
+	Status *string
 }
 
 type AgentPatch struct {
@@ -102,6 +129,8 @@ type TaskPatch struct {
 	Status       *model.TaskStatus
 	Result       *string
 	Error        *string
+	WorkspaceID  *int64
+	SkillIDs     *[]int64
 	HandoffCount *int
 	RetryCount   *int
 	VisibleAfter *time.Time

@@ -45,3 +45,7 @@
 
 
 
+
+## 2026-11-07 执行环境维度三模块（对标 Multica/Orca 补齐）
+
+- **Workspaces / Artifacts / Skills 落地**：任务可绑定执行环境（对标 worktree）、runner 产出结构化产物自动落库（报告/补丁/执行日志，对标 Orca artifacts）、任务可引用沉淀经验注入执行副本（对标 compound skills）。**关键设计**：skill/workspace 注入只发生在给 runner 的执行副本，任务本体 prompt 不变——经验是参考资料不是指令，指令通道纯净性（与 handoff 指令一次性消费同一原则）。schema：tasks 加 workspace_id/skill_ids 列 + 三张新表；存储双实现；REST 全套 + SSE 事件；前端 /studio 工作台页 + 任务详情产物面板。种子：release-hotfix 环境 + 告警处置 SOP + 绑定任务链。新增集成测试 TestWorkspaceSkillArtifactFlow（注入不污染本体 prompt / 产物落库 / 引用计数）。验证：go 4 包全绿 + 实弹（workspace/skill/artifact 三列表 + 使用计数）+ 前端构建零报错

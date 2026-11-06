@@ -150,10 +150,10 @@ func join(parts []string) string {
 
 func (p *PostgresStore) CreateTask(ctx context.Context, t *model.Task) (int64, error) {
 	err := p.pool.QueryRow(ctx,
-		`INSERT INTO tasks(title, prompt, agent_id, priority, status, depends_on, max_handoffs, max_retries, visible_after)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id, created_at`,
+		`INSERT INTO tasks(title, prompt, agent_id, priority, status, depends_on, workspace_id, skill_ids, max_handoffs, max_retries, visible_after)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id, created_at`,
 		t.Title, t.Prompt, t.AgentID, t.Priority, taskStatusOr(t.Status), jsonb(t.DependsOn),
-		t.MaxHandoffs, t.MaxRetries, t.VisibleAfter,
+		t.WorkspaceID, jsonb(t.SkillIDs), t.MaxHandoffs, t.MaxRetries, t.VisibleAfter,
 	).Scan(&t.ID, &t.CreatedAt)
 	return t.ID, err
 }
@@ -165,19 +165,23 @@ func taskStatusOr(s model.TaskStatus) model.TaskStatus {
 	return s
 }
 
-const taskCols = `id, title, prompt, agent_id, priority, status, depends_on, handoff_count, max_handoffs,
-	retry_count, max_retries, visible_after, result, error, created_at, started_at, finished_at`
+const taskCols = `id, title, prompt, agent_id, priority, status, depends_on,
+	COALESCE(workspace_id,0), COALESCE(skill_ids,'[]'::jsonb),
+	handoff_count, max_handoffs, retry_count, max_retries, visible_after, result, error, created_at, started_at, finished_at`
 
 func scanTask(row pgx.Row) (*model.Task, error) {
 	t := &model.Task{}
-	var deps []byte
+	var deps, skills []byte
 	if err := row.Scan(&t.ID, &t.Title, &t.Prompt, &t.AgentID, &t.Priority, &t.Status, &deps,
+		&t.WorkspaceID, &skills,
 		&t.HandoffCount, &t.MaxHandoffs, &t.RetryCount, &t.MaxRetries, &t.VisibleAfter,
 		&t.Result, &t.Error, &t.CreatedAt, &t.StartedAt, &t.FinishedAt); err != nil {
 		return nil, err
 	}
 	t.DependsOn = []int64{}
 	unjsonb(deps, &t.DependsOn)
+	t.SkillIDs = []int64{}
+	unjsonb(skills, &t.SkillIDs)
 	return t, nil
 }
 
@@ -241,6 +245,8 @@ func (p *PostgresStore) UpdateTask(ctx context.Context, id int64, patch TaskPatc
 	if patch.Status != nil { add("status", string(*patch.Status)) }
 	if patch.Result != nil { add("result", *patch.Result) }
 	if patch.Error != nil { add("error", *patch.Error) }
+	if patch.WorkspaceID != nil { add("workspace_id", *patch.WorkspaceID) }
+	if patch.SkillIDs != nil { add("skill_ids", jsonb(*patch.SkillIDs)) }
 	if patch.HandoffCount != nil { add("handoff_count", *patch.HandoffCount) }
 	if patch.RetryCount != nil { add("retry_count", *patch.RetryCount) }
 	if patch.VisibleAfter != nil { add("visible_after", *patch.VisibleAfter) }

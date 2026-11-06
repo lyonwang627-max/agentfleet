@@ -224,3 +224,35 @@ export interface AgentVersion {
   note: string;
   created_at: string;
 }
+
+// ---------- 执行环境维度（v1.4）：artifacts / workspaces / skills ----------
+export interface Artifact {
+  id: number;
+  task_id: number;
+  run_id: number;
+  kind: string;
+  name: string;
+  mime_type: string;
+  size: number;
+  content?: string;
+  created_at: string;
+}
+export interface Workspace {
+  id: number;
+  name: string;
+  root_path: string;
+  branch: string;
+  note: string;
+  status: string;
+  created_at: string;
+}
+export interface Skill {
+  id: number;
+  name: string;
+  content: string;
+  tags: string[];
+  usage_count: number;
+  source_task?: number;
+  created_at: string;
+  updated_at: string;
+}

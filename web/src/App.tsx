@@ -5,6 +5,7 @@ import Automations from './pages/Automations';
 import Chat from './pages/Chat';
 import Evals from './pages/Evals';
 import Overview from './pages/Overview';
+import Studio from './pages/Studio';
 import TaskDetail from './pages/TaskDetail';
 import Tasks from './pages/Tasks';
 import Usage from './pages/Usage';
@@ -18,6 +19,7 @@ export default function App() {
         <Route path="tasks/:id" element={<TaskDetail />} />
         <Route path="agents/:id" element={<AgentDetail />} />
         <Route path="automations" element={<Automations />} />
+        <Route path="studio" element={<Studio />} />
         <Route path="chat" element={<Chat />} />
         <Route path="evals" element={<Evals />} />
         <Route path="usage" element={<Usage />} />

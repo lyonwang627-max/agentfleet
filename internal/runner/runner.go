@@ -14,10 +14,19 @@ import (
 // Recorder 由调度器注入，runner 边执行边落 step（trace 实时可看）。
 type Recorder func(ctx context.Context, s *model.RunStep) error
 
+// ArtifactDraft runner 产出的结构化产物（调度器负责落库成 Artifact）。
+type ArtifactDraft struct {
+	Kind    string `json:"kind"` // report | patch | diff | data | log
+	Name    string `json:"name"`
+	Content string `json:"content"`
+}
+
 type ExecRequest struct {
-	Agent    model.Agent
-	Task     model.Task
-	Recorder Recorder
+	Agent     model.Agent
+	Task      model.Task
+	Recorder  Recorder
+	Workspace *model.Workspace // 任务绑定的执行环境（nil=未绑定）
+	Skills    []model.Skill    // 任务引用的经验（已由调度器解析，注入参考信息）
 }
 
 type Result struct {
@@ -25,6 +34,7 @@ type Result struct {
 	HandoffTo     string // 非空 = 交接给该名字的 agent
 	Note          string // handoff / 审批说明
 	NeedsApproval bool   // true = 任务进入人工审批门（task.status=review）
+	Artifacts     []ArtifactDraft // 结构化产物（报告/补丁等，落 artifacts 表）
 }
 
 type Runner interface {

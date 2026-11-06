@@ -146,6 +146,31 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 		return
 	}
 
+	// 执行环境绑定（workspace）与经验注入（skills）：注入只发生在给 runner 的副本上，
+	// 不改任务本体 prompt——skill 内容是「参考资料」不是任务指令（指令通道纯净性）
+	execPrompt := task.Prompt
+	var ws *model.Workspace
+	if task.WorkspaceID > 0 {
+		if w, err := s.store.GetWorkspace(ctx, task.WorkspaceID); err == nil {
+			ws = w
+			execPrompt += fmt.Sprintf("\n\n[执行环境] %s（分支 %s，路径 %s）", w.Name, w.Branch, w.RootPath)
+		}
+	}
+	var skills []model.Skill
+	if len(task.SkillIDs) > 0 {
+		var sb strings.Builder
+		for _, sid := range task.SkillIDs {
+			if sk, err := s.store.GetSkill(ctx, sid); err == nil {
+				skills = append(skills, *sk)
+				sb.WriteString(fmt.Sprintf("\n\n[经验参考：%s]\n%s", sk.Name, sk.Content))
+				_ = s.store.IncrSkillUsage(ctx, sid)
+			}
+		}
+		execPrompt += sb.String()
+	}
+	execTask := task
+	execTask.Prompt = execPrompt
+
 	run := &model.Run{TaskID: task.ID, AgentID: agent.ID}
 	runID, err := s.store.CreateRun(ctx, run)
 	if err != nil {
@@ -164,7 +189,17 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 		return err
 	}
 
-	res, execErr := rn.Execute(ctx, runner.ExecRequest{Agent: *agent, Task: task, Recorder: recorder})
+	res, execErr := rn.Execute(ctx, runner.ExecRequest{Agent: *agent, Task: execTask, Recorder: recorder,
+		Workspace: ws, Skills: skills})
+
+	// 结构化产物落库（artifacts：报告/补丁/执行记录）
+	for _, d := range res.Artifacts {
+		_, _ = s.store.SaveArtifact(ctx, &model.Artifact{TaskID: task.ID, RunID: runID,
+			Kind: d.Kind, Name: d.Name, MimeType: mimeOf(d.Kind), Content: d.Content})
+	}
+	if len(res.Artifacts) > 0 {
+		s.emit(ctx, "task.artifacts", map[string]any{"task_id": task.ID, "count": len(res.Artifacts)})
+	}
 
 	fin := timeNow()
 	// 从 store 取回最新 run（token 累加发生在 AppendStep 的存储侧，本地副本是旧值）
@@ -317,6 +352,18 @@ func (s *Scheduler) emit(ctx context.Context, kind string, data map[string]any) 
 }
 
 // ---- 小工具 ----
+
+// mimeOf 产物类型 → MIME。
+func mimeOf(kind string) string {
+	switch kind {
+	case "report", "log", "diff", "patch":
+		return "text/plain; charset=utf-8"
+	case "data":
+		return "application/json"
+	default:
+		return "text/plain"
+	}
+}
 
 func ptrStr(s string) *string          { return &s }
 func ptrInt(i int) *int                { return &i }

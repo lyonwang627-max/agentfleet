@@ -57,9 +57,29 @@ func Run(ctx context.Context, st store.Store, runner string, model_ string) erro
 	_ = reviewer
 	_ = fixer // fixer 由任务 1 通过 handoff 指令按名交接，无需变量引用
 
-	// 任务链 1：告警处置全链路——intake（搜索+定位）→ handoff → fixer（出方案）→ 审批门 → 放行执行
+	// 执行环境示例（对标 worktree）：告警修复任务绑定 release-hotfix 环境
+	wsID, err := st.CreateWorkspace(ctx, &model.Workspace{
+		Name: "release-hotfix", RootPath: "~/workspaces/release-hotfix",
+		Branch: "hotfix/p99-latency", Note: "P99 延迟修复的隔离执行环境"})
+	if err != nil {
+		return err
+	}
+
+	// 经验沉淀示例（对标 compound skills）：值班处置 SOP，任务可引用注入
+	skillID, err := st.SaveSkill(ctx, &model.Skill{
+		Name: "线上告警处置 SOP",
+		Tags: []string{"oncall", "运维"},
+		Content: "1) 先确认影响面与是否有近期变更；2) 止血优先于定位（回滚/扩容/降级）；" +
+			"3) 按 Runbook 逐项检查并记录；4) 恢复后必须留复盘记录；涉及变更需走审批。",
+	})
+	if err != nil {
+		return err
+	}
+
+	// 任务链 1：告警处置全链路——绑定工作区 + 引用 SOP 经验
 	t1, err := st.CreateTask(ctx, &model.Task{
 		Title: "P2 告警：订单服务 P99 延迟上涨", AgentID: intake, Priority: 8,
+		WorkspaceID: wsID, SkillIDs: []int64{skillID},
 		Prompt: "orderservice P99 从 120ms 涨到 800ms，监控显示 db 连接池打满。先搜索 runbook 获取处置预案，定位初步原因后 handoff:fixer 执行修复；修复方案涉及变更操作，需人工审批。"})
 	if err != nil {
 		return err

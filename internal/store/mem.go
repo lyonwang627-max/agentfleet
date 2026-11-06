@@ -25,6 +25,9 @@ type MemStore struct {
 	evalRuns      map[int64]*model.EvalRun
 	automations   map[int64]*model.Automation
 	agentVersions map[int64]*model.AgentVersion
+	artifacts     map[int64]*model.Artifact
+	workspaces    map[int64]*model.Workspace
+	skills        map[int64]*model.Skill
 	events        []model.Event
 	nextID        int64
 	lastEventSeq  int64
@@ -38,6 +41,9 @@ func NewMemStore() *MemStore {
 		datasets: map[int64]*model.EvalDataset{}, cases: map[int64][]model.EvalCase{},
 		evalRuns: map[int64]*model.EvalRun{}, automations: map[int64]*model.Automation{},
 		agentVersions: map[int64]*model.AgentVersion{},
+		artifacts:  map[int64]*model.Artifact{},
+		workspaces: map[int64]*model.Workspace{},
+		skills:     map[int64]*model.Skill{},
 	}
 }
 
@@ -167,6 +173,8 @@ func (m *MemStore) UpdateTask(_ context.Context, id int64, p TaskPatch) error {
 	if p.Status != nil { t.Status = *p.Status }
 	if p.Result != nil { t.Result = *p.Result }
 	if p.Error != nil { t.Error = *p.Error }
+	if p.WorkspaceID != nil { t.WorkspaceID = *p.WorkspaceID }
+	if p.SkillIDs != nil { t.SkillIDs = *p.SkillIDs }
 	if p.HandoffCount != nil { t.HandoffCount = *p.HandoffCount }
 	if p.RetryCount != nil { t.RetryCount = *p.RetryCount }
 	if p.VisibleAfter != nil { t.VisibleAfter = *p.VisibleAfter }

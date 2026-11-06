@@ -79,6 +79,14 @@ body `{"agent_id":1,"name":"晨会摘要","cron_expr":"30 9 * * 1-5","title":"�
 ### POST /automations/{id}/enable | /automations/{id}/disable → `{"id":1,"enabled":true}`
 SSE 事件：`automation.fired`（触发建任务）/ `automation.update`（CRUD 变更）
 
+## 执行环境维度（v1.4 新增：对标 Multica worktree / Orca artifacts / compound skills）
+### Workspaces：POST /workspaces `{"name","root_path","branch","note"}` → `{"id"}`；GET /workspaces?active=true；GET/PATCH/DELETE /workspaces/{id}
+任务创建时 `workspace_id` 绑定；agent 在绑定环境中执行（执行副本注入 `[执行环境]` 段，不污染任务指令）。
+### Artifacts：GET /artifacts?task_id= → `{"items":[{id,task_id,run_id,kind,name,mime_type,size,created_at}]}`；GET /artifacts/{id}（含 content）
+产物 kind：report / patch / diff / data / log。runner 产出自动落库（周报类任务出 report、绑定环境任务出执行 log、LLM 长回复自动固化报告）；SSE 事件 `task.artifacts`。
+### Skills：POST /skills `{"name","content","tags"}` → `{"id"}`；GET /skills?tag=（按引用次数排序）；GET/PATCH/DELETE /skills/{id}
+任务创建时 `skill_ids` 引用；执行时注入 `[经验参考]` 段到**执行副本**（指令通道纯净）并累加引用计数。
+
 ## 前端页面映射
 | 路由 | 页面 | 接口 |
 |---|---|---|

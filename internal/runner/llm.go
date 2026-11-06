@@ -60,8 +60,16 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 		map[string]any{"handoff_to": d.HandoffTo, "needs_approval": d.NeedsApproval, "reply_head": head(d.Reply, 200)},
 		latency, tokens)
 
-	return Result{Reply: d.Reply, HandoffTo: d.HandoffTo, NeedsApproval: d.NeedsApproval, Note: d.Note}, nil
+	// 长回复自动固化为报告产物（不再只是 result 文本）
+	artifacts := []ArtifactDraft{}
+	if runeLen(d.Reply) > 400 && d.HandoffTo == "" {
+		artifacts = append(artifacts, ArtifactDraft{Kind: "report", Name: "reply-report.md", Content: d.Reply})
+	}
+	return Result{Reply: d.Reply, HandoffTo: d.HandoffTo, NeedsApproval: d.NeedsApproval, Note: d.Note,
+		Artifacts: artifacts}, nil
 }
+
+func runeLen(s string) int { return len([]rune(s)) }
 
 func buildSystemPrompt(a model.Agent) string {
 	base := a.SystemPrompt

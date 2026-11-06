@@ -89,7 +89,19 @@ func (m *MockRunner) Execute(ctx context.Context, req ExecRequest) (Result, erro
 	default:
 		time.Sleep(80 * time.Millisecond) // 让瀑布图有真实可感的耗时分布
 		emit(model.StepLLM, "execute", nil, map[string]any{"steps": 1, "mock": true}, 240, 180)
-		return Result{Reply: fmt.Sprintf("任务「%s」已完成（mock runner）：%s", req.Task.Title, head(prompt, 150))}, nil
+		artifacts := []ArtifactDraft{}
+		// 周报/报告类任务产出结构化报告产物
+		if strings.Contains(req.Task.Title, "周报") || strings.Contains(prompt, "报告") {
+			artifacts = append(artifacts, ArtifactDraft{Kind: "report", Name: "报告-" + req.Task.Title + ".md",
+				Content: "# " + req.Task.Title + "\n\n## 结论\n" + head(prompt, 200) + "\n\n（mock 产出的结构化报告）\n"})
+		}
+		// 绑定执行环境的任务产出环境内执行记录（对标 worktree 内产物）
+		if req.Workspace != nil {
+			artifacts = append(artifacts, ArtifactDraft{Kind: "log", Name: "workspace-exec.log",
+				Content: "workspace=" + req.Workspace.Name + " path=" + req.Workspace.RootPath + "\n任务在绑定环境中执行完成\n"})
+		}
+		return Result{Reply: fmt.Sprintf("任务「%s」已完成（mock runner）：%s", req.Task.Title, head(prompt, 150)),
+			Artifacts: artifacts}, nil
 	}
 }
 
