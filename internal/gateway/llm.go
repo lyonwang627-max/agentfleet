@@ -22,15 +22,18 @@ type LLM struct {
 	Model    string
 	client   *http.Client
 	Fallback func(system, user string) string // mock 生成器（注入）
+	Pricing  map[string]ModelPrice            // 模型定价（F10 成本核算）
 }
 
 func New(model string) *LLM {
 	c := &LLM{Model: model, client: &http.Client{Timeout: 300 * time.Second}}
 	if model == "mock" { // 显式请求内置 mock 模型 = 强制 mock 模式（测试/无模型演练）
 		c.Mode = "mock"
+		c.Pricing = LoadPricing(DefaultPricing)
 		return c
 	}
 	c.Resolve()
+	c.Pricing = LoadPricing(DefaultPricing)
 	return c
 }
 

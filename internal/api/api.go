@@ -607,8 +607,28 @@ func (s *Server) usage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	enabled, perMinute, rejected := s.limiter.Stats()
+	// F10 成本核算：按 by_model 的 token 量 × 定价表聚合（本地模型=0）
+	pricing := s.LLM.Pricing
+	totalCost := 0.0
+	byModelCost := map[string]float64{}
+	for _, m := range byModel {
+		c := gateway.CostUSD(pricing, m.Model, m.PromptTokens, m.CompletionTokens)
+		byModelCost[m.Model] = c
+		totalCost += c
+	}
+	byAgentCost := map[string]float64{}
+	agentModel := map[int64]string{}
+	if agents, err := s.Store.ListAgents(r.Context(), store.AgentFilter{}); err == nil {
+		for _, a := range agents {
+			agentModel[a.ID] = a.Model
+		}
+	}
+	for _, a := range byAgent {
+		byAgentCost[a.AgentName] = gateway.CostUSD(pricing, agentModel[a.AgentID], a.PromptTokens, a.CompletionTokens)
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"window": window, "requests": total.Requests,
 		"prompt_tokens": total.PromptTokens, "completion_tokens": total.CompletionTokens,
+		"cost_usd": round4(totalCost), "cost_by_model": byModelCost, "cost_by_agent": byAgentCost,
 		"by_model": byModel, "by_agent": byAgent,
 		"rate_limit": map[string]any{"enabled": enabled, "per_minute": perMinute, "rejected_total": rejected}})
 }
@@ -693,3 +713,5 @@ func head2(s string, n int) string {
 
 // len2 粗略 token 估算（中文 ~1.5 字符/token，按 2 保守取整）。
 func len2(s string) int { return len([]rune(s))/2 + 8 }
+
+func round4(f float64) float64 { return float64(int64(f*10000+0.5)) / 10000 }

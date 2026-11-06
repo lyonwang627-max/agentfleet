@@ -50,7 +50,8 @@ body `{"title":"修复登录超时 bug","prompt":"详细任务说明…","agent_
 → `{"conversation_id":9,"reply":"…","run_id":88}`（也会产生 run/trace，可回看）
 
 ## Gateway（用量）
-### GET /usage?window=24h|7d → `{"window":"24h","requests":42,"prompt_tokens":184000,"completion_tokens":96000,"by_model":[{"model":"qwen3.5","requests":40,"tokens":270000}],"by_agent":[{"agent_id":1,"tokens":...}]}`
+### GET /usage?window=24h|7d → `{"window":"24h","requests":42,"prompt_tokens":184000,"completion_tokens":96000,"cost_usd":0,"cost_by_model":{...},"cost_by_agent":{...},"by_model":[...],"by_agent":[...],"rate_limit":{...}}`
+**v1.4 新增 cost 字段（F10）**：按模型定价表聚合（$/1M tokens；本地 Ollama 模型=0，云端模型经 FLEET_PRICING env 覆写）；未知/本地模型成本恒 0（面板定位成本量级感知，非财务结算）
 ### GET /models → `{"models":[{"name":"qwen3.5","provider":"ollama","available":true},{"name":"mock","provider":"builtin","available":true}]}`
 
 ## Eval（评测）

@@ -62,9 +62,8 @@ export default function Usage() {
           {/* 总量卡 */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatCard label="Requests" value={fmtNum(u.requests)} hint={`window ${u.window}`} />
-            <StatCard label="Prompt Tokens" value={fmtNum(u.prompt_tokens)} />
-            <StatCard label="Completion Tokens" value={fmtNum(u.completion_tokens)} />
-            <StatCard label="Total Tokens" value={fmtNum(totalTokens)} hint="prompt + completion" accent />
+            <StatCard label="Cost (USD)" value={`$${(u.cost_usd ?? 0).toFixed(4)}`} hint="本地模型为 $0" accent />
+            <StatCard label="Total Tokens" value={fmtNum(totalTokens)} hint="prompt + completion" />
           </div>
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
