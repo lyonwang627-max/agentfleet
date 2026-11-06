@@ -56,10 +56,20 @@ type Scheduler struct {
 	cancel     context.CancelFunc
 	running    map[int64]bool // task_id -> 执行中（防同任务重复派发）
 	lastWatchdog time.Time
+	wake       chan struct{} // 事件驱动唤醒（F13-a）：建任务即时派发，不等 tick
 }
 
 func New(st store.Store, hub *Hub) *Scheduler {
-	return &Scheduler{store: st, events: hub, semaphores: map[int64]chan struct{}{}, running: map[int64]bool{}}
+	return &Scheduler{store: st, events: hub, semaphores: map[int64]chan struct{}{},
+		running: map[int64]bool{}, wake: make(chan struct{}, 1)}
+}
+
+// Wake 事件驱动唤醒（非阻塞；已有待处理唤醒时合并）。建任务/审批放行等状态变化后调用。
+func (s *Scheduler) Wake() {
+	select {
+	case s.wake <- struct{}{}:
+	default: // 已有 pending 唤醒，合并（tick 兜底保证不丢）
+	}
 }
 
 // SetJudge 注入进展看门狗的判定模型（gateway.LLM 天然满足该接口）。
@@ -76,6 +86,12 @@ func (s *Scheduler) Start(ctx context.Context) {
 			select {
 			case <-ctx.Done():
 				return
+			case <-s.wake: // 事件驱动：建任务/放行等即时派发（F13-a）
+				s.sweepDependents(ctx)
+				s.sweepBudgets(ctx)
+				s.maybeWatchdog(ctx)
+				s.runAutomations(ctx)
+				s.dispatch(ctx)
 			case <-tick.C:
 				s.sweepDependents(ctx)
 				s.sweepBudgets(ctx)

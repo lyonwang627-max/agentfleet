@@ -355,6 +355,7 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.Hub.Publish(r.Context(), "task.update", map[string]any{"task_id": id, "status": "queued"})
+	s.Sched.Wake() // 事件驱动：建任务即时派发（F13-a）
 	writeJSON(w, http.StatusCreated, map[string]any{"id": id, "status": string(model.TaskQueued)})
 }
 
@@ -472,6 +473,7 @@ func (s *Server) taskAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.Hub.Publish(ctx, "task.update", map[string]any{"task_id": id, "status": "changed", "action": action})
+	s.Sched.Wake() // retry/approve 后即时派发（F13-a）
 	writeJSON(w, http.StatusOK, map[string]any{"id": id, "action": action})
 }
 

@@ -72,6 +72,7 @@ func (s *Scheduler) runAutomations(ctx context.Context) {
 		}
 		last := now
 		_ = s.store.MarkAutomationRan(ctx, a.ID, last, next)
+		s.Wake() // automation 建的任务即时派发
 		s.emit(ctx, "automation.fired", map[string]any{
 			"automation_id": a.ID, "name": a.Name, "task_id": task.ID, "next_run": next.Format(time.RFC3339)})
 		log.Printf("[automations] %q → task#%d（下次 %s）", a.Name, task.ID, next.Format("01-02 15:04"))
