@@ -1,0 +1,147 @@
+-- agentfleet 初始 schema（幂等：CREATE IF NOT EXISTS）
+CREATE TABLE IF NOT EXISTS agents (
+  id              BIGSERIAL PRIMARY KEY,
+  name            TEXT NOT NULL,
+  role            TEXT NOT NULL DEFAULT '',
+  system_prompt   TEXT NOT NULL DEFAULT '',
+  model           TEXT NOT NULL DEFAULT 'qwen3.5',
+  tools           JSONB NOT NULL DEFAULT '[]',
+  runner          TEXT NOT NULL DEFAULT 'llm',
+  max_concurrency INT NOT NULL DEFAULT 1,
+  token_budget_24h INT NOT NULL DEFAULT 0,
+  enabled         BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+  id            BIGSERIAL PRIMARY KEY,
+  title         TEXT NOT NULL,
+  prompt        TEXT NOT NULL DEFAULT '',
+  agent_id      BIGINT NOT NULL REFERENCES agents(id),
+  priority      INT NOT NULL DEFAULT 5,
+  status        TEXT NOT NULL DEFAULT 'queued',
+  depends_on    JSONB NOT NULL DEFAULT '[]',
+  handoff_count INT NOT NULL DEFAULT 0,
+  max_handoffs  INT NOT NULL DEFAULT 3,
+  retry_count   INT NOT NULL DEFAULT 0,
+  max_retries   INT NOT NULL DEFAULT 2,
+  visible_after TIMESTAMPTZ NOT NULL DEFAULT now(),
+  result        TEXT NOT NULL DEFAULT '',
+  error         TEXT NOT NULL DEFAULT '',
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  started_at    TIMESTAMPTZ,
+  finished_at   TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status, priority DESC, id);
+
+CREATE TABLE IF NOT EXISTS runs (
+  id              BIGSERIAL PRIMARY KEY,
+  task_id         BIGINT NOT NULL,
+  agent_id        BIGINT NOT NULL,
+  conversation_id BIGINT,
+  status          TEXT NOT NULL DEFAULT 'running',
+  total_tokens    INT NOT NULL DEFAULT 0,
+  cost_usd        DOUBLE PRECISION NOT NULL DEFAULT 0,
+  error           TEXT NOT NULL DEFAULT '',
+  started_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  finished_at     TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_runs_task ON runs(task_id);
+
+CREATE TABLE IF NOT EXISTS run_steps (
+  run_id     BIGINT NOT NULL REFERENCES runs(id),
+  seq        INT NOT NULL,
+  kind       TEXT NOT NULL,
+  name       TEXT NOT NULL DEFAULT '',
+  input      JSONB,
+  output     JSONB,
+  note       TEXT NOT NULL DEFAULT '',
+  latency_ms BIGINT NOT NULL DEFAULT 0,
+  tokens     INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (run_id, seq)
+);
+
+CREATE TABLE IF NOT EXISTS conversations (
+  id         BIGSERIAL PRIMARY KEY,
+  agent_id   BIGINT NOT NULL,
+  title      TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id              BIGSERIAL PRIMARY KEY,
+  conversation_id BIGINT NOT NULL REFERENCES conversations(id),
+  role            TEXT NOT NULL,
+  content         TEXT NOT NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS usage_events (
+  id                BIGSERIAL PRIMARY KEY,
+  agent_id          BIGINT NOT NULL DEFAULT 0,
+  agent_name        TEXT NOT NULL DEFAULT '',
+  model             TEXT NOT NULL DEFAULT '',
+  prompt_tokens     INT NOT NULL DEFAULT 0,
+  completion_tokens INT NOT NULL DEFAULT 0,
+  requests          INT NOT NULL DEFAULT 1,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_usage_created ON usage_events(created_at);
+
+CREATE TABLE IF NOT EXISTS eval_datasets (
+  id          BIGSERIAL PRIMARY KEY,
+  name        TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS eval_cases (
+  id         BIGSERIAL PRIMARY KEY,
+  dataset_id BIGINT NOT NULL REFERENCES eval_datasets(id),
+  input      TEXT NOT NULL,
+  expected   JSONB NOT NULL DEFAULT '{}'
+);
+
+CREATE TABLE IF NOT EXISTS eval_runs (
+  id         BIGSERIAL PRIMARY KEY,
+  dataset_id BIGINT NOT NULL,
+  agent_id   BIGINT NOT NULL,
+  status     TEXT NOT NULL DEFAULT 'running',
+  score_avg  DOUBLE PRECISION NOT NULL DEFAULT 0,
+  pass_rate  DOUBLE PRECISION NOT NULL DEFAULT 0,
+  report     JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS automations (
+  id         BIGSERIAL PRIMARY KEY,
+  agent_id   BIGINT NOT NULL REFERENCES agents(id),
+  name       TEXT NOT NULL,
+  cron_expr  TEXT NOT NULL,
+  title      TEXT NOT NULL,
+  prompt     TEXT NOT NULL DEFAULT '',
+  priority   INT NOT NULL DEFAULT 5,
+  enabled    BOOLEAN NOT NULL DEFAULT TRUE,
+  last_run   TIMESTAMPTZ,
+  next_run   TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS agent_versions (
+  id         BIGSERIAL PRIMARY KEY,
+  agent_id   BIGINT NOT NULL REFERENCES agents(id),
+  version    INT NOT NULL,
+  config     JSONB NOT NULL DEFAULT '{}',
+  note       TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (agent_id, version)
+);
+
+CREATE TABLE IF NOT EXISTS events (
+  seq        BIGSERIAL PRIMARY KEY,
+  kind       TEXT NOT NULL,
+  data       JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
