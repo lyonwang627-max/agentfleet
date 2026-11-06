@@ -1,0 +1,305 @@
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { api } from '../api';
+import { useApi } from '../hooks';
+import type { RunSummary } from '../types';
+import { Btn, ErrorText, Panel, SkeletonBlock, StatCard, StatusBadge, fmtDuration, fmtNum, fmtRate, fmtTime } from '../ui';
+
+type RunRow = RunSummary & { task_id: number; task_title: string };
+
+export default function AgentDetail() {
+  const params = useParams();
+  const agentId = Number(params.id ?? 0);
+  const valid = Number.isInteger(agentId) && agentId > 0;
+  const agent = useApi(() => api.getAgent(agentId), [agentId], valid);
+
+  // 近期 runs：契约无 /agents/{id}/runs，借 agent 的近期任务展开其 runs
+  const recentRuns = useApi<RunRow[]>(
+    async () => {
+      const tasks = await api.listTasks({ agent_id: agentId, page_size: 5 });
+      const lists = await Promise.all(
+        tasks.items.slice(0, 5).map((t) => api.listTaskRuns(t.id).catch(() => [] as RunSummary[])),
+      );
+      const rows: RunRow[] = [];
+      lists.forEach((rs, i) => {
+        const t = tasks.items[i];
+        for (const r of rs) rows.push({ ...r, task_id: t.id, task_title: t.title });
+      });
+      return rows.sort((a, b) => b.id - a.id).slice(0, 10);
+    },
+    [agentId],
+    valid,
+  );
+
+  const a = agent.data;
+  const [form, setForm] = useState({ name: '', role: '', system_prompt: '', model: '', tools: '', max_concurrency: 1 });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (a) {
+      setForm({
+        name: a.name,
+        role: a.role,
+        system_prompt: a.system_prompt ?? '',
+        model: a.model,
+        tools: (a.tools ?? []).join(','),
+        max_concurrency: a.max_concurrency,
+      });
+    }
+  }, [a]);
+
+  if (agent.loading) return <SkeletonBlock rows={6} />;
+  if (agent.error) return <ErrorText>{agent.error}</ErrorText>;
+  if (!a) return null;
+
+  const save = async () => {
+    setSaving(true);
+    setErr(null);
+    setSaved(false);
+    try {
+      await api.patchAgent(agentId, {
+        name: form.name.trim(),
+        role: form.role.trim(),
+        system_prompt: form.system_prompt,
+        model: form.model.trim(),
+        tools: form.tools
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+        max_concurrency: Math.max(1, Math.floor(form.max_concurrency) || 1),
+      });
+      await agent.reload();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputCls =
+    'w-full rounded border border-border bg-bg px-2.5 py-1.5 text-xs text-fg outline-none placeholder:text-muted focus:border-sky-600/60';
+  const s = a.stats;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 text-xs text-muted">
+        <Link to="/" className="hover:text-sky-300">
+          舰队总览
+        </Link>
+        <span>/</span>
+        <span className="font-mono">agent #{a.id}</span>
+      </div>
+
+      {/* 统计卡 */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="总 Runs" value={fmtNum(s?.total_runs)} />
+        <StatCard label="成功率" value={fmtRate(s?.success_rate)} />
+        <StatCard label="平均延迟" value={fmtDuration(s?.avg_latency_ms)} />
+        <StatCard label="30d Tokens" value={fmtNum(s?.tokens_30d)} />
+      </div>
+
+      {/* 版本管理（F2）：发布/历史/回滚 */}
+      <AgentVersions agentId={agentId} />
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,520px)_minmax(0,1fr)]">
+        {/* 配置表单 */}
+        <Panel
+          title="配置"
+          right={
+            <span className="flex items-center gap-2 text-[11px]">
+              <span
+                className={`rounded border px-1.5 py-0.5 text-[11px] ${
+                  a.enabled
+                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                    : 'border-zinc-500/30 bg-zinc-500/10 text-zinc-400'
+                }`}
+              >
+                {a.enabled ? '已启用' : '已停用'}
+              </span>
+              {saved && <span className="text-emerald-400">已保存</span>}
+            </span>
+          }
+        >
+          <div className="space-y-2.5">
+            <LabeledInput label="名称" value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} inputCls={inputCls} />
+            <LabeledInput label="角色" value={form.role} onChange={(v) => setForm((f) => ({ ...f, role: v }))} inputCls={inputCls} />
+            <div>
+              <div className="mb-1 text-xs text-muted">System Prompt</div>
+              <textarea
+                className={`${inputCls} h-36 resize-y font-mono leading-relaxed`}
+                value={form.system_prompt}
+                onChange={(e) => setForm((f) => ({ ...f, system_prompt: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              <LabeledInput label="Model" value={form.model} onChange={(v) => setForm((f) => ({ ...f, model: v }))} inputCls={inputCls} />
+              <LabeledInput
+                label="最大并发"
+                type="number"
+                value={String(form.max_concurrency)}
+                onChange={(v) => setForm((f) => ({ ...f, max_concurrency: Number(v) }))}
+                inputCls={inputCls}
+              />
+            </div>
+            <LabeledInput
+              label="Tools（逗号分隔）"
+              value={form.tools}
+              onChange={(v) => setForm((f) => ({ ...f, tools: v }))}
+              inputCls={inputCls}
+            />
+            {err && <ErrorText>{err}</ErrorText>}
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-muted">
+                runner <span className="font-mono text-fg">{a.runner}</span> · 创建于 {fmtTime(a.created_at)}
+              </span>
+              <Btn variant="primary" disabled={saving} onClick={() => void save()}>
+                {saving ? '保存中…' : '保存（PATCH）'}
+              </Btn>
+            </div>
+          </div>
+        </Panel>
+
+        {/* 近期 runs */}
+        <Panel title={`近期 Runs（${recentRuns.data?.length ?? 0}）`} bodyClass="p-0">
+          {recentRuns.loading && (
+            <div className="p-4">
+              <SkeletonBlock rows={4} />
+            </div>
+          )}
+          {recentRuns.error && (
+            <div className="p-4">
+              <ErrorText>{recentRuns.error}</ErrorText>
+            </div>
+          )}
+          {!recentRuns.loading && !recentRuns.error && (recentRuns.data?.length ?? 0) === 0 && (
+            <div className="px-4 py-6 text-center text-xs text-muted">近期无执行记录</div>
+          )}
+          {(recentRuns.data ?? []).map((r) => (
+            <div key={r.id} className="flex flex-wrap items-center gap-3 border-b border-border/60 px-4 py-2 text-xs last:border-b-0">
+              <span className="font-mono text-muted">#{r.id}</span>
+              <StatusBadge status={r.status} />
+              <Link to={`/tasks/${r.task_id}`} className="max-w-48 truncate hover:text-sky-300" title={r.task_title}>
+                {r.task_title}
+              </Link>
+              <span className="ml-auto text-muted">
+                tokens <span className="font-mono text-fg">{fmtNum(r.total_tokens)}</span>
+              </span>
+              <span className="text-muted">
+                cost <span className="font-mono text-fg">${r.cost_usd?.toFixed(4) ?? '—'}</span>
+              </span>
+              <span className="w-28 text-right font-mono text-[10px] text-muted">{fmtTime(r.started_at)}</span>
+            </div>
+          ))}
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+function LabeledInput({
+  label,
+  value,
+  onChange,
+  inputCls,
+  type = 'text',
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  inputCls: string;
+  type?: string;
+}) {
+  return (
+    <div>
+      <div className="mb-1 text-xs text-muted">{label}</div>
+      <input
+        type={type}
+        className={inputCls}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        min={type === 'number' ? 1 : undefined}
+      />
+    </div>
+  );
+}
+
+// AgentVersions 版本链：发布=快照当前配置；回滚=旧快照覆盖+前进新版本（链只前进，可追溯）。
+function AgentVersions({ agentId }: { agentId: number }) {
+  const versions = useApi(() => api.listAgentVersions(agentId), [agentId]);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const act = async (fn: () => Promise<string>) => {
+    setBusy(true);
+    setErr(null);
+    setMsg(null);
+    try {
+      setMsg(await fn());
+      await versions.reload();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const items = versions.data?.items ?? [];
+
+  return (
+    <Panel
+      title={`版本历史（${items.length}）`}
+      right={
+        <span className="flex items-center gap-2">
+          {msg && <span className="text-emerald-400">{msg}</span>}
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="发布备注（可选）"
+            className="w-40 rounded border border-border bg-bg px-2 py-1 text-xs text-fg outline-none focus:border-sky-600/60"
+          />
+          <Btn variant="primary" disabled={busy} onClick={() => void act(async () => {
+            const r = await api.publishAgent(agentId, note.trim());
+            setNote('');
+            return `已发布 v${r.version}`;
+          })}>
+            发布当前配置
+          </Btn>
+        </span>
+      }
+      bodyClass="p-0"
+    >
+      {versions.loading && <div className="p-4"><SkeletonBlock rows={3} /></div>}
+      {versions.error && <div className="p-4"><ErrorText>{versions.error}</ErrorText></div>}
+      {!versions.loading && !versions.error && items.length === 0 && (
+        <div className="px-4 py-6 text-center text-xs text-muted">
+          还没有发布过版本——修改配置后点「发布当前配置」建立 v1
+        </div>
+      )}
+      {items.map((v) => (
+        <div key={v.id} className="flex flex-wrap items-center gap-3 border-b border-border/60 px-4 py-2.5 text-xs last:border-b-0">
+          <span className="rounded border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 font-mono text-[11px] text-sky-300">
+            v{v.version}
+          </span>
+          <span className="text-fg">{v.note || '（无备注）'}</span>
+          <span className="max-w-md truncate font-mono text-[11px] text-muted" title={String(v.config?.system_prompt ?? '')}>
+            {String(v.config?.system_prompt ?? '').slice(0, 60)}
+          </span>
+          <span className="ml-auto font-mono text-[10px] text-muted">{fmtTime(v.created_at)}</span>
+          <Btn disabled={busy} onClick={() => void act(async () => {
+            const r = await api.rollbackAgent(agentId, v.version);
+            return `已从 v${r.rolled_back_from} 回滚，生成 v${r.new_version}`;
+          })}>
+            回滚到此版
+          </Btn>
+        </div>
+      ))}
+      {err && <div className="px-4 py-2"><ErrorText>{err}</ErrorText></div>}
+    </Panel>
+  );
+}

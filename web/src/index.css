@@ -1,0 +1,119 @@
+@import "tailwindcss";
+
+@theme {
+  /* 分层色板：bg 最深 → panel 主面 → panel2 浮起，三层拉开制造纵深 */
+  --color-bg: #070a10;
+  --color-panel: #101724;
+  --color-panel2: #192233;
+  --color-border: #233046;
+  --color-border-hover: #33456a;
+  --color-fg: #dbe4f0;
+  --color-muted: #8d9db3;
+  --color-accent: #38bdf8;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  /* 主背景：底部带一点品牌蓝的径向渐晕，消除大面积死黑 */
+  background-color: var(--color-bg);
+  background-image: radial-gradient(1200px 600px at 70% -10%, rgba(56, 189, 248, 0.05), transparent 60%);
+  color: var(--color-fg);
+  font-family: ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "tnum";
+}
+
+/* 数字全局等宽对齐（指标卡/表格/耗时） */
+.tabular-nums,
+[class*="font-mono"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 卡片质感：顶部一像素高光 + hover 边框提亮 */
+.card-sheen {
+  position: relative;
+}
+.card-sheen::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 4%, rgba(148, 178, 214, 0.18) 50%, transparent 96%);
+  pointer-events: none;
+}
+.card-lift {
+  transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+}
+.card-lift:hover {
+  border-color: var(--color-border-hover);
+}
+
+/* 品牌字标渐变 */
+.brand-text {
+  background: linear-gradient(120deg, #e8f2ff 30%, #7dd3fc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 运行中脉动点 */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.8); }
+}
+.pulse-dot {
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
+
+/* 页面级淡入（克制，无位移） */
+@keyframes page-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+main {
+  animation: page-in 0.25s ease-out;
+}
+
+::selection {
+  background: rgba(56, 189, 248, 0.28);
+}
+
+/* 统一 focus 可见性 */
+:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.55);
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+
+/* 深色滚动条（更细更淡） */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #263349 transparent;
+}
+*::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #263349;
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #33456a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-dot,
+  main {
+    animation: none;
+  }
+  .card-lift {
+    transition: none;
+  }
+}
