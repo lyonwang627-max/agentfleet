@@ -113,3 +113,7 @@
 ## 2026-11-07 F18-a 收尾（by_purpose 用量维度）
 
 - **by_purpose 完成**：usage_events 加 purpose 列（execute/chat/judge/review——路由可观测维度）；run 回填 purpose=execute、chat=chat；UsageByPurpose 聚合（Mem map 分桶 / PG GROUP BY）+ /usage.by_purpose；分桶不串单测。至此 F18-a 完整（SelectFor 分流 + by_purpose 观测）。剩余 F18-c（A/B 报告）。验证：go 7 包全绿
+
+## 2026-11-07 F18 路由 A/B 与升级率（切片 c，F18 收口）
+
+- **F18-c 完成（F18 三片全部收口）**：①GET /evals/compare——两次评测对比（score/pass_rate delta、quality_held 判定 |Δ|<1、verdict pass|regression|improvement、case 级结论翻转统计）；②GET /routing/stats——升级率=重试任务占比（健康区间 5-15%，三态：>30% tier-S-overloaded / <5%且样本≥20 M-underused / healthy）。单测：improvement 判定 + case 翻转计数。**诚实边界**：决策 p99 与一致率需 per-decide 延迟采集与双判基建，已标注后续。F18（ADR-0002 模型分层路由）三片全部完成。验证：go 7 包全绿

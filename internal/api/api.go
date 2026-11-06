@@ -107,6 +107,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/evals", s.listEvals)
 	mux.HandleFunc("POST /api/v1/evals", s.createEval)
 	mux.HandleFunc("GET /api/v1/evals/{id}", s.getEval)
+	mux.HandleFunc("GET /api/v1/evals/compare", s.compareEvals) // 路由 A/B（F18-c）
+	mux.HandleFunc("GET /api/v1/routing/stats", s.routingStats) // 升级率（F18-c）
 	mux.HandleFunc("POST /api/v1/evals/{id}/prescription", s.prescribe)       // RSI 处方生成（F17-a）
 	mux.HandleFunc("POST /api/v1/agents/{id}/apply-prescription", s.applyPrescription) // 处方一键应用（F17-b）
 
