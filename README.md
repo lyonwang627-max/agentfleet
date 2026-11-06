@@ -34,6 +34,41 @@ docker compose up -d   # postgres + fleetd + web 一键起
 
 ## 架构
 
+```mermaid
+flowchart TB
+    subgraph client["React 管理台 (Vite + TS strict)"]
+        UI["看板 / Trace 瀑布图 / 版本管理<br/>自动化 / 评测 / 用量 · SSE 实时"]
+    end
+
+    subgraph fleetd["fleetd — Go 控制面（单进程 · 标准库 ServeMux）"]
+        API["api<br/>REST + SSE 断线续传"]
+        SCHED["scheduler · 800ms tick<br/>依赖级联 → 预算熔断 → 进展看门狗<br/>→ Automations → 认领派发"]
+        RUNNER["runner（可插拔）<br/>mock 剧本 / llm JSON 协议"]
+        GW["gateway<br/>LLM 路由 · token 计量"]
+        EVAL["eval · LLM-as-judge<br/>（旁路，不占队列）"]
+        STORE["store 接口 · 双实现"]
+    end
+
+    subgraph deps["外部依赖"]
+        PG[("PostgreSQL<br/>FOR UPDATE SKIP LOCKED<br/>任务队列 + 全量状态")]
+        LLM["Ollama · qwen3.5<br/>think:false + format:json"]
+        MCP["MCP 子进程 · stdio<br/>JSON-RPC 2.0 动态工具发现"]
+    end
+
+    UI -- "/api" --> API
+    API --> SCHED
+    SCHED --> RUNNER
+    RUNNER -- "决策/生成" --> GW
+    RUNNER -- "tools/call" --> MCP
+    EVAL -.旁路.-> GW
+    GW --> LLM
+    SCHED --> STORE
+    API --> STORE
+    STORE --> PG
+```
+
+文字版速览：
+
 ```
 React 管理台 ──/api──> Go 控制面（标准库 ServeMux，零路由依赖）
                         ├─ api         REST + SSE（Last-Event-ID 断线续传）
@@ -45,7 +80,7 @@ React 管理台 ──/api──> Go 控制面（标准库 ServeMux，零路由�
                         └─ store       Postgres（生产）/ MemStore（演示+测试）双实现
 ```
 
-详细设计（含三篇取舍小节）见 `docs/ARCHITECTURE.md`（R4 产出中）；剧本引擎手册见 `data/mock-playbook.md`。
+详细设计（含三篇取舍小节）见 `docs/ARCHITECTURE.md`；API 契约见 `docs/api-contract.md`；剧本引擎手册见 `data/mock-playbook.md`；关键决策记录见 `docs/adr/`。
 
 ## 为什么这些选型（设计取舍速查）
 
