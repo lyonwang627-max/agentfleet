@@ -2,6 +2,8 @@ package runner
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -123,4 +125,14 @@ func extractAfter(s, marker string) string {
 		rest = rest[:j]
 	}
 	return strings.TrimSpace(strings.Trim(rest, "：: "))
+}
+
+// decision / strictJSON 与 llm runner 共用：eino runner 复用同一 JSON 决策协议。
+func strictJSON(text string, dst any) error {
+	start := strings.Index(text, "{")
+	end := strings.LastIndex(text, "}")
+	if start < 0 || end <= start {
+		return errors.New("no json object")
+	}
+	return json.Unmarshal([]byte(text[start:end+1]), dst)
 }

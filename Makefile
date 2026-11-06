@@ -28,3 +28,8 @@ release:
 	cd web && npm run build
 	go build -tags release -o fleetd-release ./cmd/fleetd
 	@ls -lh fleetd-release | awk '{print "产物: " $$9, $$5}'
+
+# Eino 适配器构建（F7）：eino runner 可用（gateway 桥接模式）
+eino:
+	go build -tags eino -o fleetd-eino ./cmd/fleetd
+	go test -tags eino ./internal/runner/ -run TestEino -count=1

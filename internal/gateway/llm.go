@@ -26,6 +26,10 @@ type LLM struct {
 
 func New(model string) *LLM {
 	c := &LLM{Model: model, client: &http.Client{Timeout: 300 * time.Second}}
+	if model == "mock" { // 显式请求内置 mock 模型 = 强制 mock 模式（测试/无模型演练）
+		c.Mode = "mock"
+		return c
+	}
 	c.Resolve()
 	return c
 }
@@ -83,6 +87,57 @@ func (l *LLM) ListModels() []ModelInfo {
 		}
 	}
 	return out
+}
+
+// ChatMessage 多轮消息（ChatRaw 用）。
+type ChatMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+// ChatRaw 多轮直通：保留完整消息序列（适配 eino/多轮工具循环等上层），走原生通道。
+// Eino 不可用时仍走 OpenAI 兼容路径由 native 内部处理——ChatRaw 只负责透传。
+func (l *LLM) ChatRaw(ctx context.Context, msgs []ChatMessage, maxTokens int) (string, int, error) {
+	if l.Mode == "mock" {
+		if l.Fallback != nil {
+			return l.Fallback("", msgs[len(msgs)-1].Content), 64, nil
+		}
+		return "(mock) " + msgs[len(msgs)-1].Content, 64, nil
+	}
+	if maxTokens <= 0 {
+		maxTokens = 1024
+	}
+	payload := map[string]any{
+		"model":    l.Model,
+		"messages": msgs,
+		"stream":   false,
+		"think":    false,
+		"options":  map[string]any{"temperature": 0.3, "num_predict": maxTokens},
+	}
+	body, _ := json.Marshal(payload)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, l.BaseURL+"/api/chat", strings.NewReader(string(body)))
+	if err != nil {
+		return "", 0, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := l.client.Do(req)
+	if err != nil {
+		return "", 0, fmt.Errorf("ollama chat raw: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", 0, fmt.Errorf("ollama chat raw: http %d", resp.StatusCode)
+	}
+	var out struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+		EvalCount int `json:"eval_count"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return "", 0, err
+	}
+	return out.Message.Content, out.EvalCount, nil
 }
 
 type chatMessage struct {

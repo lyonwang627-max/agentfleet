@@ -65,3 +65,7 @@
 ## 2026-11-07 F6 会话回放（切片 b，F6 收口）
 
 - **F6-b 完成（F6 整体收口）**：/replays 回放页——左侧会话列表（agent 名/标题/消息数/run 数/时间，点击切换），右侧气泡时间线（user 右对齐蓝、agent 左对齐面板色，逐条带时间戳）+ 关联 Runs 面板（链到任务 Trace 瀑布图）。路由+导航接入，前端构建零报错（233KB JS）。F6 全链路：试聊台对话 → 会话列表 → 时间线回放 → 点 run 看执行轨迹。验证：前端构建零报错 + go 全绿（数据层上轮已实弹）
+
+## 2026-11-07 F7 Eino 适配器
+
+- **F7 完成**：eino（字节开源，v0.9.22）适配器落地，build tag `eino` 隔离——①EinoChatModel：把 fleetd gateway 包装成 eino model.BaseChatModel（Generate 多消息 → gateway.ChatRaw native 通道；方向是「eino 编排复用我们的网关」，降级/计量/预算全继承）；②EinoRunner：eino schema 消息流 + 同款 JSON 决策协议，`-tags eino` 构建时经 EinoRunnerFactory hook 注册；③gateway.New("mock") 语义修复：显式 mock 模型 = 强制 mock 模式（修测试 404）；④Makefile eino target。双构建（主/eino）双 vet 全过，eino 单测（Generate 消息转换 + Execute 协议）全绿。探查中学到：eino 已废弃 BindTools 改用不可变 WithTools（并发安全），适配器文档可引用
