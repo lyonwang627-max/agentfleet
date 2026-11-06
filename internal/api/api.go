@@ -590,7 +590,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
 
 	// chat 也计用量（网关计量统一入口）
 	_ = s.Store.AppendUsage(ctx, &model.UsageEvent{AgentID: agent.ID, AgentName: agent.Name,
-		Model: agent.Model, PromptTokens: len2(in.Message), CompletionTokens: tokens, Requests: 1})
+		Model: agent.Model, Purpose: "chat", PromptTokens: len2(in.Message), CompletionTokens: tokens, Requests: 1})
 	writeJSON(w, http.StatusOK, map[string]any{"conversation_id": convID, "reply": reply, "run_id": 0})
 }
 
@@ -606,6 +606,11 @@ func (s *Server) usage(w http.ResponseWriter, r *http.Request) {
 		d, window = 24*time.Hour, "24h"
 	}
 	total, byModel, byAgent, err := s.Store.UsageSummary(r.Context(), d)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err)
+		return
+	}
+	byPurpose, err := s.Store.UsageByPurpose(r.Context(), d)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
@@ -634,6 +639,7 @@ func (s *Server) usage(w http.ResponseWriter, r *http.Request) {
 		"prompt_tokens": total.PromptTokens, "completion_tokens": total.CompletionTokens,
 		"cost_usd": round4(totalCost), "cost_by_model": byModelCost, "cost_by_agent": byAgentCost,
 		"by_model": byModel, "by_agent": byAgent,
+		"by_purpose": byPurpose,
 		"rate_limit": map[string]any{"enabled": enabled, "per_minute": perMinute, "rejected_total": rejected}})
 }
 

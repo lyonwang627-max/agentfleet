@@ -51,6 +51,7 @@ type Store interface {
 	// usage
 	AppendUsage(ctx context.Context, u *model.UsageEvent) error
 	UsageSummary(ctx context.Context, window time.Duration) (total model.UsageEvent, byModel []model.UsageEvent, byAgent []model.UsageEvent, err error)
+	UsageByPurpose(ctx context.Context, window time.Duration) ([]model.UsageEvent, error)
 
 	// evals
 	CreateDataset(ctx context.Context, d *model.EvalDataset) (int64, error)

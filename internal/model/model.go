@@ -130,6 +130,7 @@ type UsageEvent struct {
 	AgentID          int64     `json:"agent_id"`
 	AgentName        string    `json:"agent_name,omitempty"`
 	Model            string    `json:"model"`
+	Purpose          string    `json:"purpose,omitempty"` // F18-a：execute | chat | judge | review（路由可观测维度）
 	PromptTokens     int       `json:"prompt_tokens"`
 	CompletionTokens int       `json:"completion_tokens"`
 	Requests         int       `json:"requests"`

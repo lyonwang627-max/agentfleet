@@ -477,9 +477,9 @@ func (p *PostgresStore) ListMessages(ctx context.Context, conversationID int64) 
 
 func (p *PostgresStore) AppendUsage(ctx context.Context, u *model.UsageEvent) error {
 	return p.pool.QueryRow(ctx,
-		`INSERT INTO usage_events(agent_id, agent_name, model, prompt_tokens, completion_tokens, requests)
-		 VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, created_at`,
-		u.AgentID, u.AgentName, u.Model, u.PromptTokens, u.CompletionTokens, u.Requests).Scan(&u.ID, &u.CreatedAt)
+		`INSERT INTO usage_events(agent_id, agent_name, model, purpose, prompt_tokens, completion_tokens, requests)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, created_at`,
+		u.AgentID, u.AgentName, u.Model, u.Purpose, u.PromptTokens, u.CompletionTokens, u.Requests).Scan(&u.ID, &u.CreatedAt)
 }
 
 func (p *PostgresStore) UsageSummary(ctx context.Context, window time.Duration) (model.UsageEvent, []model.UsageEvent, []model.UsageEvent, error) {

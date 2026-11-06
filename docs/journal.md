@@ -109,3 +109,7 @@
 ## 2026-11-07 F18 任务级路由（切片 b）
 
 - **F18-b/3 完成**：ScoreTier 纯规则打分器（priority≥8 +2、prompt>2000 字 +1、含审批/发布 +1、含 handoff +1；score≥3→L，全 0 且低优短文→S，否则 M；近期成功率<50% 直接 L——质量问题先升级）+ 失败重试自动升 L 档 + TierToModel（S/L 档经 gateway 分流，无网关回退 agent 模型）+ ExecRequest.ModelOverride + trace route 步（档位/模型/重试次数可观测）。4 组单测。插曲：一次编辑把 Scheduler struct 覆盖掉（即时发现重建）。验证：go 7 包全绿
+
+## 2026-11-07 F18-a 收尾（by_purpose 用量维度）
+
+- **by_purpose 完成**：usage_events 加 purpose 列（execute/chat/judge/review——路由可观测维度）；run 回填 purpose=execute、chat=chat；UsageByPurpose 聚合（Mem map 分桶 / PG GROUP BY）+ /usage.by_purpose；分桶不串单测。至此 F18-a 完整（SelectFor 分流 + by_purpose 观测）。剩余 F18-c（A/B 报告）。验证：go 7 包全绿

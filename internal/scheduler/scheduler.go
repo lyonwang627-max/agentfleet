@@ -324,7 +324,7 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 	// 用量回填：run 的 tokens 进 usage_events（预算熔断与用量看板的数据源）
 	if run.TotalTokens > 0 {
 		_ = s.store.AppendUsage(ctx, &model.UsageEvent{AgentID: agent.ID, AgentName: agent.Name,
-			Model: agent.Model, CompletionTokens: run.TotalTokens, Requests: 1})
+			Model: agent.Model, Purpose: "execute", CompletionTokens: run.TotalTokens, Requests: 1})
 	}
 
 	switch {
