@@ -33,7 +33,7 @@
 - [x] F14: 进展看门狗——定时扫 running 超阈值任务，run_steps 摘要喂模型判断「有无实质进展」，跑偏则触发重试/告警事件（借鉴 dsh-superagent Watchdog；与 F11 多轮循环互为安全网；现有资源看门狗 sweepBudgets 只看预算不看进展）**[完成 2026-11-06：watchdog.go（JudgeProgress 独立函数+fail-open 单测：judge 缺失/不健康/输出异常一律放行）+ 2min 流控 + task.stalled 事件 + failTask 重试；mock 环境实测不误杀]**
 - [ ] F15: chat 异步流式——试聊台长回复改 SSE 流式（start/stop 异步全双工思想，后台跑 LLM 前台不阻塞）
 - [x] F16: AI 预审审批门——review 状态任务先过无工具预审模型（评估操作风险+给 approve/deny 建议+理由，借鉴 LoopForge 独立审查代批：无工具无凭证、指令注入隔离），人只终审；预审结果落 trace（kind=gate）**[完成 2026-11-06：POST /tasks/{id}/precheck + 契约 v1.3 + trace 留痕 + SSE task.precheck；实弹真模型判 needs_human/high 风险理由专业；LLM 不可用 503 人工兜底；修字符串截断越界 panic]**
-- [ ] F17: RSI 处方闭环——eval 报告+失败任务模式 → LLM 生成处方（system_prompt/参数修改建议）→ 人一键应用=版本管理发布新版本 → 再评测验证（焊接 eval 引擎与 F2；借鉴 LoopForge 外环复盘开处方）
+- [x] F17: RSI 处方闭环——eval 报告 → LLM 处方 → 一键应用（版本管理发布，可回滚）→ 再评测验证 **[完成 2026-11-07：POST /evals/{id}/prescription（失败 case 诊断→system_prompt_addition 行为约束级处方）+ POST /agents/{id}/apply-prescription（追加 prompt+版本链发布）；实弹：代码评审评测→处方诊断「双写时序错误」→应用后 system_prompt 含处方段落、版本链可追溯]**
 
 ### P2 工程质量
 - [ ] Q1: 集成测试——httptest 起 API + MemStore 跑通「创建任务→mock 执行→handoff→审批→done」全链路

@@ -164,10 +164,20 @@ type EvalRun struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// Prescription RSI 处方（F17）：评测驱动的 system_prompt 改进建议（应用走版本管理可回滚）。
+type Prescription struct {
+	Diagnosis            string `json:"diagnosis"`
+	SystemPromptAddition string `json:"system_prompt_addition"`
+	Rationale            string `json:"rationale"`
+	BasedOnEval          int64  `json:"based_on_eval"`
+	FailureCases         int    `json:"failure_cases"`
+}
+
 type EvalReport struct {
-	Cases    []EvalCaseResult `json:"cases"`
-	ScoreAvg float64          `json:"score_avg"`
-	PassRate float64          `json:"pass_rate"`
+	Cases        []EvalCaseResult `json:"cases"`
+	ScoreAvg     float64          `json:"score_avg"`
+	PassRate     float64          `json:"pass_rate"`
+	Prescription *Prescription    `json:"prescription,omitempty"` // F17 RSI 处方（additive）
 }
 
 type EvalCaseResult struct {

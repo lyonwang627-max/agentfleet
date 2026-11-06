@@ -107,6 +107,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/evals", s.listEvals)
 	mux.HandleFunc("POST /api/v1/evals", s.createEval)
 	mux.HandleFunc("GET /api/v1/evals/{id}", s.getEval)
+	mux.HandleFunc("POST /api/v1/evals/{id}/prescription", s.prescribe)       // RSI 处方生成（F17-a）
+	mux.HandleFunc("POST /api/v1/agents/{id}/apply-prescription", s.applyPrescription) // 处方一键应用（F17-b）
 
 	// 单二进制交付（-tags release）：根路径服务内嵌前端 SPA
 	if h, ok := web.DistHandler(); ok {

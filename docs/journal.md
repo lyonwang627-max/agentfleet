@@ -97,3 +97,7 @@
 ## 2026-11-07 F13 事件驱动唤醒（切片 a）
 
 - **F13-a/2 完成**：进程内事件驱动——Scheduler.Wake()（容量 1 非阻塞合并 chan，不丢不阻塞：合并语义由 tick 兜底）；建任务/taskAction(retry,approve)/automations 触发三处全接线。**实测派发延迟 800ms→94ms**（单测断言 700ms 内完成即证明走唤醒路径，纯 tick 至少 800ms）。race 模式 7 包全绿。多实例唤醒（PG LISTEN/NOTIFY）与两级事件过滤留 F13-b。下一建议：F13-b 或 F17 处方闭环
+
+## 2026-11-07 F17 RSI 处方闭环（借鉴 LoopForge 外环）
+
+- **F17 完成**：①POST /evals/{id}/prescription——失败/低分 case 聚合喂诊断模型，输出「失败模式诊断 + system_prompt_addition（行为约束级）+ rationale」，写回 report.Prescription（additive）；②POST /agents/{id}/apply-prescription——addendum 追加 agent prompt + 版本管理发布新版本（可回滚，人在环上）。**实弹质量惊艳**：处方诊断出「双写不一致时序错误」，addition 是具体行为约束（强制延迟双删/binlog 补偿/事务原子性/灰度流程）；应用后版本链 v1 可追溯。闭环：评测→诊断→处方→应用（再评测验证留给后续任务自动化）。验证：go 7 包全绿 + 双端点实弹
