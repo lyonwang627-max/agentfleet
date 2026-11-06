@@ -73,3 +73,7 @@
 ## 2026-11-07 F8 网关限流（切片 a）
 
 - **F8-a/2 完成**：IP 级 token bucket 限流——仅变更类方法（POST/PATCH/DELETE）受限，查询不限；默认关闭（FLEET_RATE_LIMIT=次/分钟开启）；429 + Retry-After；闲置桶 10 分钟回收防内存膨胀；X-Forwarded-For 反代感知。修一个语义 bug：新建桶免费放行不消耗导致限流数偏移一次（改创建即消耗标准语义）。3 组单测：桶算法回填/IP 隔离/middleware 429+GET 不受限。验证：go 5 包全绿。遗留：F8-b 用量看板限流标红
+
+## 2026-11-07 F8 网关限流（切片 b，F8 收口）
+
+- **F8-b 完成（F8 整体收口）**：GET /usage 新增 rate_limit{enabled,per_minute,rejected_total}（atomic 计数，拒绝路径累加）；用量看板头部限流状态徽章——开启且拒绝>0 标红、开启无拒绝绿、未开启灰。实弹：FLEET_RATE_LIMIT=3 下连发 4 请求 → 201×3 + 429，rejected_total=1 实时反映。前端构建零报错。验证：go 5 包全绿 + 实弹

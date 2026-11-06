@@ -606,9 +606,11 @@ func (s *Server) usage(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
 	}
+	enabled, perMinute, rejected := s.limiter.Stats()
 	writeJSON(w, http.StatusOK, map[string]any{"window": window, "requests": total.Requests,
 		"prompt_tokens": total.PromptTokens, "completion_tokens": total.CompletionTokens,
-		"by_model": byModel, "by_agent": byAgent})
+		"by_model": byModel, "by_agent": byAgent,
+		"rate_limit": map[string]any{"enabled": enabled, "per_minute": perMinute, "rejected_total": rejected}})
 }
 
 func (s *Server) models(w http.ResponseWriter, _ *http.Request) {

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -36,11 +37,21 @@ func (b *tokenBucket) allow(now time.Time) bool {
 
 // RateLimiter IP → bucket；闲置桶定期回收防内存膨胀。
 type RateLimiter struct {
-	mu      sync.Mutex
-	buckets map[string]*tokenBucket
-	rate    float64 // per second
-	burst   float64
-	lastGC  time.Time
+	mu       sync.Mutex
+	buckets  map[string]*tokenBucket
+	rate     float64 // per second
+	burst    float64
+	perMin   int
+	lastGC   time.Time
+	rejected atomic.Int64 // 累计拒绝数（用量看板标红依据）
+}
+
+// Stats 限流状态（观测端点用）。
+func (rl *RateLimiter) Stats() (enabled bool, perMinute int, rejected int64) {
+	if rl == nil {
+		return false, 0, 0
+	}
+	return true, rl.perMin, rl.rejected.Load()
 }
 
 func NewRateLimiter(perMinute int) *RateLimiter {
@@ -51,6 +62,7 @@ func NewRateLimiter(perMinute int) *RateLimiter {
 		buckets: map[string]*tokenBucket{},
 		rate:    float64(perMinute) / 60.0,
 		burst:   float64(perMinute),
+		perMin:  perMinute,
 		lastGC:  time.Now(),
 	}
 }
@@ -103,6 +115,7 @@ func (s *Server) rateLimitMiddleware(next http.Handler) http.Handler {
 		switch r.Method {
 		case http.MethodPost, http.MethodPatch, http.MethodDelete:
 			if !s.limiter.Allow(clientIP(r)) {
+				s.limiter.rejected.Add(1)
 				w.Header().Set("Retry-After", strconv.Itoa(60))
 				writeErr(w, http.StatusTooManyRequests, errors.New("请求过于频繁，稍后再试（限流：变更类接口按 IP 令牌桶）"))
 				return

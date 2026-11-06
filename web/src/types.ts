@@ -138,6 +138,14 @@ export interface Usage {
   completion_tokens: number;
   by_model: UsageByModel[];
   by_agent: UsageByAgent[];
+  rate_limit?: RateLimitStats;
+}
+
+// 网关限流状态（v1.4，F8-b）
+export interface RateLimitStats {
+  enabled: boolean;
+  per_minute: number;
+  rejected_total: number;
 }
 
 // ---------- Eval ----------

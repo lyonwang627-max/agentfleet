@@ -21,6 +21,21 @@ export default function Usage() {
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">用量看板（Gateway）</h2>
         <div className="flex items-center gap-2">
+          {/* 限流状态（F8-b）：有拒绝记录标红 */}
+          {u?.rate_limit?.enabled ? (
+            <span
+              className={`rounded border px-2 py-1 text-[11px] ${
+                u.rate_limit.rejected_total > 0
+                  ? 'border-rose-500/40 bg-rose-500/10 text-rose-300'
+                  : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+              }`}
+              title="变更类接口按 IP 令牌桶限流"
+            >
+              限流 {u.rate_limit.per_minute}/min{u.rate_limit.rejected_total > 0 && ` · 已拒绝 ${u.rate_limit.rejected_total}`}
+            </span>
+          ) : (
+            <span className="rounded border border-border px-2 py-1 text-[11px] text-muted">限流未开启</span>
+          )}
           <div className="flex overflow-hidden rounded border border-border">
             {(['24h', '7d'] as Window[]).map((w) => (
               <button
