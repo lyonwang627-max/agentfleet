@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/lyonwang/agentfleet/internal/gateway"
 	"github.com/lyonwang/agentfleet/internal/model"
 	"github.com/lyonwang/agentfleet/internal/store"
 )
@@ -30,6 +31,8 @@ func (s *Server) prescribe(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusServiceUnavailable, errors.New("处方生成需要可用 LLM（当前 mock/不可用）"))
 		return
 	}
+	// ADR-0002：审查类调用走 L 档（质量最敏感）
+	reviewLLM := s.LLM.WithModel(s.LLM.SelectFor(gateway.PurposeReview))
 
 	// 失败/低分 case 优先喂给诊断（成功 case 只取评语前几条做对照）
 	var failures, passes strings.Builder
@@ -41,7 +44,7 @@ func (s *Server) prescribe(w http.ResponseWriter, r *http.Request) {
 			passes.WriteString(line)
 		}
 	}
-	raw, _, err := s.LLM.ChatJSON(r.Context(),
+	raw, _, err := reviewLLM.ChatJSON(r.Context(),
 		"你是研发流程复盘教练（RSI 外环）。根据评测报告中的失败 case，诊断 agent 的系统提示词缺陷，"+
 			"并给出一段可追加到 system_prompt 的改进处方。要求：处方是具体的行为约束/结构指引（不要空话），"+
 			"针对失败模式逐条对症。只输出 JSON："+

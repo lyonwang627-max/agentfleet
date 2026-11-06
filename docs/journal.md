@@ -101,3 +101,7 @@
 ## 2026-11-07 F17 RSI 处方闭环（借鉴 LoopForge 外环）
 
 - **F17 完成**：①POST /evals/{id}/prescription——失败/低分 case 聚合喂诊断模型，输出「失败模式诊断 + system_prompt_addition（行为约束级）+ rationale」，写回 report.Prescription（additive）；②POST /agents/{id}/apply-prescription——addendum 追加 agent prompt + 版本管理发布新版本（可回滚，人在环上）。**实弹质量惊艳**：处方诊断出「双写不一致时序错误」，addition 是具体行为约束（强制延迟双删/binlog 补偿/事务原子性/灰度流程）；应用后版本链 v1 可追溯。闭环：评测→诊断→处方→应用（再评测验证留给后续任务自动化）。验证：go 7 包全绿 + 双端点实弹
+
+## 2026-11-07 F18 模型分层路由（切片 a，ADR-0002 落地）
+
+- **F18-a/3 完成**：gateway.SelectFor(purpose)——judge 走 S 档（lfm25:latest，env 可覆写）、execute/review 默认 M/L；S 档不可用自动回退 M（只慢不错）；WithModel 派生视图不污染原客户端（并发安全）。接线：进展看门狗走 S 档（高频判断，延迟敏感）、AI 预审走 L 档（质量最敏感）；启动日志打印三档分流表。3 组单测（分档/回退/隔离）。遗留：by_purpose 用量维度、F18-b 任务级打分器、F18-c A/B 报告。验证：go 7 包全绿

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -141,6 +142,53 @@ func (l *LLM) ChatRaw(ctx context.Context, msgs []ChatMessage, maxTokens int) (s
 		return "", 0, err
 	}
 	return out.Message.Content, out.EvalCount, nil
+}
+
+// Purpose 调用用途（ADR-0002 步骤级分流）：按负载特征选模型档位。
+type Purpose string
+
+const (
+	PurposeJudge   Purpose = "judge"   // 判断类：输出短、高频、延迟敏感 → S 档
+	PurposeExecute Purpose = "execute" // 执行类：长输出、质量敏感 → M 档
+	PurposeReview  Purpose = "review"  // 审查类：质量最敏感、低频 → L 档
+)
+
+// SelectFor 按用途返回模型名。档位可 env 覆写（FLEET_TIER_S/M/L）；
+// S 档模型不可用时自动回退 M 档（判断降级到主力模型，只慢不错）。
+func (l *LLM) SelectFor(p Purpose) string {
+	tiers := map[Purpose]string{
+		PurposeJudge:   envOrStr("FLEET_TIER_S", "lfm25:latest"),
+		PurposeExecute: envOrStr("FLEET_TIER_M", l.Model),
+		PurposeReview:  envOrStr("FLEET_TIER_L", l.Model),
+	}
+	tier, ok := tiers[p]
+	if !ok {
+		return l.Model
+	}
+	if p == PurposeJudge {
+		for _, m := range l.ListModels() { // S 档可用性校验（本地小模型可能未装）
+			if m.Name == tier && m.Available {
+				return tier
+			}
+		}
+		return tiers[PurposeExecute]
+	}
+	return tier
+}
+
+// WithModel 返回指定模型的浅拷贝视图（不污染原客户端——并发安全）。
+// mock 模式保持 mock（测试确定性）。
+func (l *LLM) WithModel(name string) *LLM {
+	c := *l
+	c.Model = name
+	return &c
+}
+
+func envOrStr(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
 }
 
 type chatMessage struct {
