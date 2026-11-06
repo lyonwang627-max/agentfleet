@@ -3,6 +3,8 @@ package scheduler
 import (
 	"strings"
 	"testing"
+
+	"github.com/lyonwang/agentfleet/internal/store"
 )
 
 func TestScoreTier(t *testing.T) {
