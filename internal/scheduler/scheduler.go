@@ -1,0 +1,325 @@
+// Package scheduler 任务调度器：
+//   - 认领：ClaimNextTask（pg 实现为 FOR UPDATE SKIP LOCKED，多实例安全）
+//   - 执行：按 agent 的 max_concurrency 限流，runner 落 step（trace）
+//   - 状态机：queued→running→done/failed/review；handoff 改派；重试退避
+//   - 事件：状态变化与 step 均发 SSE（经 events.Hub 持久化+广播）
+package scheduler
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/lyonwang/agentfleet/internal/model"
+	"github.com/lyonwang/agentfleet/internal/runner"
+	"github.com/lyonwang/agentfleet/internal/store"
+)
+
+const (
+	retryBackoff = 5 * time.Second
+	pollInterval = 800 * time.Millisecond
+	maxHandoffs  = 3
+)
+
+// timeNow 可替换时钟（测试用）。
+var timeNow = time.Now
+
+type Scheduler struct {
+	store      store.Store
+	events     *Hub
+	judge      LLMJudge // 进展看门狗用（nil 或不健康时 fail-open）
+	mu         sync.Mutex
+	semaphores map[int64]chan struct{} // agent_id -> 并发闸
+	wg         sync.WaitGroup
+	cancel     context.CancelFunc
+	running    map[int64]bool // task_id -> 执行中（防同任务重复派发）
+	lastWatchdog time.Time
+}
+
+func New(st store.Store, hub *Hub) *Scheduler {
+	return &Scheduler{store: st, events: hub, semaphores: map[int64]chan struct{}{}, running: map[int64]bool{}}
+}
+
+// SetJudge 注入进展看门狗的判定模型（gateway.LLM 天然满足该接口）。
+func (s *Scheduler) SetJudge(j LLMJudge) { s.judge = j }
+
+func (s *Scheduler) Start(ctx context.Context) {
+	ctx, s.cancel = context.WithCancel(ctx)
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		tick := time.NewTicker(pollInterval)
+		defer tick.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-tick.C:
+				s.sweepDependents(ctx)
+				s.sweepBudgets(ctx)
+				s.maybeWatchdog(ctx)
+				s.runAutomations(ctx)
+				s.dispatch(ctx)
+			}
+		}
+	}()
+	log.Printf("[scheduler] started (poll=%s)", pollInterval)
+}
+
+func (s *Scheduler) Stop() {
+	if s.cancel != nil {
+		s.cancel()
+	}
+	s.mu.Lock()
+	inflight := len(s.running)
+	s.mu.Unlock()
+	if inflight > 0 {
+		log.Printf("[scheduler] drain：停止认领，等待 %d 个在途任务完成…", inflight)
+	}
+	s.wg.Wait()
+	log.Printf("[scheduler] 已停止（在途任务全部落定）")
+}
+
+func (s *Scheduler) Healthy() bool { return s.cancel != nil }
+
+// dispatch 每轮尽力认领（一次认领一个，多任务靠下一轮 tick 自然吞吐）。
+func (s *Scheduler) dispatch(ctx context.Context) {
+	task, err := s.store.ClaimNextTask(ctx)
+	if err != nil {
+		log.Printf("[scheduler] claim: %v", err)
+		return
+	}
+	if task == nil {
+		return
+	}
+	s.mu.Lock()
+	if s.running[task.ID] {
+		s.mu.Unlock()
+		return
+	}
+	s.running[task.ID] = true
+	s.mu.Unlock()
+
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		defer func() {
+			s.mu.Lock(); delete(s.running, task.ID); s.mu.Unlock()
+		}()
+		// 执行用独立 ctx（与轮询 ctx 解耦）：drain 时停认领，但在途任务必须跑完（含 LLM 长调用）
+		execCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
+		s.execute(execCtx, *task)
+	}()
+}
+
+func (s *Scheduler) gate(agentID int64, n int) chan struct{} {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.semaphores[agentID]; !ok {
+		if n <= 0 { n = 1 }
+		s.semaphores[agentID] = make(chan struct{}, n)
+	}
+	return s.semaphores[agentID]
+}
+
+func (s *Scheduler) execute(ctx context.Context, task model.Task) {
+	agent, err := s.store.GetAgent(ctx, task.AgentID)
+	if err != nil || !agent.Enabled {
+		s.failTask(ctx, &task, fmt.Sprintf("agent 不可用: %v", err))
+		return
+	}
+	g := s.gate(agent.ID, agent.MaxConcurrency)
+	select {
+	case g <- struct{}{}:
+		defer func() { <-g }()
+	case <-ctx.Done():
+		return
+	}
+
+	rn, err := runner.Get(agent.Runner)
+	if err != nil {
+		s.failTask(ctx, &task, err.Error())
+		return
+	}
+
+	run := &model.Run{TaskID: task.ID, AgentID: agent.ID}
+	runID, err := s.store.CreateRun(ctx, run)
+	if err != nil {
+		s.failTask(ctx, &task, "创建 run 失败: "+err.Error())
+		return
+	}
+	s.emit(ctx, "task.update", map[string]any{"task_id": task.ID, "status": string(model.TaskRunning), "run_id": runID, "agent": agent.Name})
+	log.Printf("[scheduler] task#%d 「%s」→ %s/%s (run#%d)", task.ID, task.Title, agent.Name, agent.Runner, runID)
+
+	recorder := func(_ context.Context, st *model.RunStep) error {
+		_, err := s.store.AppendStep(ctx, runID, st)
+		if err == nil {
+			s.emit(ctx, "run.step", map[string]any{"run_id": runID, "task_id": task.ID, "seq": st.Seq,
+				"kind": string(st.Kind), "name": st.Name, "latency_ms": st.LatencyMS, "tokens": st.Tokens})
+		}
+		return err
+	}
+
+	res, execErr := rn.Execute(ctx, runner.ExecRequest{Agent: *agent, Task: task, Recorder: recorder})
+
+	fin := timeNow()
+	// 从 store 取回最新 run（token 累加发生在 AppendStep 的存储侧，本地副本是旧值）
+	if fresh, err := s.store.GetRun(ctx, runID); err == nil && fresh != nil {
+		run = fresh
+	}
+	run.Status, run.FinishedAt = model.RunDone, &fin
+	if execErr != nil {
+		run.Status, run.Error = model.RunFailed, execErr.Error()
+	}
+	_ = s.store.UpdateRun(ctx, run)
+	// 用量回填：run 的 tokens 进 usage_events（预算熔断与用量看板的数据源）
+	if run.TotalTokens > 0 {
+		_ = s.store.AppendUsage(ctx, &model.UsageEvent{AgentID: agent.ID, AgentName: agent.Name,
+			Model: agent.Model, CompletionTokens: run.TotalTokens, Requests: 1})
+	}
+
+	switch {
+	case execErr != nil:
+		s.failTask(ctx, &task, execErr.Error())
+	case res.NeedsApproval:
+		note := "人工审批门：" + res.Note
+		_, _ = s.store.AppendStep(ctx, runID, &model.RunStep{Kind: model.StepGate, Name: "waiting-approval", Note: res.Note})
+		_ = s.store.UpdateTask(ctx, task.ID, store.TaskPatch{
+			Status: ptrStatus(model.TaskReview), Result: ptrStr(res.Reply), Error: ptrStr(note),
+			FinishedAt: &fin})
+		s.emit(ctx, "task.update", map[string]any{"task_id": task.ID, "status": string(model.TaskReview), "run_id": runID})
+		log.Printf("[scheduler] task#%d 等待人工审批", task.ID)
+	case res.HandoffTo != "":
+		s.handoff(ctx, &task, runID, res)
+	default:
+		_ = s.store.UpdateTask(ctx, task.ID, store.TaskPatch{
+			Status: ptrStatus(model.TaskDone), Result: ptrStr(res.Reply), Error: ptrStr(""),
+			FinishedAt: &fin})
+		s.emit(ctx, "task.update", map[string]any{"task_id": task.ID, "status": string(model.TaskDone), "run_id": runID})
+		log.Printf("[scheduler] task#%d done", task.ID)
+	}
+}
+
+// handoff 把任务改派给目标 agent 重新排队（记录 handoff 步骤与次数上限防环路）。
+func (s *Scheduler) handoff(ctx context.Context, task *model.Task, runID int64, res runner.Result) {
+	agents, err := s.store.ListAgents(ctx, store.AgentFilter{EnabledOnly: true})
+	if err != nil {
+		s.failTask(ctx, task, "查询 agent 失败: "+err.Error())
+		return
+	}
+	var target *model.Agent
+	for i := range agents {
+		if agents[i].Name == res.HandoffTo {
+			target = &agents[i]
+			break
+		}
+	}
+	if target == nil {
+		s.failTask(ctx, task, fmt.Sprintf("handoff 目标 agent %q 不存在", res.HandoffTo))
+		return
+	}
+	// 自交防护：handoff 给自己 = 当前 agent 已完成份内工作，用其产出收尾而不是死循环
+	if target.ID == task.AgentID {
+		_, _ = s.store.AppendStep(ctx, runID, &model.RunStep{Kind: model.StepHandoff, Name: "handoff-self",
+			Note: "交接目标为自身，按当前产出收尾"})
+		fin := timeNow()
+		reply := res.Reply
+		if reply == "" {
+			reply = "处理完成（交接目标为自身，无进一步动作）"
+		}
+		_ = s.store.UpdateTask(ctx, task.ID, store.TaskPatch{
+			Status: ptrStatus(model.TaskDone), Result: ptrStr(reply), FinishedAt: &fin})
+		s.emit(ctx, "task.update", map[string]any{"task_id": task.ID, "status": string(model.TaskDone), "note": "handoff-self"})
+		return
+	}
+	if task.HandoffCount+1 > task.MaxHandoffs || task.HandoffCount+1 > maxHandoffs {
+		_, _ = s.store.AppendStep(ctx, runID, &model.RunStep{Kind: model.StepHandoff, Name: "handoff-limit",
+			Note: fmt.Sprintf("交接次数超限(%d)，任务结束", task.HandoffCount)})
+		fin := timeNow()
+		_ = s.store.UpdateTask(ctx, task.ID, store.TaskPatch{
+			Status: ptrStatus(model.TaskFailed), Error: ptrStr("handoff 超限: " + res.Note), FinishedAt: &fin})
+		s.emit(ctx, "task.update", map[string]any{"task_id": task.ID, "status": string(model.TaskFailed)})
+		return
+	}
+	newCount := task.HandoffCount + 1
+	// mock 已记录 handoff 步骤（trace 不重复）；scheduler 只负责改派与指令消费
+	// 指令一次性消费：在「原 prompt + 交接备注」的最终文本上剥离全部指令词形态，
+	// 防止备注通道把指令词再泄漏给接收方（曾导致 fixer→reviewer 连环误交接）
+	composed := task.Prompt + "\n\n[handoff #" + fmt.Sprint(newCount) + " 来自 agent#" +
+		fmt.Sprint(task.AgentID) + "] " + res.Note
+	for _, trigger := range []string{"handoff:" + target.Name, "handoff:" + res.HandoffTo, "交接给" + target.Name} {
+		composed = strings.ReplaceAll(composed, trigger, fmt.Sprintf("（已由 %s 接手）", target.Name))
+	}
+	_ = s.store.UpdateTask(ctx, task.ID, store.TaskPatch{
+		AgentID: ptrI64(target.ID), Status: ptrStatus(model.TaskQueued),
+		HandoffCount: ptrInt(newCount), Prompt: ptrStr(composed)})
+	s.emit(ctx, "task.update", map[string]any{"task_id": task.ID, "status": "queued", "handoff_to": target.Name})
+	log.Printf("[scheduler] task#%d handoff → %s（第 %d 次）", task.ID, target.Name, newCount)
+}
+
+// sweepDependents 依赖失败级联：依赖已 failed/canceled 的排队任务不再死等，直接判败。
+func (s *Scheduler) sweepDependents(ctx context.Context) {
+	queued := model.TaskQueued
+	tasks, _, err := s.store.ListTasks(ctx, &queued, 0, 1, 100)
+	if err != nil {
+		return
+	}
+	for _, t := range tasks {
+		if len(t.DependsOn) == 0 {
+			continue
+		}
+		for _, dep := range t.DependsOn {
+			d, err := s.store.GetTask(ctx, dep)
+			if err != nil {
+				continue
+			}
+			if d.Status == model.TaskFailed || d.Status == model.TaskCanceled {
+				fin := timeNow()
+				_ = s.store.UpdateTask(ctx, t.ID, store.TaskPatch{
+					Status: ptrStatus(model.TaskFailed),
+					Error:  ptrStr(fmt.Sprintf("前置任务 #%d %s，本任务级联终止", dep, d.Status)),
+					FinishedAt: &fin})
+				s.emit(ctx, "task.update", map[string]any{"task_id": t.ID, "status": string(model.TaskFailed), "cascade": dep})
+				log.Printf("[scheduler] task#%d 因依赖 #%d %s 级联失败", t.ID, dep, d.Status)
+				break
+			}
+		}
+	}
+}
+
+func (s *Scheduler) failTask(ctx context.Context, task *model.Task, msg string) {
+	if task.RetryCount < task.MaxRetries {
+		newRetry := task.RetryCount + 1
+		visible := timeNow().Add(retryBackoff * time.Duration(newRetry))
+		_ = s.store.UpdateTask(ctx, task.ID, store.TaskPatch{
+			Status: ptrStatus(model.TaskQueued), RetryCount: ptrInt(newRetry),
+			Error: ptrStr(msg), VisibleAfter: &visible})
+		s.emit(ctx, "task.update", map[string]any{"task_id": task.ID, "status": "queued",
+			"retry": newRetry, "error": msg})
+		log.Printf("[scheduler] task#%d 失败将重试(%d/%d): %s", task.ID, newRetry, task.MaxRetries, msg)
+		return
+	}
+	fin := timeNow()
+	_ = s.store.UpdateTask(ctx, task.ID, store.TaskPatch{
+		Status: ptrStatus(model.TaskFailed), Error: ptrStr(msg), FinishedAt: &fin})
+	s.emit(ctx, "task.update", map[string]any{"task_id": task.ID, "status": string(model.TaskFailed), "error": msg})
+	log.Printf("[scheduler] task#%d failed: %s", task.ID, msg)
+}
+
+func (s *Scheduler) emit(ctx context.Context, kind string, data map[string]any) {
+	if s.events != nil {
+		s.events.Publish(ctx, kind, data)
+	}
+}
+
+// ---- 小工具 ----
+
+func ptrStr(s string) *string          { return &s }
+func ptrInt(i int) *int                { return &i }
+func ptrI64(i int64) *int64            { return &i }
+func ptrStatus(s model.TaskStatus) *model.TaskStatus { return &s }
+func ptrTime(t time.Time) *time.Time   { return &t }
