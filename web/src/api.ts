@@ -12,6 +12,7 @@ import type {
   EvalDetail,
   EvalSummary,
   Health,
+  ModelInfo,
   Page,
   RunSummary,
   RunTrace,
@@ -80,6 +81,7 @@ function qs(params: Record<string, string | number | undefined>): string {
 export const api = {
   // Health
   health: () => request<Health>('/health'),
+  models: () => request<{ models: ModelInfo[] }>('/models'),
 
   // Agents
   listAgents: () => request<Page<AgentSummary>>('/agents?page_size=100'),

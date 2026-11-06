@@ -135,16 +135,17 @@ export default function AgentDetail() {
                 onChange={(e) => setForm((f) => ({ ...f, system_prompt: e.target.value }))}
               />
             </div>
-            <div className="grid grid-cols-2 gap-2.5">
-              <LabeledInput label="Model" value={form.model} onChange={(v) => setForm((f) => ({ ...f, model: v }))} inputCls={inputCls} />
-              <LabeledInput
-                label="最大并发"
-                type="number"
-                value={String(form.max_concurrency)}
-                onChange={(v) => setForm((f) => ({ ...f, max_concurrency: Number(v) }))}
-                inputCls={inputCls}
-              />
+            <div>
+              <div className="mb-1 text-xs text-muted">Model（从本机可用模型中选择）</div>
+              <ModelSelect value={form.model} onChange={(v) => setForm((f) => ({ ...f, model: v }))} inputCls={inputCls} />
             </div>
+            <LabeledInput
+              label="最大并发"
+              type="number"
+              value={String(form.max_concurrency)}
+              onChange={(v) => setForm((f) => ({ ...f, max_concurrency: Number(v) }))}
+              inputCls={inputCls}
+            />
             <LabeledInput
               label="Tools（逗号分隔）"
               value={form.tools}
@@ -224,6 +225,28 @@ function LabeledInput({
         min={type === 'number' ? 1 : undefined}
       />
     </div>
+  );
+}
+
+// ModelSelect 模型可选化（v1.4）：从 /models 动态发现本机可用模型。
+// 后端不可达时降级为自由输入（不阻塞配置编辑）。
+function ModelSelect({ value, onChange, inputCls }: { value: string; onChange: (v: string) => void; inputCls: string }) {
+  const models = useApi(() => api.models(), []);
+  const items = models.data?.models ?? [];
+
+  if (models.error || items.length === 0) {
+    return <input className={inputCls} value={value} onChange={(e) => onChange(e.target.value)} placeholder="模型名（如 qwen3.5）" />;
+  }
+  const known = items.some((m) => m.name === value);
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} className={inputCls}>
+      {!known && value && <option value={value}>{value}（当前值，列表中未发现）</option>}
+      {items.map((m) => (
+        <option key={m.provider + m.name} value={m.name} disabled={!m.available}>
+          {m.name} · {m.provider}{m.available ? '' : '（不可用）'}
+        </option>
+      ))}
+    </select>
   );
 }
 

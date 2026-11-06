@@ -47,6 +47,44 @@ func (l *LLM) Resolve() {
 
 func (l *LLM) Healthy() bool { return l.Mode == "ollama" }
 
+// ModelInfo 可选模型（动态发现：Ollama 已装列表 + 内置 mock）。
+type ModelInfo struct {
+	Name      string `json:"name"`
+	Provider  string `json:"provider"` // ollama | builtin
+	Available bool   `json:"available"`
+}
+
+// ListModels 从 Ollama /api/tags 动态发现本机已装模型；失败时至少返回内置 mock。
+// 这是模型可选化（agent 表单下拉）的数据源——不硬编码模型清单。
+func (l *LLM) ListModels() []ModelInfo {
+	out := []ModelInfo{{Name: "mock", Provider: "builtin", Available: true}}
+	if l.Mode != "ollama" {
+		return out
+	}
+	req, _ := http.NewRequest(http.MethodGet, l.BaseURL+"/api/tags", nil)
+	resp, err := l.client.Do(req)
+	if err != nil {
+		return append(out, ModelInfo{Name: l.Model, Provider: "ollama", Available: false})
+	}
+	defer resp.Body.Close()
+	var tags struct {
+		Models []struct {
+			Name string `json:"name"`
+		} `json:"models"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&tags); err != nil {
+		return append(out, ModelInfo{Name: l.Model, Provider: "ollama", Available: false})
+	}
+	seen := map[string]bool{out[0].Name: true}
+	for _, m := range tags.Models {
+		if !seen[m.Name] {
+			seen[m.Name] = true
+			out = append(out, ModelInfo{Name: m.Name, Provider: "ollama", Available: true})
+		}
+	}
+	return out
+}
+
 type chatMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`

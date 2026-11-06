@@ -79,6 +79,9 @@ body `{"agent_id":1,"name":"晨会摘要","cron_expr":"30 9 * * 1-5","title":"�
 ### POST /automations/{id}/enable | /automations/{id}/disable → `{"id":1,"enabled":true}`
 SSE 事件：`automation.fired`（触发建任务）/ `automation.update`（CRUD 变更）
 
+### GET /models（v1.4 模型可选化）→ `{"models":[{"name","provider":"ollama|builtin","available":bool}]}`
+动态发现：Ollama `/api/tags` 已装列表 + 内置 mock，不硬编码。Agent 表单据此渲染下拉框（后端不可达时前端降级为自由输入）。
+
 ## 执行环境维度（v1.4 新增：对标 Multica worktree / Orca artifacts / compound skills）
 ### Workspaces：POST /workspaces `{"name","root_path","branch","note"}` → `{"id"}`；GET /workspaces?active=true；GET/PATCH/DELETE /workspaces/{id}
 任务创建时 `workspace_id` 绑定；agent 在绑定环境中执行（执行副本注入 `[执行环境]` 段，不污染任务指令）。

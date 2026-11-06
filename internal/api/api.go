@@ -606,10 +606,8 @@ func (s *Server) usage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) models(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"models": []map[string]any{
-		{"name": s.LLM.Model, "provider": "ollama", "available": s.LLM.Healthy()},
-		{"name": "mock", "provider": "builtin", "available": true},
-	}})
+	// v1.4 模型可选化：动态发现（Ollama 已装 + 内置），不再硬编码清单
+	writeJSON(w, http.StatusOK, map[string]any{"models": s.LLM.ListModels()})
 }
 
 // mcpServers 已注册的 MCP server 及其动态发现的工具列表（F4-b 观测端点）。

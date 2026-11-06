@@ -215,6 +215,13 @@ export interface AutomationCreated {
   next_run: string;
 }
 
+// ---------- 模型可选化（v1.4） ----------
+export interface ModelInfo {
+  name: string;
+  provider: string; // ollama | builtin
+  available: boolean;
+}
+
 // ---------- Agent 版本管理（v1.2，F2） ----------
 export interface AgentVersion {
   id: number;
