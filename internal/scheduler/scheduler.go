@@ -27,6 +27,25 @@ const (
 // timeNow 可替换时钟（测试用）。
 var timeNow = time.Now
 
+// spillThreshold 上下文 Spill 阈值（rune 数）：超过则 handoff 时压缩 prompt（F11-b）。
+const spillThreshold = 1500
+
+func runeLen(s string) int { return len([]rune(s)) }
+
+// spillIfNeeded 上下文 Spill：超阈值压缩为「原始诉求 + 上一结论摘要 + run 引用」；
+// 完整历史在 trace 按需链式召回。短 prompt 原样返回（不压缩）。
+func spillIfNeeded(composed, title string, handoffCount int, runID int64, lastNote string) string {
+	if runeLen(composed) <= spillThreshold {
+		return composed
+	}
+	if runeLen(lastNote) > 200 {
+		lastNote = string([]rune(lastNote)[:200]) + "…"
+	}
+	return fmt.Sprintf(
+		"[任务背景（已压缩，完整历史见 run#%d 及此前 trace）]\n原始诉求：%s\n历经 %d 次交接；上一结论：%s\n[本轮职责：完成该任务的当前阶段]",
+		runID, title, handoffCount, lastNote)
+}
+
 type Scheduler struct {
 	store      store.Store
 	events     *Hub
@@ -289,6 +308,10 @@ func (s *Scheduler) handoff(ctx context.Context, task *model.Task, runID int64, 
 	for _, trigger := range []string{"handoff:" + target.Name, "handoff:" + res.HandoffTo, "交接给" + target.Name} {
 		composed = strings.ReplaceAll(composed, trigger, fmt.Sprintf("（已由 %s 接手）", target.Name))
 	}
+	// 上下文 Spill（F11-b，借鉴 dsh-superagent）：prompt 超阈值时压缩为
+	// 「原始诉求一行 + 上一结论摘要 + run 引用」；完整历史在 trace，按 ID 链式召回——
+	// prompt 是工作记忆不是归档，多次交接后不再线性膨胀
+	composed = spillIfNeeded(composed, task.Title, newCount, runID, res.Note)
 	_ = s.store.UpdateTask(ctx, task.ID, store.TaskPatch{
 		AgentID: ptrI64(target.ID), Status: ptrStatus(model.TaskQueued),
 		HandoffCount: ptrInt(newCount), Prompt: ptrStr(composed)})

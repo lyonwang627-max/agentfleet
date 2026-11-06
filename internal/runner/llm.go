@@ -63,7 +63,7 @@ func runToolLoop(
 		if onToolTurn != nil {
 			onToolTurn(step, d, observation)
 		}
-		user = baseUser + "\n\n---\n已执行工具 " + d.Tool + "，观察结果：\n" + observation +
+		user = baseUser + "\n\n---\n已执行工具 " + d.Tool + "，观察结果：\n" + head(observation, 800) +
 			"\n\n请基于以上观察继续：可再调用工具，或给出最终 reply（此时 tool 留空）。"
 	}
 	// 步数耗尽：强制收尾（最后一次决策已有 reply 则用之，否则带说明）

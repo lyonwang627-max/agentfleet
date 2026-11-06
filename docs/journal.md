@@ -89,3 +89,7 @@
 ## 2026-11-07 F11 多轮工具循环（切片 a）
 
 - **F11-a/2 完成**：decision 协议扩展 tool/tool_args——LLM runner 从单次决策升级为「决策→工具→观察→再决策」循环（maxSteps=4 防膨胀）。关键工程决策：**runToolLoop 抽成纯函数**（decide/callTool 回调注入）——生产侧接网关+MCP 注册中心，测试侧用 fake 序列驱动四种轨迹（直达/观察回灌/步数耗尽强制收尾/工具错误转观察不中断）。修两个失误：totalTokens 初版写成包级变量（并发竞态+不复位→改 Execute 局部闭包）、测试 Fatalf format 参数类型。验证：go 7 包全绿。遗留：F11-b 上下文 Spill
+
+## 2026-11-07 F11 上下文 Spill（切片 b，F11 收口）
+
+- **F11-b 完成（F11 整体收口）**：上下文 Spill——handoff 组合 prompt 超 1500 rune 时压缩为「[已压缩] 原始诉求 + 历经 N 次交接 + 上一结论摘要 200 字 + run#ID 引用」，完整历史在 trace 按 ID 链式召回（prompt 是工作记忆不是归档）；多轮工具循环的观察回灌同样截断 800 字。spillIfNeeded 纯函数 2 组单测（短不压/长压缩且 run#ID、原始诉求、交接数、上一结论四锚点齐全）。F11 完整能力：多轮工具循环（a）+ 上下文治理（b）。验证：go 7 包全绿
