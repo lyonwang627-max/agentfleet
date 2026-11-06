@@ -428,6 +428,32 @@ func (p *PostgresStore) AppendMessage(ctx context.Context, m *model.Message) (in
 	return m.ID, err
 }
 
+// ListConversations 会话列表（F6 回放数据层）：带消息数与关联 run 数。
+func (p *PostgresStore) ListConversations(ctx context.Context, limit int) ([]model.ConversationSummary, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+	rows, err := p.pool.Query(ctx, `
+		SELECT c.id, c.agent_id, COALESCE(a.name,''), c.title, c.created_at,
+		       (SELECT COUNT(*) FROM messages m WHERE m.conversation_id=c.id),
+		       (SELECT COUNT(*) FROM runs r WHERE r.conversation_id=c.id)
+		FROM conversations c LEFT JOIN agents a ON a.id=c.agent_id
+		ORDER BY c.id DESC LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []model.ConversationSummary{}
+	for rows.Next() {
+		s := model.ConversationSummary{}
+		if err := rows.Scan(&s.ID, &s.AgentID, &s.AgentName, &s.Title, &s.CreatedAt, &s.MessageCount, &s.RunCount); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
 func (p *PostgresStore) ListMessages(ctx context.Context, conversationID int64) ([]model.Message, error) {
 	rows, err := p.pool.Query(ctx,
 		`SELECT id, conversation_id, role, content, created_at FROM messages WHERE conversation_id=$1 ORDER BY id`,

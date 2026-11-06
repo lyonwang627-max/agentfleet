@@ -306,6 +306,32 @@ func (m *MemStore) AppendMessage(_ context.Context, msg *model.Message) (int64, 
 	return msg.ID, nil
 }
 
+func (m *MemStore) ListConversations(_ context.Context, limit int) ([]model.ConversationSummary, error) {
+	m.mu.RLock(); defer m.mu.RUnlock()
+	out := []model.ConversationSummary{}
+	for _, c := range m.convos {
+		agentName := ""
+		if a, ok := m.agents[c.AgentID]; ok {
+			agentName = a.Name
+		}
+		runCount := 0
+		for _, r := range m.runs {
+			if r.Conversation == c.ID {
+				runCount++
+			}
+		}
+		out = append(out, model.ConversationSummary{
+			ID: c.ID, AgentID: c.AgentID, AgentName: agentName, Title: c.Title,
+			MessageCount: len(m.msgs[c.ID]), RunCount: runCount, CreatedAt: c.CreatedAt,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID > out[j].ID })
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
+}
+
 func (m *MemStore) ListMessages(_ context.Context, conversationID int64) ([]model.Message, error) {
 	m.mu.RLock(); defer m.mu.RUnlock()
 	return append([]model.Message(nil), m.msgs[conversationID]...), nil

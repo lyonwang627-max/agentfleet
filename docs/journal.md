@@ -53,3 +53,7 @@
 ## 2026-11-07 模型可选化
 
 - **模型动态发现 + 下拉选择**：gateway.ListModels() 从 Ollama /api/tags 动态发现本机已装模型（当前 16 个：qwen3.5/lfm25/gemma4/nimble/deepseek 云端等）+ 内置 mock；GET /models 换此数据源（不再硬编码两个）。前端 Agent 详情页 Model 字段从自由文本改为下拉框（含 provider 标注与不可用禁用态；当前值不在列表时保留显示；后端不可达降级自由输入）。这是 ADR-0002 分层路由的前置——可选模型池是路由选型的数据基础。验证：go 全绿 + 实弹发现 16 模型 + 前端构建
+
+## 2026-11-07 F6 会话回放（切片 a）
+
+- **F6-a/2 完成**：会话回放数据层——GET /conversations（列表带 message_count/run_count/agent_name，最新在前）+ GET /conversations/{id}（全量消息+agent 名+关联 runs）；store 双实现（Mem 内存聚合 / PG 子查询聚合）。实弹：chat 真模型对话→列表 1 条（消息数 2）→详情全量消息。遗留：F6-b 前端回放视图。验证：go 4 包全绿 + 实弹

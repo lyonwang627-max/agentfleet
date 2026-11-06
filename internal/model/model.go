@@ -101,8 +101,20 @@ type Run struct {
 type Conversation struct {
 	ID        int64     `json:"id"`
 	AgentID   int64     `json:"agent_id"`
+	AgentName string    `json:"agent_name,omitempty"`
 	Title     string    `json:"title"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+// ConversationSummary 会话列表项（F6 回放数据层）：含消息数与关联 run 数。
+type ConversationSummary struct {
+	ID           int64     `json:"id"`
+	AgentID      int64     `json:"agent_id"`
+	AgentName    string    `json:"agent_name,omitempty"`
+	Title        string    `json:"title"`
+	MessageCount int       `json:"message_count"`
+	RunCount     int       `json:"run_count"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 type Message struct {

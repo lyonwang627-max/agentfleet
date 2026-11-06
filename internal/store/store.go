@@ -44,6 +44,7 @@ type Store interface {
 	// conversations
 	CreateConversation(ctx context.Context, c *model.Conversation) (int64, error)
 	GetConversation(ctx context.Context, id int64) (*model.Conversation, error)
+	ListConversations(ctx context.Context, limit int) ([]model.ConversationSummary, error)
 	AppendMessage(ctx context.Context, m *model.Message) (int64, error)
 	ListMessages(ctx context.Context, conversationID int64) ([]model.Message, error)
 
