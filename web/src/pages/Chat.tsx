@@ -37,16 +37,65 @@ export default function Chat() {
     if (!text || !aid || pending) return;
     setInput('');
     setErr(null);
-    setMessages((m) => [...m, { role: 'user', text }]);
+    setMessages((m) => [...m, { role: 'user', text }, { role: 'assistant', text: '' }]);
     setPending(true);
+
+    // F15-b：流式优先（fetch + ReadableStream 增量追加），失败降级同步 /chat
+    const streamIdx = messages.length + 1; // assistant 气泡下标
+    const appendStream = (chunk: string) =>
+      setMessages((m) => {
+        const next = [...m];
+        next[streamIdx] = { ...next[streamIdx], text: next[streamIdx].text + chunk };
+        return next;
+      });
+
     try {
-      const res = await api.chat({ agent_id: aid, message: text, conversation_id: conversationId });
-      setConversationId(res.conversation_id);
-      setMessages((m) => [...m, { role: 'assistant', text: res.reply, run_id: res.run_id }]);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-    } finally {
+      const res = await fetch('/api/v1/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agent_id: aid, message: text, conversation_id: conversationId }),
+      });
+      if (!res.ok || !res.body) {
+        throw new Error(`stream http ${res.status}`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      let done = false;
+      while (!done) {
+        const { value, done: rdDone } = await reader.read();
+        if (rdDone) break;
+        buf += decoder.decode(value, { stream: true });
+        const metaIdx = buf.indexOf('@@META@@');
+        if (metaIdx >= 0) {
+          // 正文到 META 之前的都是增量（可能一条 chunk 里同时带尾巴和 META）
+          appendStream(buf.slice(0, metaIdx).replace(/\n$/, ''));
+          const meta = JSON.parse(buf.slice(metaIdx + 8));
+          setConversationId(meta.conversation_id);
+          if (meta.error) setErr(`生成中断：${meta.error}`);
+          done = true;
+        } else {
+          appendStream(buf);
+          buf = '';
+        }
+      }
       setPending(false);
+    } catch (streamErr) {
+      // 流式不可达（旧后端/网络）→ 降级同步接口
+      try {
+        const res = await api.chat({ agent_id: aid, message: text, conversation_id: conversationId });
+        setConversationId(res.conversation_id);
+        setMessages((m) => {
+          const next = [...m];
+          next[streamIdx] = { ...next[streamIdx], text: res.reply, run_id: res.run_id };
+          return next;
+        });
+        setPending(false);
+      } catch (e) {
+        setMessages((m) => m.slice(0, streamIdx)); // 移除空气泡
+        setErr(e instanceof Error ? e.message : String(streamErr));
+        setPending(false);
+      }
     }
   };
 
@@ -107,7 +156,7 @@ export default function Chat() {
               </div>
             </div>
           ))}
-          {pending && (
+          {pending && messages[messages.length - 1]?.role === 'assistant' && messages[messages.length - 1]?.text === '' && (
             <div className="flex justify-start">
               <div className="rounded-lg rounded-bl-sm border border-border bg-panel2 px-3 py-2 text-xs text-muted">
                 {sel?.name ?? 'Agent'} 正在思考…

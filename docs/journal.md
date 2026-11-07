@@ -121,3 +121,7 @@
 ## 2026-11-07 F15 chat 流式（切片 a）
 
 - **F15-a/2 完成**：gateway.StreamChat（native /api/chat stream:true，NDJSON 增量解析，token 数优先取服务端 eval_count；mock 逐字输出保确定性）+ POST /chat/stream（chunked text 流 + 末行 @@META@@ 协议：conversation_id/tokens/error；流内生成失败也保证会话/用量落库）。单测：chunk 内容/META 解析/双消息落库。修 3 次测试小错（未用导入×2、缺 agent 种子）。剩余 F15-b 前端 fetch reader 消费。验证：go 7 包全绿
+
+## 2026-11-07 F15 chat 流式（切片 b，F15 收口）
+
+- **F15-b 完成（F15 整体收口）**：试聊台 fetch + ReadableStream 消费 /chat/stream——assistant 气泡增量追加、@@META@@ 解析 conv/tokens、流式不可达自动降级同步 /chat（旧后端兼容）；"正在思考"占位仅在无增量时显示。端到端实弹（真模型）：89 字逐字流 + META(conv=83, tokens=46, error='')。插曲：实弹 404 抓到旧二进制占端口（重启即解）。验证：前端构建零报错 + 后端单测 + 端到端实弹
