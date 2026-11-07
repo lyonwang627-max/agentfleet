@@ -35,6 +35,9 @@ body `{"title":"修复登录超时 bug","prompt":"详细任务说明…","agent_
 ### GET /tasks/{id}/consistency（v1.4 新增，I13 状态漂移检测）→ `{"task_id","actual_status","replayed_status","events_seen","consistent","hint"?}`
 从 events 表重放 task.update 事件派生应有状态并与实际比对——双写漂移即报警（调试端点）
 
+### GET /tasks?dlq=true（v1.4 新增，I18 死信列表）→ 仅 failed（重试耗尽）任务
+### POST /tasks/{id}/replay（v1.4 新增，I18 死信重放）→ `{"id","action":"replay"}`（清零重试预算重排队；仅 failed 可 replay，否则 409）
+
 ### POST /tasks/{id}/precheck（v1.3 新增，F16 AI 预审）→ `{"recommendation":"approve|deny|needs_human","risk_level":"low|medium|high","reason":"…"}`
 仅 review 状态可用；无工具预审模型评估操作风险+产出是否回应诉求，**只给建议不执行**，人仍终审；结果落 trace（kind=gate, name=ai-precheck）+ SSE `task.precheck`。LLM 不可用时返回 503（人工直接 approve）
 

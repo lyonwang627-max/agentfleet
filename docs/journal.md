@@ -217,3 +217,7 @@
 ## 2026-11-07 自驱迭代切片 19（A 测试扩充）
 
 - **skills CRUD 全生命周期直测**（创建带 tags/列表带引用计数/更新/删除后 404）+ **chat 同步端点 shape 断言**（reply/conversation_id）——两处零测试区补齐。验证：go 9 包全绿
+
+## 2026-11-07 深度冲刺切片 1（I18-a 死信队列后端）
+
+- **I18-a 完成**：GET /tasks?dlq=true（failed=重试耗尽语义独立列表）+ POST /tasks/{id}/replay（清零重试预算重排队，与 retry 语义区分：「人工判定值得从头再跑」）。修一个防御缺口：API 层 Sched.Wake() 调用点无 nil 守卫（测试直调 handler 时 panic）——生产同样受益。单测：死信列表过滤/replay 清零/404。验证：go 9 包全绿。剩余：I18-b 前端死信区

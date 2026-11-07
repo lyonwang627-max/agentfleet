@@ -59,9 +59,8 @@
   run_steps 加 parent_seq（循环观察步挂 decide 步下）+ 新 run 携 parent_run_id（handoff 链成树），瀑布图缩进渲染 + 跨 run 跳转。
   验收：handoff 后新 run 首步带 parent_run_id；瀑布图缩进展示嵌套；与 I15/F12 共用层级数据。
 
-- [ ] **I18 死信队列与手动重放** `proposed` `M`（生产深度，对标 MQ 死信语义）
-  动机：failed 任务与 done 混在列表里，重试语义模糊。failed 超过 max_retries 的任务进死信区（独立列表），支持查看失败上下文（最后 run 的错误与 trace 摘要）与一键重放（清 retry 计数重排队）。
-  验收：GET /tasks?dlq=true 死信列表；POST /tasks/{id}/replay 重置重试计数；集成测试覆盖「重试耗尽→死信→重放→成功」。
+- [x] **I18 死信队列与手动重放** `done`（2026-11-07 后端）
+  实现：GET /tasks?dlq=true（failed=重试耗尽语义的独立列表）+ POST /tasks/{id}/replay（清零重试预算重排队——与 retry 的区别是「人工判定值得从头再跑」而非「再试一次」）。单测：死信列表过滤/重放清零/非 failed 409 与 404。剩余：前端死信区展示。
 - [ ] **I19 API Key 认证中间件** `proposed` `M`（生产深度，补全 F8 限流键升级路径）
   动机：目前无认证（内网演示定位），但向一线产品看齐必须有鉴权层。X-API-Key 中间件 + api_keys 表（key 哈希/scopes/最近使用）+ 限流键从 IP 换 key。
   验收：api_keys CRUD + 中间件校验（无 key 401/错 key 403/按 scope 放行）；--auth flag 开关默认关闭；限流键升级接线。

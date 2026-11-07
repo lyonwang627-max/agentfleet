@@ -61,6 +61,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/v1/tasks/{id}/retry", s.taskAction)
 	mux.HandleFunc("POST /api/v1/tasks/{id}/cancel", s.taskAction)
 	mux.HandleFunc("POST /api/v1/tasks/{id}/approve", s.taskAction)
+	mux.HandleFunc("POST /api/v1/tasks/{id}/replay", s.taskAction) // I18 死信重放
 	mux.HandleFunc("POST /api/v1/tasks/{id}/precheck", s.precheckTask) // AI 预审（F16）
 
 	// runs & trace
@@ -380,13 +381,19 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.Hub.Publish(r.Context(), "task.update", map[string]any{"task_id": id, "status": "queued"})
-	s.Sched.Wake() // 事件驱动：建任务即时派发（F13-a）
+	if s.Sched != nil {
+		s.Sched.Wake() // 事件驱动：建任务即时派发（F13-a）
+	}
 	writeJSON(w, http.StatusCreated, map[string]any{"id": id, "status": string(model.TaskQueued)})
 }
 
 func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 	var status *model.TaskStatus
-	if sv := r.URL.Query().Get("status"); sv != "" {
+	if r.URL.Query().Get("dlq") == "true" {
+		// I18 死信语义：failed = 重试已耗尽的任务（failTask 保证 failed 必然 retry_count>=max_retries）
+		st := model.TaskFailed
+		status = &st
+	} else if sv := r.URL.Query().Get("status"); sv != "" {
 		st := model.TaskStatus(sv)
 		status = &st
 	}
@@ -458,6 +465,16 @@ func (s *Server) taskAction(w http.ResponseWriter, r *http.Request) {
 		}
 		_ = s.Store.UpdateTask(ctx, id, store.TaskPatch{Status: ptrStatus(model.TaskQueued),
 			Error: ptrStr(""), Result: ptrStr(""), VisibleAfter: &now})
+	case "replay":
+		// I18 死信重放：与 retry 的区别是清零重试计数（重新获得完整重试预算），
+		// 语义为「人工判定值得从头再跑」而非「再试一次」
+		if t.Status != model.TaskFailed {
+			writeErr(w, http.StatusConflict, errors.New("仅 failed 可 replay"))
+			return
+		}
+		zero := 0
+		_ = s.Store.UpdateTask(ctx, id, store.TaskPatch{Status: ptrStatus(model.TaskQueued),
+			Error: ptrStr(""), Result: ptrStr(""), RetryCount: &zero, VisibleAfter: &now})
 	case "cancel":
 		if t.Status == model.TaskDone || t.Status == model.TaskCanceled {
 			writeErr(w, http.StatusConflict, errors.New("任务已结束"))
@@ -498,7 +515,9 @@ func (s *Server) taskAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.Hub.Publish(ctx, "task.update", map[string]any{"task_id": id, "status": "changed", "action": action})
-	s.Sched.Wake() // retry/approve 后即时派发（F13-a）
+	if s.Sched != nil {
+		s.Sched.Wake() // retry/approve 后即时派发（F13-a）
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"id": id, "action": action})
 }
 
