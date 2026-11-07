@@ -153,3 +153,7 @@
 ## 2026-11-07 自驱迭代切片 3（C 自提开发 I5）
 
 - **I5 完成（教训修正版）**：初版错把 OpenAPI 导出写在 agentfleet Makefile（引用不存在的 backend/ 目录——Go 标准库 mux 无自动 OpenAPI），回滚后落到正确的仓库 offer-agent（FastAPI 天然生成）。scripts/openapi_check.py export/drift-check 双模式，实弹 18.5KB 契约快照 + 双向校验。**教训：跨仓库写 Makefile/脚本前先确认目标目录结构**。I5 状态 done（落 offer-agent；本仓库契约=手写 api-contract.md 天然固化）
+
+## 2026-11-07 自驱迭代切片 4（offer-agent 侧 A 测试扩充 16→24）
+
+- agentfleet 本侧无代码动作（ci 基线不变）。
