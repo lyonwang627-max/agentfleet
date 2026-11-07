@@ -107,6 +107,8 @@ func (s *Server) Routes() http.Handler {
 
 	// eval
 	mux.HandleFunc("GET /api/v1/eval-datasets", s.listDatasets)
+	mux.HandleFunc("GET /api/v1/eval-datasets/{id}/export", s.exportDataset) // I4 导出
+	mux.HandleFunc("POST /api/v1/eval-datasets/import", s.importDataset)    // I4 导入
 	mux.HandleFunc("GET /api/v1/evals", s.listEvals)
 	mux.HandleFunc("POST /api/v1/evals", s.createEval)
 	mux.HandleFunc("GET /api/v1/evals/{id}", s.getEval)

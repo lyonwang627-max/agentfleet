@@ -205,3 +205,11 @@
 ## 2026-11-07 自驱迭代切片 16（C 自提开发 I3）
 
 - **I3 Agent 克隆完成（后端）**：POST /agents/{id}/clone——配置全复制（含 token 预算）、名称自动去重（-clone/-clone-2）、全新版本链 v1（回溯看源 agent）、默认启用。单测：配置复制/命名去重/独立性/版本链新起 4 断言。前端克隆按钮留后续切片。验证：go 9 包全绿
+
+## 2026-11-07 自驱迭代切片 17（B 开源调研）
+
+- **Dify 1.19.0 嵌套追踪调研**（docs/research/dify-nested-tracing.md）：Workflow Tool 调用边界从「不透明单 span」升级为「父 span + 内部节点子 span」，嵌套与重复调用层级保持；对 agentfleet 借鉴=I17 trace 层级化入池（parent_seq + parent_run_id + 瀑布图缩进——与 I15/F12 共用数据基础）；明确不抄新旧分治迁移策略（量级不同）。已推送 46e9dc1
+
+## 2026-11-07 自驱迭代切片 18（C 自提开发 I4）
+
+- **I4 数据集导入导出完成**：GET export（attachment JSON，文件名自动生成）+ POST import（空 cases 400）；roundtrip 内容保真单测（points 数组/threshold 数值全保真）。服务 F17 再评测与数据集分享。验证：go 9 包全绿

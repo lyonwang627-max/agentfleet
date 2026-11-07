@@ -15,9 +15,8 @@
 - [x] **I3 Agent 克隆** `done`（2026-11-07，后端）
   实现：POST /agents/{id}/clone——配置全复制（含 token 预算）、名称自动去重（-clone/-clone-2）、
   全新版本链 v1（不继承历史，回溯看源 agent）、克隆体默认启用。单测：配置复制/命名去重/独立性（改克隆不污染源）/版本链新起。前端克隆按钮待 F 系列后续切片。
-- [ ] **I4 评测数据集导入导出** `proposed` `S`
-  动机：数据集可移植（JSON 下载/上传），便于备份与分享；F17 处方闭环的再评测需要稳定数据集。
-  验收：GET /eval-datasets/{id}/export 下载 JSON；POST 导入幂等；契约新增。
+- [x] **I4 评测数据集导入导出** `done`（2026-11-07）
+  实现：GET /eval-datasets/{id}/export（attachment JSON）+ POST /eval-datasets/import（空 cases 400）；roundtrip 内容保真单测（points/threshold 全保真）。
 - [x] **I5 OpenAPI 规范固化** `done`（2026-11-07 落在 offer-agent——FastAPI 自动生成 OpenAPI 可导出固化+CI 漂移校验；agentfleet 为 Go 标准库 mux 无自动 OpenAPI，契约=手写 api-contract.md 天然固化，无需此机制）
 - [ ] **I6 chat 多轮上下文压缩** `proposed` `M`
   动机：试聊台长会话会把全部历史塞给模型；复用 F11 Spill 思想——超阈值压缩旧轮次为一行摘要。
