@@ -253,3 +253,7 @@
 ## 2026-11-07 深度冲刺切片 7（I19 API Key 认证）
 
 - **I19 完成**：api_keys 表（SHA-256 哈希库存）+ X-API-Key 中间件（渐进语义：表空开放→有 key 强制校验；metrics/health/管理端点豁免）+ 管理端点三件（创建返回明文一次/列表/撤销）+ **限流键升级接线闭合**（认证后按 key 名限流，F8 的升级路径兑现）。修 3 处实现期失误（mem store 初始化漏 apiKeys map→nil map panic；AuthProgressive 测试的中间件调用方式与类型引用）。单测：七步渐进语义全链。验证：go 9 包全绿
+
+## 2026-11-07 自驱迭代切片 22（A 测试扩充）
+
+- **StreamChat 回归锁 4 组**：NDJSON 增量拼接/eval_count 优先/无 eval_count 回退行计数/HTTP 500/mock 逐字。**抓到真 bug：done 行不带 eval_count 时行计数漏计**（tokens++ 在 Done 检查之后）——移到 Done 检查前修复。StreamChat 此前零测试（F15 底座）。验证：go 9 包全绿

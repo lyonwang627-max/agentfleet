@@ -242,13 +242,13 @@ func (l *LLM) StreamChat(ctx context.Context, system, user string, maxTokens int
 		if chunk.Message.Content != "" {
 			onChunk(chunk.Message.Content)
 		}
+		tokens++
 		if chunk.Done {
 			if chunk.EvalCount > 0 {
 				tokens = chunk.EvalCount
 			}
 			break
 		}
-		tokens++
 	}
 	return tokens, nil
 }
