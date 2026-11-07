@@ -225,3 +225,7 @@
 ## 2026-11-07 深度冲刺切片 2（I22 事件过滤查询）
 
 - **I22 完成**：GET /events/query?kind=&task_id=&since=&limit=——服务端过滤（data 内嵌 task_id 也可过滤），limit 默认 100 上限 1000；单测三场景（kind/task_id/limit）。与 SSE 实时流互补（SSE 管实时、本端点管历史）。验证：go 9 包全绿
+
+## 2026-11-07 深度冲刺切片 3（A 测试扩充）
+
+- **CRUD 回归锁 2 组**：Automations 全生命周期（合法创建 201+next_run/非法 cron 400/PATCH 改 cron 重算/删除后 404）、Workspaces（缺 name 400/创建/归档后 active 过滤/删除）。过程教训：连续 python 字符串替换在含反引号模板串的行上翻车两次——改用 Edit 工具精准替换后一次通过。验证：go 9 包全绿
