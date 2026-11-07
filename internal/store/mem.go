@@ -41,28 +41,33 @@ func NewMemStore() *MemStore {
 		datasets: map[int64]*model.EvalDataset{}, cases: map[int64][]model.EvalCase{},
 		evalRuns: map[int64]*model.EvalRun{}, automations: map[int64]*model.Automation{},
 		agentVersions: map[int64]*model.AgentVersion{},
-		artifacts:  map[int64]*model.Artifact{},
-		workspaces: map[int64]*model.Workspace{},
-		skills:     map[int64]*model.Skill{},
+		artifacts:     map[int64]*model.Artifact{},
+		workspaces:    map[int64]*model.Workspace{},
+		skills:        map[int64]*model.Skill{},
 	}
 }
 
 func (m *MemStore) id() int64 { m.nextID++; return m.nextID }
 
-func (m *MemStore) Ping(_ context.Context) error   { return nil }
-func (m *MemStore) Close() error                   { return nil }
+func (m *MemStore) Ping(_ context.Context) error { return nil }
+func (m *MemStore) Close() error                 { return nil }
 
 // ---- agents ----
 
 func (m *MemStore) CreateAgent(_ context.Context, a *model.Agent) (int64, error) {
-	m.mu.Lock(); defer m.mu.Unlock()
-	a.ID = m.id(); a.CreatedAt = time.Now(); a.UpdatedAt = a.CreatedAt
-	cp := *a; m.agents[a.ID] = &cp
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a.ID = m.id()
+	a.CreatedAt = time.Now()
+	a.UpdatedAt = a.CreatedAt
+	cp := *a
+	m.agents[a.ID] = &cp
 	return a.ID, nil
 }
 
 func (m *MemStore) GetAgent(_ context.Context, id int64) (*model.Agent, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	a, ok := m.agents[id]
 	if !ok {
 		return nil, fmt.Errorf("agent %d: %w", id, ErrNotFound)
@@ -72,7 +77,8 @@ func (m *MemStore) GetAgent(_ context.Context, id int64) (*model.Agent, error) {
 }
 
 func (m *MemStore) ListAgents(_ context.Context, f AgentFilter) ([]model.Agent, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	out := make([]model.Agent, 0, len(m.agents))
 	for _, a := range m.agents {
 		if f.EnabledOnly && !a.Enabled {
@@ -85,27 +91,47 @@ func (m *MemStore) ListAgents(_ context.Context, f AgentFilter) ([]model.Agent, 
 }
 
 func (m *MemStore) UpdateAgent(_ context.Context, id int64, p AgentPatch) error {
-	m.mu.Lock(); defer m.mu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	a, ok := m.agents[id]
 	if !ok {
 		return fmt.Errorf("agent %d: %w", id, ErrNotFound)
 	}
-	if p.Name != nil { a.Name = *p.Name }
-	if p.Role != nil { a.Role = *p.Role }
-	if p.SystemPrompt != nil { a.SystemPrompt = *p.SystemPrompt }
-	if p.Model != nil { a.Model = *p.Model }
-	if p.Tools != nil { a.Tools = *p.Tools }
-	if p.Runner != nil { a.Runner = *p.Runner }
-	if p.MaxConcurrency != nil { a.MaxConcurrency = *p.MaxConcurrency }
-	if p.TokenBudget24h != nil { a.TokenBudget24h = *p.TokenBudget24h }
-	if p.Enabled != nil { a.Enabled = *p.Enabled }
+	if p.Name != nil {
+		a.Name = *p.Name
+	}
+	if p.Role != nil {
+		a.Role = *p.Role
+	}
+	if p.SystemPrompt != nil {
+		a.SystemPrompt = *p.SystemPrompt
+	}
+	if p.Model != nil {
+		a.Model = *p.Model
+	}
+	if p.Tools != nil {
+		a.Tools = *p.Tools
+	}
+	if p.Runner != nil {
+		a.Runner = *p.Runner
+	}
+	if p.MaxConcurrency != nil {
+		a.MaxConcurrency = *p.MaxConcurrency
+	}
+	if p.TokenBudget24h != nil {
+		a.TokenBudget24h = *p.TokenBudget24h
+	}
+	if p.Enabled != nil {
+		a.Enabled = *p.Enabled
+	}
 	a.UpdatedAt = time.Now()
 	return nil
 }
 
 // AgentTokensSince 内存版：线性扫 usage（演示规模足够；生产走 PG 聚合）。
 func (m *MemStore) AgentTokensSince(_ context.Context, agentID int64, since time.Time) (int64, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	var sum int64
 	for _, u := range m.usage {
 		if u.AgentID == agentID && !u.CreatedAt.Before(since) {
@@ -118,18 +144,27 @@ func (m *MemStore) AgentTokensSince(_ context.Context, agentID int64, since time
 // ---- tasks ----
 
 func (m *MemStore) CreateTask(_ context.Context, t *model.Task) (int64, error) {
-	m.mu.Lock(); defer m.mu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	t.ID = m.id()
-	if t.Status == "" { t.Status = model.TaskQueued }
-	if t.MaxHandoffs == 0 { t.MaxHandoffs = 3 }
-	if t.MaxRetries == 0 { t.MaxRetries = 2 }
+	if t.Status == "" {
+		t.Status = model.TaskQueued
+	}
+	if t.MaxHandoffs == 0 {
+		t.MaxHandoffs = 3
+	}
+	if t.MaxRetries == 0 {
+		t.MaxRetries = 2
+	}
 	t.CreatedAt = time.Now()
-	cp := *t; m.tasks[t.ID] = &cp
+	cp := *t
+	m.tasks[t.ID] = &cp
 	return t.ID, nil
 }
 
 func (m *MemStore) GetTask(_ context.Context, id int64) (*model.Task, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	t, ok := m.tasks[id]
 	if !ok {
 		return nil, fmt.Errorf("task %d: %w", id, ErrNotFound)
@@ -139,69 +174,125 @@ func (m *MemStore) GetTask(_ context.Context, id int64) (*model.Task, error) {
 }
 
 func (m *MemStore) ListTasks(_ context.Context, status *model.TaskStatus, agentID int64, page, pageSize int) ([]model.Task, int, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	all := make([]model.Task, 0, len(m.tasks))
 	for _, t := range m.tasks {
-		if status != nil && t.Status != *status { continue }
-		if agentID > 0 && t.AgentID != agentID { continue }
+		if status != nil && t.Status != *status {
+			continue
+		}
+		if agentID > 0 && t.AgentID != agentID {
+			continue
+		}
 		all = append(all, *t)
 	}
 	sort.Slice(all, func(i, j int) bool {
-		if all[i].Priority != all[j].Priority { return all[i].Priority > all[j].Priority }
+		if all[i].Priority != all[j].Priority {
+			return all[i].Priority > all[j].Priority
+		}
 		return all[i].ID > all[j].ID
 	})
 	total := len(all)
-	if page < 1 { page = 1 }
-	if pageSize <= 0 || pageSize > 100 { pageSize = 20 }
+	if page < 1 {
+		page = 1
+	}
+	if pageSize <= 0 || pageSize > 100 {
+		pageSize = 20
+	}
 	lo := (page - 1) * pageSize
-	if lo > total { lo = total }
+	if lo > total {
+		lo = total
+	}
 	hi := lo + pageSize
-	if hi > total { hi = total }
+	if hi > total {
+		hi = total
+	}
 	return all[lo:hi], total, nil
 }
 
 func (m *MemStore) UpdateTask(_ context.Context, id int64, p TaskPatch) error {
-	m.mu.Lock(); defer m.mu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	t, ok := m.tasks[id]
 	if !ok {
 		return fmt.Errorf("task %d: %w", id, ErrNotFound)
 	}
-	if p.Title != nil { t.Title = *p.Title }
-	if p.Prompt != nil { t.Prompt = *p.Prompt }
-	if p.AgentID != nil { t.AgentID = *p.AgentID }
-	if p.Priority != nil { t.Priority = *p.Priority }
-	if p.Status != nil { t.Status = *p.Status }
-	if p.Result != nil { t.Result = *p.Result }
-	if p.Error != nil { t.Error = *p.Error }
-	if p.WorkspaceID != nil { t.WorkspaceID = *p.WorkspaceID }
-	if p.SkillIDs != nil { t.SkillIDs = *p.SkillIDs }
-	if p.HandoffCount != nil { t.HandoffCount = *p.HandoffCount }
-	if p.RetryCount != nil { t.RetryCount = *p.RetryCount }
-	if p.VisibleAfter != nil { t.VisibleAfter = *p.VisibleAfter }
-	if p.StartedAt != nil { t.StartedAt = p.StartedAt }
-	if p.FinishedAt != nil { t.FinishedAt = p.FinishedAt }
+	if p.Title != nil {
+		t.Title = *p.Title
+	}
+	if p.Prompt != nil {
+		t.Prompt = *p.Prompt
+	}
+	if p.AgentID != nil {
+		t.AgentID = *p.AgentID
+	}
+	if p.Priority != nil {
+		t.Priority = *p.Priority
+	}
+	if p.Status != nil {
+		t.Status = *p.Status
+	}
+	if p.Result != nil {
+		t.Result = *p.Result
+	}
+	if p.Error != nil {
+		t.Error = *p.Error
+	}
+	if p.WorkspaceID != nil {
+		t.WorkspaceID = *p.WorkspaceID
+	}
+	if p.SkillIDs != nil {
+		t.SkillIDs = *p.SkillIDs
+	}
+	if p.HandoffCount != nil {
+		t.HandoffCount = *p.HandoffCount
+	}
+	if p.RetryCount != nil {
+		t.RetryCount = *p.RetryCount
+	}
+	if p.VisibleAfter != nil {
+		t.VisibleAfter = *p.VisibleAfter
+	}
+	if p.StartedAt != nil {
+		t.StartedAt = p.StartedAt
+	}
+	if p.FinishedAt != nil {
+		t.FinishedAt = p.FinishedAt
+	}
 	return nil
 }
 
 // ClaimNextTask 内存版认领：锁内选优先级最高的可执行任务并置 running。
 func (m *MemStore) ClaimNextTask(_ context.Context) (*model.Task, error) {
-	m.mu.Lock(); defer m.mu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	now := time.Now()
 	var best *model.Task
 	for _, t := range m.tasks {
-		if t.Status != model.TaskQueued { continue }
-		if t.VisibleAfter.After(now) { continue }
+		if t.Status != model.TaskQueued {
+			continue
+		}
+		if t.VisibleAfter.After(now) {
+			continue
+		}
 		a, ok := m.agents[t.AgentID]
-		if !ok || !a.Enabled { continue }
+		if !ok || !a.Enabled {
+			continue
+		}
 		// 依赖检查：任一依赖未 done 则跳过（不阻塞其他任务）
 		blocked := false
 		for _, dep := range t.DependsOn {
 			if d, ok := m.tasks[dep]; !ok || d.Status != model.TaskDone {
-				blocked = true; break
+				blocked = true
+				break
 			}
 		}
-		if blocked { continue }
-		if running := m.runningFor(t.AgentID); running >= a.MaxConcurrency { continue }
+		if blocked {
+			continue
+		}
+		if running := m.runningFor(t.AgentID); running >= a.MaxConcurrency {
+			continue
+		}
 		if best == nil || t.Priority > best.Priority || (t.Priority == best.Priority && t.ID < best.ID) {
 			best = t
 		}
@@ -219,7 +310,9 @@ func (m *MemStore) ClaimNextTask(_ context.Context) (*model.Task, error) {
 func (m *MemStore) runningFor(agentID int64) int {
 	n := 0
 	for _, t := range m.tasks {
-		if t.AgentID == agentID && t.Status == model.TaskRunning { n++ }
+		if t.AgentID == agentID && t.Status == model.TaskRunning {
+			n++
+		}
 	}
 	return n
 }
@@ -227,23 +320,30 @@ func (m *MemStore) runningFor(agentID int64) int {
 // ---- runs & steps ----
 
 func (m *MemStore) CreateRun(_ context.Context, r *model.Run) (int64, error) {
-	m.mu.Lock(); defer m.mu.Unlock()
-	r.ID = m.id(); r.StartedAt = time.Now(); r.Status = model.RunRunning
-	cp := *r; m.runs[r.ID] = &cp
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	r.ID = m.id()
+	r.StartedAt = time.Now()
+	r.Status = model.RunRunning
+	cp := *r
+	m.runs[r.ID] = &cp
 	return r.ID, nil
 }
 
 func (m *MemStore) UpdateRun(_ context.Context, r *model.Run) error {
-	m.mu.Lock(); defer m.mu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if _, ok := m.runs[r.ID]; !ok {
 		return fmt.Errorf("run %d: %w", r.ID, ErrNotFound)
 	}
-	cp := *r; m.runs[r.ID] = &cp
+	cp := *r
+	m.runs[r.ID] = &cp
 	return nil
 }
 
 func (m *MemStore) GetRun(_ context.Context, id int64) (*model.Run, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	r, ok := m.runs[id]
 	if !ok {
 		return nil, fmt.Errorf("run %d: %w", id, ErrNotFound)
@@ -254,17 +354,21 @@ func (m *MemStore) GetRun(_ context.Context, id int64) (*model.Run, error) {
 }
 
 func (m *MemStore) ListRuns(_ context.Context, taskID int64) ([]model.Run, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	out := []model.Run{}
 	for _, r := range m.runs {
-		if r.TaskID == taskID { out = append(out, *r) }
+		if r.TaskID == taskID {
+			out = append(out, *r)
+		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID > out[j].ID })
 	return out, nil
 }
 
 func (m *MemStore) AppendStep(_ context.Context, runID int64, s *model.RunStep) (int64, error) {
-	m.mu.Lock(); defer m.mu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.nextID++
 	s.Seq = int64(len(m.steps[runID]) + 1)
 	s.CreatedAt = time.Now()
@@ -276,21 +380,26 @@ func (m *MemStore) AppendStep(_ context.Context, runID int64, s *model.RunStep) 
 }
 
 func (m *MemStore) ListSteps(_ context.Context, runID int64) ([]model.RunStep, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return append([]model.RunStep(nil), m.steps[runID]...), nil
 }
 
 // ---- conversations ----
 
 func (m *MemStore) CreateConversation(_ context.Context, c *model.Conversation) (int64, error) {
-	m.mu.Lock(); defer m.mu.Unlock()
-	c.ID = m.id(); c.CreatedAt = time.Now()
-	cp := *c; m.convos[c.ID] = &cp
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	c.ID = m.id()
+	c.CreatedAt = time.Now()
+	cp := *c
+	m.convos[c.ID] = &cp
 	return c.ID, nil
 }
 
 func (m *MemStore) GetConversation(_ context.Context, id int64) (*model.Conversation, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	c, ok := m.convos[id]
 	if !ok {
 		return nil, fmt.Errorf("conversation %d: %w", id, ErrNotFound)
@@ -300,14 +409,17 @@ func (m *MemStore) GetConversation(_ context.Context, id int64) (*model.Conversa
 }
 
 func (m *MemStore) AppendMessage(_ context.Context, msg *model.Message) (int64, error) {
-	m.mu.Lock(); defer m.mu.Unlock()
-	msg.ID = m.id(); msg.CreatedAt = time.Now()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	msg.ID = m.id()
+	msg.CreatedAt = time.Now()
 	m.msgs[msg.ConversationID] = append(m.msgs[msg.ConversationID], *msg)
 	return msg.ID, nil
 }
 
 func (m *MemStore) ListConversations(_ context.Context, limit int) ([]model.ConversationSummary, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	out := []model.ConversationSummary{}
 	for _, c := range m.convos {
 		agentName := ""
@@ -333,39 +445,52 @@ func (m *MemStore) ListConversations(_ context.Context, limit int) ([]model.Conv
 }
 
 func (m *MemStore) ListMessages(_ context.Context, conversationID int64) ([]model.Message, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return append([]model.Message(nil), m.msgs[conversationID]...), nil
 }
 
 // ---- usage ----
 
 func (m *MemStore) AppendUsage(_ context.Context, u *model.UsageEvent) error {
-	m.mu.Lock(); defer m.mu.Unlock()
-	m.nextID++; u.ID = m.nextID; u.CreatedAt = time.Now()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.nextID++
+	u.ID = m.nextID
+	u.CreatedAt = time.Now()
 	m.usage = append(m.usage, *u)
 	return nil
 }
 
 func (m *MemStore) UsageSummary(_ context.Context, window time.Duration) (model.UsageEvent, []model.UsageEvent, []model.UsageEvent, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	cutoff := time.Now().Add(-window)
 	byModel := map[string]*model.UsageEvent{}
 	byAgent := map[int64]*model.UsageEvent{}
 	var total model.UsageEvent
 	for _, u := range m.usage {
-		if u.CreatedAt.Before(cutoff) { continue }
+		if u.CreatedAt.Before(cutoff) {
+			continue
+		}
 		total.Requests += u.Requests
 		total.PromptTokens += u.PromptTokens
 		total.CompletionTokens += u.CompletionTokens
 		if bm, ok := byModel[u.Model]; ok {
-			bm.Requests += u.Requests; bm.PromptTokens += u.PromptTokens; bm.CompletionTokens += u.CompletionTokens
+			bm.Requests += u.Requests
+			bm.PromptTokens += u.PromptTokens
+			bm.CompletionTokens += u.CompletionTokens
 		} else {
-			cp := u; byModel[u.Model] = &cp
+			cp := u
+			byModel[u.Model] = &cp
 		}
 		if ba, ok := byAgent[u.AgentID]; ok {
-			ba.Requests += u.Requests; ba.PromptTokens += u.PromptTokens; ba.CompletionTokens += u.CompletionTokens
+			ba.Requests += u.Requests
+			ba.PromptTokens += u.PromptTokens
+			ba.CompletionTokens += u.CompletionTokens
 		} else {
-			cp := u; byAgent[u.AgentID] = &cp
+			cp := u
+			byAgent[u.AgentID] = &cp
 		}
 	}
 	return total, usageToSlice(byModel), usageToSlice(byAgent), nil
@@ -383,14 +508,18 @@ func usageToSlice[M comparable](mm map[M]*model.UsageEvent) []model.UsageEvent {
 // ---- evals ----
 
 func (m *MemStore) CreateDataset(_ context.Context, d *model.EvalDataset) (int64, error) {
-	m.mu.Lock(); defer m.mu.Unlock()
-	d.ID = m.id(); d.CreatedAt = time.Now()
-	cp := *d; m.datasets[d.ID] = &cp
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	d.ID = m.id()
+	d.CreatedAt = time.Now()
+	cp := *d
+	m.datasets[d.ID] = &cp
 	return d.ID, nil
 }
 
 func (m *MemStore) ListDatasets(_ context.Context) ([]model.EvalDataset, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	out := make([]model.EvalDataset, 0, len(m.datasets))
 	for _, d := range m.datasets {
 		cp := *d
@@ -402,7 +531,8 @@ func (m *MemStore) ListDatasets(_ context.Context) ([]model.EvalDataset, error) 
 }
 
 func (m *MemStore) SaveCases(_ context.Context, datasetID int64, cases []model.EvalCase) error {
-	m.mu.Lock(); defer m.mu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	for i := range cases {
 		m.nextID++
 		cases[i].ID = m.nextID
@@ -413,28 +543,36 @@ func (m *MemStore) SaveCases(_ context.Context, datasetID int64, cases []model.E
 }
 
 func (m *MemStore) ListCases(_ context.Context, datasetID int64) ([]model.EvalCase, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return append([]model.EvalCase(nil), m.cases[datasetID]...), nil
 }
 
 func (m *MemStore) CreateEvalRun(_ context.Context, e *model.EvalRun) (int64, error) {
-	m.mu.Lock(); defer m.mu.Unlock()
-	e.ID = m.id(); e.CreatedAt = time.Now(); e.Status = "running"
-	cp := *e; m.evalRuns[e.ID] = &cp
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	e.ID = m.id()
+	e.CreatedAt = time.Now()
+	e.Status = "running"
+	cp := *e
+	m.evalRuns[e.ID] = &cp
 	return e.ID, nil
 }
 
 func (m *MemStore) UpdateEvalRun(_ context.Context, e *model.EvalRun) error {
-	m.mu.Lock(); defer m.mu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if _, ok := m.evalRuns[e.ID]; !ok {
 		return fmt.Errorf("eval run %d: %w", e.ID, ErrNotFound)
 	}
-	cp := *e; m.evalRuns[e.ID] = &cp
+	cp := *e
+	m.evalRuns[e.ID] = &cp
 	return nil
 }
 
 func (m *MemStore) GetEvalRun(_ context.Context, id int64) (*model.EvalRun, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	e, ok := m.evalRuns[id]
 	if !ok {
 		return nil, fmt.Errorf("eval run %d: %w", id, ErrNotFound)
@@ -444,9 +582,12 @@ func (m *MemStore) GetEvalRun(_ context.Context, id int64) (*model.EvalRun, erro
 }
 
 func (m *MemStore) ListEvalRuns(_ context.Context) ([]model.EvalRun, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	out := make([]model.EvalRun, 0, len(m.evalRuns))
-	for _, e := range m.evalRuns { out = append(out, *e) }
+	for _, e := range m.evalRuns {
+		out = append(out, *e)
+	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID > out[j].ID })
 	return out, nil
 }
@@ -454,19 +595,29 @@ func (m *MemStore) ListEvalRuns(_ context.Context) ([]model.EvalRun, error) {
 // ---- events ----
 
 func (m *MemStore) AppendEvent(_ context.Context, e *model.Event) (int64, error) {
-	m.mu.Lock(); defer m.mu.Unlock()
-	m.lastEventSeq++; e.Seq = m.lastEventSeq; e.CreatedAt = time.Now()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.lastEventSeq++
+	e.Seq = m.lastEventSeq
+	e.CreatedAt = time.Now()
 	m.events = append(m.events, *e)
-	if len(m.events) > 5000 { m.events = m.events[len(m.events)-5000:] }
+	if len(m.events) > 5000 {
+		m.events = m.events[len(m.events)-5000:]
+	}
 	return e.Seq, nil
 }
 
 func (m *MemStore) EventsSince(_ context.Context, since int64, limit int) ([]model.Event, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	out := []model.Event{}
 	for _, e := range m.events {
-		if e.Seq > since { out = append(out, e) }
-		if len(out) >= limit { break }
+		if e.Seq > since {
+			out = append(out, e)
+		}
+		if len(out) >= limit {
+			break
+		}
 	}
 	return out, nil
 }

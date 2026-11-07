@@ -79,8 +79,8 @@ func (m *MockRunner) Execute(ctx context.Context, req ExecRequest) (Result, erro
 		emit(model.StepHandoff, "->"+target, map[string]any{"from": req.Agent.Name},
 			map[string]any{"reason": "超出当前 agent 职责范围", "target": target}, 30, 0)
 		return Result{HandoffTo: target,
-			Reply:    fmt.Sprintf("[%s 阶段结论] %s（已移交 %s 继续）", req.Agent.Name, head(prompt, 100), target),
-			Note:     fmt.Sprintf("%s 完成初步处理，移交 %s 继续执行其职责", req.Agent.Name, target)}, nil
+			Reply: fmt.Sprintf("[%s 阶段结论] %s（已移交 %s 继续）", req.Agent.Name, head(prompt, 100), target),
+			Note:  fmt.Sprintf("%s 完成初步处理，移交 %s 继续执行其职责", req.Agent.Name, target)}, nil
 
 	case strings.Contains(prompt, "审批"):
 		emit(model.StepGate, "approval-gate", map[string]any{"reason": "产出涉及对外发布"},

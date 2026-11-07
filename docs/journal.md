@@ -129,3 +129,7 @@
 ## 2026-11-07 Q1 API 集成测试
 
 - **Q1 完成**：TestFullFlowIntegration——httptest 起完整 Routes（MemStore+mock 网关），HTTP 全链路 0.09s 回归：health→建 agent→建任务→等 done→trace（裸数组端点）→审批门 review→带意见 approve→done→用量回填。过程修 3 处测试自身问题（空响应 nil map panic、runs 裸数组 vs 对象解析、超时写成 1 纳秒）。验证：go 7 包全绿
+
+## 2026-11-07 Q3 + Q5 工程质量收口
+
+- **Q3 完成**：gofmt 全量修复（14+ 文件，历次 python 编辑缩进残留）；scripts/ci.sh 四段一键校验（gofmt→vet→test -race→前端 build），零外部工具链；golangci-lint 留待有网环境（ci.sh 预留）。**Q5 完成**：scripts/load.sh 零依赖压测（curl+python），35 任务混合负载实测吞吐 ≈1.4 任务/秒，基准数字入 ARCHITECTURE §8。验证：ci.sh 全链路通过 + 压测实弹

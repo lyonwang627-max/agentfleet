@@ -32,10 +32,10 @@ type ExecRequest struct {
 }
 
 type Result struct {
-	Reply         string // 任务产出（写入 task.result）
-	HandoffTo     string // 非空 = 交接给该名字的 agent
-	Note          string // handoff / 审批说明
-	NeedsApproval bool   // true = 任务进入人工审批门（task.status=review）
+	Reply         string          // 任务产出（写入 task.result）
+	HandoffTo     string          // 非空 = 交接给该名字的 agent
+	Note          string          // handoff / 审批说明
+	NeedsApproval bool            // true = 任务进入人工审批门（task.status=review）
 	Artifacts     []ArtifactDraft // 结构化产物（报告/补丁等，落 artifacts 表）
 }
 

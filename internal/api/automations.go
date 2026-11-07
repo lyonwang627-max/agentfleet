@@ -81,12 +81,26 @@ func (s *Server) patchAutomation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	patch := store.AutomationPatch{}
-	if v, ok := in["agent_id"].(float64); ok { n := int64(v); patch.AgentID = &n }
-	if v, ok := in["name"].(string); ok { patch.Name = &v }
-	if v, ok := in["title"].(string); ok { patch.Title = &v }
-	if v, ok := in["prompt"].(string); ok { patch.Prompt = &v }
-	if v, ok := in["priority"].(float64); ok { n := int(v); patch.Priority = &n }
-	if v, ok := in["enabled"].(bool); ok { patch.Enabled = &v }
+	if v, ok := in["agent_id"].(float64); ok {
+		n := int64(v)
+		patch.AgentID = &n
+	}
+	if v, ok := in["name"].(string); ok {
+		patch.Name = &v
+	}
+	if v, ok := in["title"].(string); ok {
+		patch.Title = &v
+	}
+	if v, ok := in["prompt"].(string); ok {
+		patch.Prompt = &v
+	}
+	if v, ok := in["priority"].(float64); ok {
+		n := int(v)
+		patch.Priority = &n
+	}
+	if v, ok := in["enabled"].(bool); ok {
+		patch.Enabled = &v
+	}
 	if v, ok := in["cron_expr"].(string); ok {
 		if _, err := cronexpr.Parse(v); err != nil {
 			writeErr(w, http.StatusBadRequest, err)

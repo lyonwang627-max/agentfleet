@@ -71,7 +71,7 @@ func (s *Server) Routes() http.Handler {
 
 	// chat
 	mux.HandleFunc("POST /api/v1/chat", s.chat)
-	mux.HandleFunc("POST /api/v1/chat/stream", s.chatStream) // F15-a 流式
+	mux.HandleFunc("POST /api/v1/chat/stream", s.chatStream)         // F15-a 流式
 	mux.HandleFunc("GET /api/v1/conversations", s.listConversations) // F6 回放数据层
 	mux.HandleFunc("GET /api/v1/conversations/{id}", s.getConversation)
 
@@ -108,9 +108,9 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/evals", s.listEvals)
 	mux.HandleFunc("POST /api/v1/evals", s.createEval)
 	mux.HandleFunc("GET /api/v1/evals/{id}", s.getEval)
-	mux.HandleFunc("GET /api/v1/evals/compare", s.compareEvals) // 路由 A/B（F18-c）
-	mux.HandleFunc("GET /api/v1/routing/stats", s.routingStats) // 升级率（F18-c）
-	mux.HandleFunc("POST /api/v1/evals/{id}/prescription", s.prescribe)       // RSI 处方生成（F17-a）
+	mux.HandleFunc("GET /api/v1/evals/compare", s.compareEvals)                        // 路由 A/B（F18-c）
+	mux.HandleFunc("GET /api/v1/routing/stats", s.routingStats)                        // 升级率（F18-c）
+	mux.HandleFunc("POST /api/v1/evals/{id}/prescription", s.prescribe)                // RSI 处方生成（F17-a）
 	mux.HandleFunc("POST /api/v1/agents/{id}/apply-prescription", s.applyPrescription) // 处方一键应用（F17-b）
 
 	// 单二进制交付（-tags release）：根路径服务内嵌前端 SPA
@@ -173,7 +173,7 @@ func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
 	dbOK := s.Store.Ping(ctx) == nil
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status": "ok", "db": dbOK, "scheduler": s.Sched.Healthy(),
-		"llm": map[string]any{"mode": s.LLM.Mode, "model": s.LLM.Model},
+		"llm":      map[string]any{"mode": s.LLM.Mode, "model": s.LLM.Model},
 		"uptime_s": int(time.Since(s.StartedAt).Seconds()),
 	})
 }
@@ -290,13 +290,29 @@ func (s *Server) patchAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	patch := store.AgentPatch{}
-	if v, ok := in["name"].(string); ok { patch.Name = &v }
-	if v, ok := in["role"].(string); ok { patch.Role = &v }
-	if v, ok := in["system_prompt"].(string); ok { patch.SystemPrompt = &v }
-	if v, ok := in["model"].(string); ok { patch.Model = &v }
-	if v, ok := in["runner"].(string); ok { patch.Runner = &v }
-	if v, ok := in["max_concurrency"].(float64); ok { n := int(v); patch.MaxConcurrency = &n }
-	if v, ok := in["token_budget_24h"].(float64); ok { n := int(v); patch.TokenBudget24h = &n }
+	if v, ok := in["name"].(string); ok {
+		patch.Name = &v
+	}
+	if v, ok := in["role"].(string); ok {
+		patch.Role = &v
+	}
+	if v, ok := in["system_prompt"].(string); ok {
+		patch.SystemPrompt = &v
+	}
+	if v, ok := in["model"].(string); ok {
+		patch.Model = &v
+	}
+	if v, ok := in["runner"].(string); ok {
+		patch.Runner = &v
+	}
+	if v, ok := in["max_concurrency"].(float64); ok {
+		n := int(v)
+		patch.MaxConcurrency = &n
+	}
+	if v, ok := in["token_budget_24h"].(float64); ok {
+		n := int(v)
+		patch.TokenBudget24h = &n
+	}
 	if v, ok := in["tools"].([]any); ok {
 		tools := []string{}
 		for _, t := range v {

@@ -110,16 +110,37 @@ func (p *PostgresStore) ListAgents(ctx context.Context, f AgentFilter) ([]model.
 
 func (p *PostgresStore) UpdateAgent(ctx context.Context, id int64, patch AgentPatch) error {
 	sets, args := []string{}, []any{id}
-	add := func(col string, v any) { args = append(args, v); sets = append(sets, fmt.Sprintf("%s=$%d", col, len(args))) }
-	if patch.Name != nil { add("name", *patch.Name) }
-	if patch.Role != nil { add("role", *patch.Role) }
-	if patch.SystemPrompt != nil { add("system_prompt", *patch.SystemPrompt) }
-	if patch.Model != nil { add("model", *patch.Model) }
-	if patch.Tools != nil { add("tools", jsonb(*patch.Tools)) }
-	if patch.Runner != nil { add("runner", *patch.Runner) }
-	if patch.MaxConcurrency != nil { add("max_concurrency", *patch.MaxConcurrency) }
-	if patch.TokenBudget24h != nil { add("token_budget_24h", *patch.TokenBudget24h) }
-	if patch.Enabled != nil { add("enabled", *patch.Enabled) }
+	add := func(col string, v any) {
+		args = append(args, v)
+		sets = append(sets, fmt.Sprintf("%s=$%d", col, len(args)))
+	}
+	if patch.Name != nil {
+		add("name", *patch.Name)
+	}
+	if patch.Role != nil {
+		add("role", *patch.Role)
+	}
+	if patch.SystemPrompt != nil {
+		add("system_prompt", *patch.SystemPrompt)
+	}
+	if patch.Model != nil {
+		add("model", *patch.Model)
+	}
+	if patch.Tools != nil {
+		add("tools", jsonb(*patch.Tools))
+	}
+	if patch.Runner != nil {
+		add("runner", *patch.Runner)
+	}
+	if patch.MaxConcurrency != nil {
+		add("max_concurrency", *patch.MaxConcurrency)
+	}
+	if patch.TokenBudget24h != nil {
+		add("token_budget_24h", *patch.TokenBudget24h)
+	}
+	if patch.Enabled != nil {
+		add("enabled", *patch.Enabled)
+	}
 	if len(sets) == 0 {
 		return nil
 	}
@@ -237,21 +258,52 @@ func (p *PostgresStore) ListTasks(ctx context.Context, status *model.TaskStatus,
 
 func (p *PostgresStore) UpdateTask(ctx context.Context, id int64, patch TaskPatch) error {
 	sets, args := []string{}, []any{id}
-	add := func(col string, v any) { args = append(args, v); sets = append(sets, fmt.Sprintf("%s=$%d", col, len(args))) }
-	if patch.Title != nil { add("title", *patch.Title) }
-	if patch.Prompt != nil { add("prompt", *patch.Prompt) }
-	if patch.AgentID != nil { add("agent_id", *patch.AgentID) }
-	if patch.Priority != nil { add("priority", *patch.Priority) }
-	if patch.Status != nil { add("status", string(*patch.Status)) }
-	if patch.Result != nil { add("result", *patch.Result) }
-	if patch.Error != nil { add("error", *patch.Error) }
-	if patch.WorkspaceID != nil { add("workspace_id", *patch.WorkspaceID) }
-	if patch.SkillIDs != nil { add("skill_ids", jsonb(*patch.SkillIDs)) }
-	if patch.HandoffCount != nil { add("handoff_count", *patch.HandoffCount) }
-	if patch.RetryCount != nil { add("retry_count", *patch.RetryCount) }
-	if patch.VisibleAfter != nil { add("visible_after", *patch.VisibleAfter) }
-	if patch.StartedAt != nil { add("started_at", *patch.StartedAt) }
-	if patch.FinishedAt != nil { add("finished_at", *patch.FinishedAt) }
+	add := func(col string, v any) {
+		args = append(args, v)
+		sets = append(sets, fmt.Sprintf("%s=$%d", col, len(args)))
+	}
+	if patch.Title != nil {
+		add("title", *patch.Title)
+	}
+	if patch.Prompt != nil {
+		add("prompt", *patch.Prompt)
+	}
+	if patch.AgentID != nil {
+		add("agent_id", *patch.AgentID)
+	}
+	if patch.Priority != nil {
+		add("priority", *patch.Priority)
+	}
+	if patch.Status != nil {
+		add("status", string(*patch.Status))
+	}
+	if patch.Result != nil {
+		add("result", *patch.Result)
+	}
+	if patch.Error != nil {
+		add("error", *patch.Error)
+	}
+	if patch.WorkspaceID != nil {
+		add("workspace_id", *patch.WorkspaceID)
+	}
+	if patch.SkillIDs != nil {
+		add("skill_ids", jsonb(*patch.SkillIDs))
+	}
+	if patch.HandoffCount != nil {
+		add("handoff_count", *patch.HandoffCount)
+	}
+	if patch.RetryCount != nil {
+		add("retry_count", *patch.RetryCount)
+	}
+	if patch.VisibleAfter != nil {
+		add("visible_after", *patch.VisibleAfter)
+	}
+	if patch.StartedAt != nil {
+		add("started_at", *patch.StartedAt)
+	}
+	if patch.FinishedAt != nil {
+		add("finished_at", *patch.FinishedAt)
+	}
 	if len(sets) == 0 {
 		return nil
 	}
@@ -395,8 +447,10 @@ func (p *PostgresStore) ListSteps(ctx context.Context, runID int64) ([]model.Run
 		if err := rows.Scan(&s.Seq, &s.Kind, &s.Name, &input, &output, &s.Note, &s.LatencyMS, &s.Tokens, &s.CreatedAt); err != nil {
 			return nil, err
 		}
-		s.Input = map[string]any{}; unjsonb(input, &s.Input)
-		s.Output = map[string]any{}; unjsonb(output, &s.Output)
+		s.Input = map[string]any{}
+		unjsonb(input, &s.Input)
+		s.Output = map[string]any{}
+		unjsonb(output, &s.Output)
 		out = append(out, s)
 	}
 	return out, rows.Err()
@@ -578,7 +632,8 @@ func (p *PostgresStore) ListCases(ctx context.Context, datasetID int64) ([]model
 		if err := rows.Scan(&c.ID, &c.DatasetID, &c.Input, &exp); err != nil {
 			return nil, err
 		}
-		c.Expected = map[string]any{}; unjsonb(exp, &c.Expected)
+		c.Expected = map[string]any{}
+		unjsonb(exp, &c.Expected)
 		out = append(out, c)
 	}
 	return out, rows.Err()
@@ -659,7 +714,8 @@ func (p *PostgresStore) EventsSince(ctx context.Context, since int64, limit int)
 		if err := rows.Scan(&e.Seq, &e.Kind, &data, &e.CreatedAt); err != nil {
 			return nil, err
 		}
-		e.Data = map[string]any{}; unjsonb(data, &e.Data)
+		e.Data = map[string]any{}
+		unjsonb(data, &e.Data)
 		out = append(out, e)
 	}
 	return out, rows.Err()

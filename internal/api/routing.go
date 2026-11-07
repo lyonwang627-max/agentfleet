@@ -15,12 +15,12 @@ import (
 
 // CompareVerdict A/B 对比结论。
 type CompareVerdict struct {
-	ScoreDelta      float64 `json:"score_delta"`       // b - a
-	PassRateDelta   float64 `json:"pass_rate_delta"`   // b - a（百分点）
-	QualityHeld     bool    `json:"quality_held"`      // 质量不降（|delta| < 1）
-	Verdict         string  `json:"verdict"`           // pass | regression | improvement
-	SameDataset     bool    `json:"same_dataset"`
-	DivergentCases  int     `json:"divergent_cases"` // 结论翻转的 case 数
+	ScoreDelta     float64 `json:"score_delta"`     // b - a
+	PassRateDelta  float64 `json:"pass_rate_delta"` // b - a（百分点）
+	QualityHeld    bool    `json:"quality_held"`    // 质量不降（|delta| < 1）
+	Verdict        string  `json:"verdict"`         // pass | regression | improvement
+	SameDataset    bool    `json:"same_dataset"`
+	DivergentCases int     `json:"divergent_cases"` // 结论翻转的 case 数
 }
 
 func (s *Server) compareEvals(w http.ResponseWriter, r *http.Request) {
@@ -73,11 +73,11 @@ func (s *Server) compareEvals(w http.ResponseWriter, r *http.Request) {
 			"score_avg": ea.Report.ScoreAvg, "pass_rate": ea.Report.PassRate},
 		"b": map[string]any{"eval_id": bID, "agent_id": eb.AgentID, "dataset_id": eb.DatasetID,
 			"score_avg": eb.Report.ScoreAvg, "pass_rate": eb.Report.PassRate},
-		"score_delta":    scoreDelta,
+		"score_delta":     scoreDelta,
 		"pass_rate_delta": passDelta,
-		"quality_held":   qualityHeld,
-		"verdict":        verdict,
-		"same_dataset":   ea.DatasetID == eb.DatasetID,
+		"quality_held":    qualityHeld,
+		"verdict":         verdict,
+		"same_dataset":    ea.DatasetID == eb.DatasetID,
 		"divergent_cases": divergent,
 	})
 }

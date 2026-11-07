@@ -66,14 +66,31 @@ func (p *PostgresStore) ListAutomations(ctx context.Context, enabledOnly bool) (
 
 func (p *PostgresStore) UpdateAutomation(ctx context.Context, id int64, patch AutomationPatch) error {
 	sets, args := []string{}, []any{id}
-	add := func(col string, v any) { args = append(args, v); sets = append(sets, fmt.Sprintf("a.%s=$%d", col, len(args))) }
-	if patch.AgentID != nil { add("agent_id", *patch.AgentID) }
-	if patch.Name != nil { add("name", *patch.Name) }
-	if patch.CronExpr != nil { add("cron_expr", *patch.CronExpr) }
-	if patch.Title != nil { add("title", *patch.Title) }
-	if patch.Prompt != nil { add("prompt", *patch.Prompt) }
-	if patch.Priority != nil { add("priority", *patch.Priority) }
-	if patch.Enabled != nil { add("enabled", *patch.Enabled) }
+	add := func(col string, v any) {
+		args = append(args, v)
+		sets = append(sets, fmt.Sprintf("a.%s=$%d", col, len(args)))
+	}
+	if patch.AgentID != nil {
+		add("agent_id", *patch.AgentID)
+	}
+	if patch.Name != nil {
+		add("name", *patch.Name)
+	}
+	if patch.CronExpr != nil {
+		add("cron_expr", *patch.CronExpr)
+	}
+	if patch.Title != nil {
+		add("title", *patch.Title)
+	}
+	if patch.Prompt != nil {
+		add("prompt", *patch.Prompt)
+	}
+	if patch.Priority != nil {
+		add("priority", *patch.Priority)
+	}
+	if patch.Enabled != nil {
+		add("enabled", *patch.Enabled)
+	}
 	if len(sets) == 0 {
 		return nil
 	}

@@ -104,17 +104,17 @@ func (s *Scheduler) TierToModel(tier TaskTier, fallback string) string {
 }
 
 type Scheduler struct {
-	store      store.Store
-	events     *Hub
-	judge      LLMJudge // 进展看门狗用（nil 或不健康时 fail-open）
-	llm        *gateway.LLM // ADR-0002 分流：档位 → 模型解析
-	mu         sync.Mutex
-	semaphores map[int64]chan struct{} // agent_id -> 并发闸
-	wg         sync.WaitGroup
-	cancel     context.CancelFunc
-	running    map[int64]bool // task_id -> 执行中（防同任务重复派发）
+	store        store.Store
+	events       *Hub
+	judge        LLMJudge     // 进展看门狗用（nil 或不健康时 fail-open）
+	llm          *gateway.LLM // ADR-0002 分流：档位 → 模型解析
+	mu           sync.Mutex
+	semaphores   map[int64]chan struct{} // agent_id -> 并发闸
+	wg           sync.WaitGroup
+	cancel       context.CancelFunc
+	running      map[int64]bool // task_id -> 执行中（防同任务重复派发）
 	lastWatchdog time.Time
-	wake       chan struct{} // 事件驱动唤醒（F13-a）：建任务即时派发，不等 tick
+	wake         chan struct{} // 事件驱动唤醒（F13-a）：建任务即时派发，不等 tick
 }
 
 func New(st store.Store, hub *Hub) *Scheduler {
@@ -203,7 +203,9 @@ func (s *Scheduler) dispatch(ctx context.Context) {
 	go func() {
 		defer s.wg.Done()
 		defer func() {
-			s.mu.Lock(); delete(s.running, task.ID); s.mu.Unlock()
+			s.mu.Lock()
+			delete(s.running, task.ID)
+			s.mu.Unlock()
 		}()
 		// 执行用独立 ctx（与轮询 ctx 解耦）：drain 时停认领，但在途任务必须跑完（含 LLM 长调用）
 		execCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
@@ -216,7 +218,9 @@ func (s *Scheduler) gate(agentID int64, n int) chan struct{} {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := s.semaphores[agentID]; !ok {
-		if n <= 0 { n = 1 }
+		if n <= 0 {
+			n = 1
+		}
 		s.semaphores[agentID] = make(chan struct{}, n)
 	}
 	return s.semaphores[agentID]
@@ -297,7 +301,7 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 	}
 	_, _ = s.store.AppendStep(ctx, runID, &model.RunStep{Kind: model.StepLLM, Name: "route",
 		Input: map[string]any{"tier": string(tier), "model": routedModel, "retry": task.RetryCount},
-		Note: "F18-b 任务级路由"})
+		Note:  "F18-b 任务级路由"})
 
 	res, execErr := rn.Execute(ctx, runner.ExecRequest{Agent: *agent, Task: execTask, Recorder: recorder,
 		Workspace: ws, Skills: skills, ModelOverride: routedModel})
@@ -429,8 +433,8 @@ func (s *Scheduler) sweepDependents(ctx context.Context) {
 			if d.Status == model.TaskFailed || d.Status == model.TaskCanceled {
 				fin := timeNow()
 				_ = s.store.UpdateTask(ctx, t.ID, store.TaskPatch{
-					Status: ptrStatus(model.TaskFailed),
-					Error:  ptrStr(fmt.Sprintf("前置任务 #%d %s，本任务级联终止", dep, d.Status)),
+					Status:     ptrStatus(model.TaskFailed),
+					Error:      ptrStr(fmt.Sprintf("前置任务 #%d %s，本任务级联终止", dep, d.Status)),
 					FinishedAt: &fin})
 				s.emit(ctx, "task.update", map[string]any{"task_id": t.ID, "status": string(model.TaskFailed), "cascade": dep})
 				log.Printf("[scheduler] task#%d 因依赖 #%d %s 级联失败", t.ID, dep, d.Status)
@@ -479,8 +483,8 @@ func mimeOf(kind string) string {
 	}
 }
 
-func ptrStr(s string) *string          { return &s }
-func ptrInt(i int) *int                { return &i }
-func ptrI64(i int64) *int64            { return &i }
+func ptrStr(s string) *string                        { return &s }
+func ptrInt(i int) *int                              { return &i }
+func ptrI64(i int64) *int64                          { return &i }
 func ptrStatus(s model.TaskStatus) *model.TaskStatus { return &s }
-func ptrTime(t time.Time) *time.Time   { return &t }
+func ptrTime(t time.Time) *time.Time                 { return &t }

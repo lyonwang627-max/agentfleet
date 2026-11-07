@@ -13,9 +13,9 @@ import (
 // Hub 事件中枢：Publish 先持久化（拿全局 seq，供断线重连按 Last-Event-ID 续传），
 // 再扇出到所有 SSE 订阅者。订阅者缓冲满时丢弃并关闭（慢客户端不拖垮主干）。
 type Hub struct {
-	store  store.Store
-	mu     sync.Mutex
-	subs   map[int64]chan model.Event // 订阅 id -> 通道
+	store   store.Store
+	mu      sync.Mutex
+	subs    map[int64]chan model.Event // 订阅 id -> 通道
 	lastSeq int64
 	nextSub int64
 }

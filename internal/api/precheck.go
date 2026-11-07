@@ -14,7 +14,7 @@ import (
 
 type PrecheckResult struct {
 	Recommendation string `json:"recommendation"` // approve | deny | needs_human
-	RiskLevel      string `json:"risk_level"`      // low | medium | high
+	RiskLevel      string `json:"risk_level"`     // low | medium | high
 	Reason         string `json:"reason"`
 }
 

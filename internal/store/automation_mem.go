@@ -12,14 +12,18 @@ import (
 // ---- MemStore: automations ----
 
 func (m *MemStore) CreateAutomation(_ context.Context, a *model.Automation) (int64, error) {
-	m.mu.Lock(); defer m.mu.Unlock()
-	a.ID = m.id(); a.CreatedAt = time.Now()
-	cp := *a; m.automations[a.ID] = &cp
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a.ID = m.id()
+	a.CreatedAt = time.Now()
+	cp := *a
+	m.automations[a.ID] = &cp
 	return a.ID, nil
 }
 
 func (m *MemStore) GetAutomation(_ context.Context, id int64) (*model.Automation, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	a, ok := m.automations[id]
 	if !ok {
 		return nil, fmt.Errorf("automation %d: %w", id, ErrNotFound)
@@ -29,7 +33,8 @@ func (m *MemStore) GetAutomation(_ context.Context, id int64) (*model.Automation
 }
 
 func (m *MemStore) ListAutomations(_ context.Context, enabledOnly bool) ([]model.Automation, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	out := []model.Automation{}
 	for _, a := range m.automations {
 		if enabledOnly && !a.Enabled {
@@ -42,23 +47,39 @@ func (m *MemStore) ListAutomations(_ context.Context, enabledOnly bool) ([]model
 }
 
 func (m *MemStore) UpdateAutomation(_ context.Context, id int64, p AutomationPatch) error {
-	m.mu.Lock(); defer m.mu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	a, ok := m.automations[id]
 	if !ok {
 		return fmt.Errorf("automation %d: %w", id, ErrNotFound)
 	}
-	if p.AgentID != nil { a.AgentID = *p.AgentID }
-	if p.Name != nil { a.Name = *p.Name }
-	if p.CronExpr != nil { a.CronExpr = *p.CronExpr }
-	if p.Title != nil { a.Title = *p.Title }
-	if p.Prompt != nil { a.Prompt = *p.Prompt }
-	if p.Priority != nil { a.Priority = *p.Priority }
-	if p.Enabled != nil { a.Enabled = *p.Enabled }
+	if p.AgentID != nil {
+		a.AgentID = *p.AgentID
+	}
+	if p.Name != nil {
+		a.Name = *p.Name
+	}
+	if p.CronExpr != nil {
+		a.CronExpr = *p.CronExpr
+	}
+	if p.Title != nil {
+		a.Title = *p.Title
+	}
+	if p.Prompt != nil {
+		a.Prompt = *p.Prompt
+	}
+	if p.Priority != nil {
+		a.Priority = *p.Priority
+	}
+	if p.Enabled != nil {
+		a.Enabled = *p.Enabled
+	}
 	return nil
 }
 
 func (m *MemStore) DeleteAutomation(_ context.Context, id int64) error {
-	m.mu.Lock(); defer m.mu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if _, ok := m.automations[id]; !ok {
 		return fmt.Errorf("automation %d: %w", id, ErrNotFound)
 	}
@@ -67,7 +88,8 @@ func (m *MemStore) DeleteAutomation(_ context.Context, id int64) error {
 }
 
 func (m *MemStore) MarkAutomationRan(_ context.Context, id int64, lastRun, nextRun time.Time) error {
-	m.mu.Lock(); defer m.mu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	a, ok := m.automations[id]
 	if !ok {
 		return fmt.Errorf("automation %d: %w", id, ErrNotFound)

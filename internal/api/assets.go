@@ -84,10 +84,18 @@ func (s *Server) patchWorkspace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	patch := store.WorkspacePatch{}
-	if v, ok := in["name"].(string); ok { patch.Name = &v }
-	if v, ok := in["branch"].(string); ok { patch.Branch = &v }
-	if v, ok := in["note"].(string); ok { patch.Note = &v }
-	if v, ok := in["status"].(string); ok { patch.Status = &v }
+	if v, ok := in["name"].(string); ok {
+		patch.Name = &v
+	}
+	if v, ok := in["branch"].(string); ok {
+		patch.Branch = &v
+	}
+	if v, ok := in["note"].(string); ok {
+		patch.Note = &v
+	}
+	if v, ok := in["status"].(string); ok {
+		patch.Status = &v
+	}
 	if err := s.Store.UpdateWorkspace(r.Context(), pathID(r), patch); err != nil {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
@@ -157,9 +165,15 @@ func (s *Server) patchSkill(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusNotFound, err)
 		return
 	}
-	if strings.TrimSpace(in.Name) != "" { sk.Name = in.Name }
-	if strings.TrimSpace(in.Content) != "" { sk.Content = in.Content }
-	if in.Tags != nil { sk.Tags = in.Tags }
+	if strings.TrimSpace(in.Name) != "" {
+		sk.Name = in.Name
+	}
+	if strings.TrimSpace(in.Content) != "" {
+		sk.Content = in.Content
+	}
+	if in.Tags != nil {
+		sk.Tags = in.Tags
+	}
 	if err := s.Store.UpdateSkill(r.Context(), sk); err != nil {
 		writeErr(w, http.StatusInternalServerError, err)
 		return

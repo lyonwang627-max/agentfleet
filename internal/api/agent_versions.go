@@ -61,12 +61,25 @@ func (s *Server) rollbackAgent(w http.ResponseWriter, r *http.Request) {
 	}
 	// 快照覆盖当前配置（缺失字段不覆盖）
 	patch := store.AgentPatch{}
-	if v, ok := target.Config["name"].(string); ok { patch.Name = &v }
-	if v, ok := target.Config["role"].(string); ok { patch.Role = &v }
-	if v, ok := target.Config["system_prompt"].(string); ok { patch.SystemPrompt = &v }
-	if v, ok := target.Config["model"].(string); ok { patch.Model = &v }
-	if v, ok := target.Config["runner"].(string); ok { patch.Runner = &v }
-	if v, ok := target.Config["max_concurrency"].(float64); ok { n := int(v); patch.MaxConcurrency = &n }
+	if v, ok := target.Config["name"].(string); ok {
+		patch.Name = &v
+	}
+	if v, ok := target.Config["role"].(string); ok {
+		patch.Role = &v
+	}
+	if v, ok := target.Config["system_prompt"].(string); ok {
+		patch.SystemPrompt = &v
+	}
+	if v, ok := target.Config["model"].(string); ok {
+		patch.Model = &v
+	}
+	if v, ok := target.Config["runner"].(string); ok {
+		patch.Runner = &v
+	}
+	if v, ok := target.Config["max_concurrency"].(float64); ok {
+		n := int(v)
+		patch.MaxConcurrency = &n
+	}
 	if raw, ok := target.Config["tools"].([]any); ok {
 		tools := []string{}
 		for _, t := range raw {

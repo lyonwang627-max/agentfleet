@@ -25,7 +25,7 @@ func TestParseEveryMinute(t *testing.T) {
 }
 
 func TestParseStepAndList(t *testing.T) {
-	e := mustParse(t, "*/15 9-17 * * 1-5") // 工作日 9-17 点每 15 分钟
+	e := mustParse(t, "*/15 9-17 * * 1-5")                   // 工作日 9-17 点每 15 分钟
 	after := time.Date(2026, 11, 6, 10, 7, 0, 0, time.Local) // 周五
 	next := e.Next(after)
 	if next.Hour() != 10 || next.Minute() != 15 {

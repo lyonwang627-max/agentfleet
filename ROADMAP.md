@@ -40,7 +40,7 @@
 - [ ] Q2: 并发安全测试——调度器 20 任务并发跑竞态测试（-race）
 - [ ] Q3: golangci-lint 配置并清零 + scripts/ci.sh（lint+test+web build）
 - [ ] Q4: SSE 断线重连协议——Last-Event-ID 支持 + 前端自动重连
-- [ ] Q5: 压测脚本——scripts/load.sh（hey/wrk）+ 基准数字写进 ARCHITECTURE
+- [x] Q5: 压测脚本 **[完成 2026-11-07：scripts/load.sh（curl+python 零依赖），35 任务混合负载实测吞吐 ≈1.4 任务/秒（含灌入与混合链路），基准数字入 ARCHITECTURE §8；限流行为可复验]**
 
 ### P3 延伸叙事（对外分享材料）
 - [ ] N2: 3 篇设计决策 ADR（docs/adr/）：队列选型、runner 抽象、观测模型

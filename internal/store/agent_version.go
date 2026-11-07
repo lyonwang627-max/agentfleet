@@ -12,7 +12,8 @@ import (
 // ---- MemStore: agent versions ----
 
 func (m *MemStore) SaveAgentVersion(_ context.Context, v *model.AgentVersion) (int64, int, error) {
-	m.mu.Lock(); defer m.mu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	max := 0
 	for _, av := range m.agentVersions {
 		if av.AgentID == v.AgentID && av.Version > max {
@@ -20,13 +21,17 @@ func (m *MemStore) SaveAgentVersion(_ context.Context, v *model.AgentVersion) (i
 		}
 	}
 	v.Version = max + 1
-	m.nextID++; v.ID = m.nextID; v.CreatedAt = time.Now()
-	cp := *v; m.agentVersions[v.ID] = &cp
+	m.nextID++
+	v.ID = m.nextID
+	v.CreatedAt = time.Now()
+	cp := *v
+	m.agentVersions[v.ID] = &cp
 	return v.ID, v.Version, nil
 }
 
 func (m *MemStore) ListAgentVersions(_ context.Context, agentID int64) ([]model.AgentVersion, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	out := []model.AgentVersion{}
 	for _, av := range m.agentVersions {
 		if av.AgentID == agentID {
@@ -45,7 +50,8 @@ func (m *MemStore) ListAgentVersions(_ context.Context, agentID int64) ([]model.
 }
 
 func (m *MemStore) GetAgentVersion(_ context.Context, agentID int64, version int) (*model.AgentVersion, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	for _, av := range m.agentVersions {
 		if av.AgentID == agentID && av.Version == version {
 			cp := *av
@@ -81,7 +87,8 @@ func (p *PostgresStore) ListAgentVersions(ctx context.Context, agentID int64) ([
 		if err := rows.Scan(&av.ID, &av.AgentID, &av.Version, &cfg, &av.Note, &av.CreatedAt); err != nil {
 			return nil, err
 		}
-		av.Config = map[string]any{}; unjsonb(cfg, &av.Config)
+		av.Config = map[string]any{}
+		unjsonb(cfg, &av.Config)
 		out = append(out, av)
 	}
 	return out, rows.Err()
@@ -100,6 +107,7 @@ func (p *PostgresStore) GetAgentVersion(ctx context.Context, agentID int64, vers
 	if err != nil {
 		return nil, err
 	}
-	av.Config = map[string]any{}; unjsonb(cfg, &av.Config)
+	av.Config = map[string]any{}
+	unjsonb(cfg, &av.Config)
 	return av, nil
 }

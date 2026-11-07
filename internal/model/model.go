@@ -22,35 +22,35 @@ type Agent struct {
 type TaskStatus string
 
 const (
-	TaskQueued  TaskStatus = "queued"
-	TaskRunning TaskStatus = "running"
-	TaskReview  TaskStatus = "review"
-	TaskDone    TaskStatus = "done"
-	TaskFailed  TaskStatus = "failed"
+	TaskQueued   TaskStatus = "queued"
+	TaskRunning  TaskStatus = "running"
+	TaskReview   TaskStatus = "review"
+	TaskDone     TaskStatus = "done"
+	TaskFailed   TaskStatus = "failed"
 	TaskCanceled TaskStatus = "canceled"
 )
 
 type Task struct {
-	ID            int64      `json:"id"`
-	Title         string     `json:"title"`
-	Prompt        string     `json:"prompt"`
-	AgentID       int64      `json:"agent_id"`
-	AgentName     string     `json:"agent_name,omitempty"`
-	Priority      int        `json:"priority"` // 1-9，9 最高
-	Status        TaskStatus `json:"status"`
-	DependsOn     []int64    `json:"depends_on"`
-	WorkspaceID   int64      `json:"workspace_id,omitempty"` // 绑定执行环境（0=不绑定）
-	SkillIDs      []int64    `json:"skill_ids,omitempty"`    // 引用的经验（创建时注入 prompt）
-	HandoffCount  int        `json:"-"`
-	MaxHandoffs   int        `json:"-"`
-	RetryCount    int        `json:"-"`
-	MaxRetries    int        `json:"-"`
-	VisibleAfter  time.Time  `json:"-"`
-	Result        string     `json:"result,omitempty"`
-	Error         string     `json:"error,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
-	StartedAt     *time.Time `json:"started_at"`
-	FinishedAt    *time.Time `json:"finished_at"`
+	ID           int64      `json:"id"`
+	Title        string     `json:"title"`
+	Prompt       string     `json:"prompt"`
+	AgentID      int64      `json:"agent_id"`
+	AgentName    string     `json:"agent_name,omitempty"`
+	Priority     int        `json:"priority"` // 1-9，9 最高
+	Status       TaskStatus `json:"status"`
+	DependsOn    []int64    `json:"depends_on"`
+	WorkspaceID  int64      `json:"workspace_id,omitempty"` // 绑定执行环境（0=不绑定）
+	SkillIDs     []int64    `json:"skill_ids,omitempty"`    // 引用的经验（创建时注入 prompt）
+	HandoffCount int        `json:"-"`
+	MaxHandoffs  int        `json:"-"`
+	RetryCount   int        `json:"-"`
+	MaxRetries   int        `json:"-"`
+	VisibleAfter time.Time  `json:"-"`
+	Result       string     `json:"result,omitempty"`
+	Error        string     `json:"error,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	StartedAt    *time.Time `json:"started_at"`
+	FinishedAt   *time.Time `json:"finished_at"`
 }
 
 func (t *Task) BlockedBy() []int64 { return t.DependsOn }
@@ -140,11 +140,11 @@ type UsageEvent struct {
 // ---- 评测 ----
 
 type EvalDataset struct {
-	ID          int64      `json:"id"`
-	Name        string     `json:"name"`
-	Description string     `json:"description"`
-	CaseCount   int        `json:"cases"`
-	CreatedAt   time.Time  `json:"created_at"`
+	ID          int64     `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	CaseCount   int       `json:"cases"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type EvalCase struct {
@@ -155,14 +155,14 @@ type EvalCase struct {
 }
 
 type EvalRun struct {
-	ID        int64     `json:"id"`
-	DatasetID int64     `json:"dataset_id"`
-	AgentID   int64     `json:"agent_id"`
-	Status    string    `json:"status"` // running | done | failed
-	ScoreAvg  float64   `json:"score_avg"`
-	PassRate  float64   `json:"pass_rate"`
+	ID        int64       `json:"id"`
+	DatasetID int64       `json:"dataset_id"`
+	AgentID   int64       `json:"agent_id"`
+	Status    string      `json:"status"` // running | done | failed
+	ScoreAvg  float64     `json:"score_avg"`
+	PassRate  float64     `json:"pass_rate"`
 	Report    *EvalReport `json:"report,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt time.Time   `json:"created_at"`
 }
 
 // Prescription RSI 处方（F17）：评测驱动的 system_prompt 改进建议（应用走版本管理可回滚）。
@@ -229,13 +229,13 @@ type Artifact struct {
 
 // Workspace 执行环境：任务绑定的独立工作目录（对标 Multica worktree / Orca folder context）。
 type Workspace struct {
-	ID        int64      `json:"id"`
-	Name      string     `json:"name"`
-	RootPath  string     `json:"root_path"`
-	Branch    string     `json:"branch"`
-	Note      string     `json:"note"`
-	Status    string     `json:"status"` // active | archived
-	CreatedAt time.Time  `json:"created_at"`
+	ID        int64     `json:"id"`
+	Name      string    `json:"name"`
+	RootPath  string    `json:"root_path"`
+	Branch    string    `json:"branch"`
+	Note      string    `json:"note"`
+	Status    string    `json:"status"` // active | archived
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // Skill 经验沉淀：任务完成后固化的可复用 SOP/要点，创建任务时可引用注入（对标 Multica compound skills）。

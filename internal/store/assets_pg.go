@@ -107,11 +107,22 @@ func (p *PostgresStore) ListWorkspaces(ctx context.Context, activeOnly bool) ([]
 
 func (p *PostgresStore) UpdateWorkspace(ctx context.Context, id int64, patch WorkspacePatch) error {
 	sets, args := []string{}, []any{id}
-	add := func(col string, v any) { args = append(args, v); sets = append(sets, fmt.Sprintf("%s=$%d", col, len(args))) }
-	if patch.Name != nil { add("name", *patch.Name) }
-	if patch.Branch != nil { add("branch", *patch.Branch) }
-	if patch.Note != nil { add("note", *patch.Note) }
-	if patch.Status != nil { add("status", *patch.Status) }
+	add := func(col string, v any) {
+		args = append(args, v)
+		sets = append(sets, fmt.Sprintf("%s=$%d", col, len(args)))
+	}
+	if patch.Name != nil {
+		add("name", *patch.Name)
+	}
+	if patch.Branch != nil {
+		add("branch", *patch.Branch)
+	}
+	if patch.Note != nil {
+		add("note", *patch.Note)
+	}
+	if patch.Status != nil {
+		add("status", *patch.Status)
+	}
 	if len(sets) == 0 {
 		return nil
 	}

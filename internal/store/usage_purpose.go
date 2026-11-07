@@ -11,7 +11,8 @@ import (
 // ---- MemStore: usage by purpose ----
 
 func (m *MemStore) UsageByPurpose(_ context.Context, window time.Duration) ([]model.UsageEvent, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	cutoff := time.Now().Add(-window)
 	byPurpose := map[string]*model.UsageEvent{}
 	for _, u := range m.usage {
