@@ -117,3 +117,7 @@
 ## 2026-11-07 F18 路由 A/B 与升级率（切片 c，F18 收口）
 
 - **F18-c 完成（F18 三片全部收口）**：①GET /evals/compare——两次评测对比（score/pass_rate delta、quality_held 判定 |Δ|<1、verdict pass|regression|improvement、case 级结论翻转统计）；②GET /routing/stats——升级率=重试任务占比（健康区间 5-15%，三态：>30% tier-S-overloaded / <5%且样本≥20 M-underused / healthy）。单测：improvement 判定 + case 翻转计数。**诚实边界**：决策 p99 与一致率需 per-decide 延迟采集与双判基建，已标注后续。F18（ADR-0002 模型分层路由）三片全部完成。验证：go 7 包全绿
+
+## 2026-11-07 F15 chat 流式（切片 a）
+
+- **F15-a/2 完成**：gateway.StreamChat（native /api/chat stream:true，NDJSON 增量解析，token 数优先取服务端 eval_count；mock 逐字输出保确定性）+ POST /chat/stream（chunked text 流 + 末行 @@META@@ 协议：conversation_id/tokens/error；流内生成失败也保证会话/用量落库）。单测：chunk 内容/META 解析/双消息落库。修 3 次测试小错（未用导入×2、缺 agent 种子）。剩余 F15-b 前端 fetch reader 消费。验证：go 7 包全绿

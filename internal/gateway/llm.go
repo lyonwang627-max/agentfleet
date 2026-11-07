@@ -191,6 +191,68 @@ func envOrStr(key, def string) string {
 	return def
 }
 
+// StreamChat 流式生成（F15）：native /api/chat stream:true，NDJSON 增量 → onChunk 回调。
+// 每个增量是已确认的新文本片段（非全量）；返回 token 数（优先服务端 eval_count）。
+func (l *LLM) StreamChat(ctx context.Context, system, user string, maxTokens int, onChunk func(string)) (int, error) {
+	if l.Mode == "mock" {
+		full := "(mock) " + user
+		for _, r := range []rune(full) {
+			onChunk(string(r))
+		}
+		return len([]rune(full)), nil
+	}
+	if maxTokens <= 0 {
+		maxTokens = 1024
+	}
+	payload := map[string]any{
+		"model":    l.Model,
+		"messages": []chatMessage{{Role: "system", Content: system}, {Role: "user", Content: user}},
+		"stream":   true,
+		"think":    false,
+		"options":  map[string]any{"temperature": 0.3, "num_predict": maxTokens},
+	}
+	body, _ := json.Marshal(payload)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, l.BaseURL+"/api/chat", strings.NewReader(string(body)))
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := l.client.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("ollama stream: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("ollama stream: http %d", resp.StatusCode)
+	}
+
+	tokens := 0
+	dec := json.NewDecoder(resp.Body)
+	for {
+		var chunk struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+			Done      bool `json:"done"`
+			EvalCount int  `json:"eval_count"`
+		}
+		if err := dec.Decode(&chunk); err != nil {
+			break // EOF 或损坏行：流结束
+		}
+		if chunk.Message.Content != "" {
+			onChunk(chunk.Message.Content)
+		}
+		if chunk.Done {
+			if chunk.EvalCount > 0 {
+				tokens = chunk.EvalCount
+			}
+			break
+		}
+		tokens++
+	}
+	return tokens, nil
+}
+
 type chatMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`

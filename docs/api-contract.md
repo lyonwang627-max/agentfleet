@@ -83,6 +83,10 @@ SSE 事件：`automation.fired`（触发建任务）/ `automation.update`（CRUD
 ### GET /models（v1.4 模型可选化）→ `{"models":[{"name","provider":"ollama|builtin","available":bool}]}`
 动态发现：Ollama `/api/tags` 已装列表 + 内置 mock，不硬编码。Agent 表单据此渲染下拉框（后端不可达时前端降级为自由输入）。
 
+### POST /chat/stream（v1.4 新增，F15 流式）body 同 /chat
+响应为 chunked text 流：正文为增量文本片段；末行 `\n\n@@META@@{conversation_id, tokens, error}`。
+会话落库与用量计量与同步版一致（purpose=chat）。前端用 fetch + ReadableStream 消费。
+
 ## 会话回放（v1.4 新增，F6）
 ### GET /conversations → `{"items":[{"id","agent_id","agent_name","title","message_count","run_count","created_at"}],"total":n}`（最新在前，limit 50）
 ### GET /conversations/{id} → `{"id","agent_id","agent_name","title","created_at","messages":[{id,role,content,created_at}],"runs":[…]}`

@@ -31,7 +31,7 @@
 - [ ] F12: OTel trace 导出——自有 run_steps 映射 OpenTelemetry span，OTLP HTTP 导出（可选项）
 - [ ] F13: 调度事件驱动——PG LISTEN/NOTIFY 多实例唤醒（对齐 ARCHITECTURE 升级触发条件）；**扩充（ADR-0001）：两级事件过滤——规则 Fast Path（来源/类型白名单）初筛 + LLM Slow Path 复核（借鉴 dsh-superagent）** **[F13-a/2 完成 2026-11-07：进程内事件驱动唤醒——Wake() 非阻塞合并 chan，建任务/审批/retry/automations 全接线；实测派发延迟 800ms→94ms；race 模式 7 包全绿。剩余 F13-b：PG LISTEN/NOTIFY 多实例 + 两级事件过滤]**
 - [x] F14: 进展看门狗——定时扫 running 超阈值任务，run_steps 摘要喂模型判断「有无实质进展」，跑偏则触发重试/告警事件（借鉴 dsh-superagent Watchdog；与 F11 多轮循环互为安全网；现有资源看门狗 sweepBudgets 只看预算不看进展）**[完成 2026-11-06：watchdog.go（JudgeProgress 独立函数+fail-open 单测：judge 缺失/不健康/输出异常一律放行）+ 2min 流控 + task.stalled 事件 + failTask 重试；mock 环境实测不误杀]**
-- [ ] F15: chat 异步流式——试聊台长回复改 SSE 流式（start/stop 异步全双工思想，后台跑 LLM 前台不阻塞）
+- [ ] F15: chat 异步流式——试聊台长回复改流式 **[F15-a/2 完成 2026-11-07：gateway.StreamChat（native stream:true NDJSON 增量解析，mock 逐字）+ POST /chat/stream（chunked text + @@META@@ 尾行协议）+ 会话/用量落库与同步版一致 + 单测（chunk 内容/META 解析/双消息落库）。剩余 F15-b：前端试聊台 fetch reader 消费]**
 - [x] F16: AI 预审审批门——review 状态任务先过无工具预审模型（评估操作风险+给 approve/deny 建议+理由，借鉴 LoopForge 独立审查代批：无工具无凭证、指令注入隔离），人只终审；预审结果落 trace（kind=gate）**[完成 2026-11-06：POST /tasks/{id}/precheck + 契约 v1.3 + trace 留痕 + SSE task.precheck；实弹真模型判 needs_human/high 风险理由专业；LLM 不可用 503 人工兜底；修字符串截断越界 panic]**
 - [x] F17: RSI 处方闭环——eval 报告 → LLM 处方 → 一键应用（版本管理发布，可回滚）→ 再评测验证 **[完成 2026-11-07：POST /evals/{id}/prescription（失败 case 诊断→system_prompt_addition 行为约束级处方）+ POST /agents/{id}/apply-prescription（追加 prompt+版本链发布）；实弹：代码评审评测→处方诊断「双写时序错误」→应用后 system_prompt 含处方段落、版本链可追溯]**
 
