@@ -265,3 +265,7 @@
 ## 2026-11-07 深度冲刺切片 6（I29 审批风险分级）
 
 - **I29 完成**：Task/Result 加 RiskLevel（low/medium/high）+ mock 按关键词定级（不可逆操作→high）+ 调度器 review 门带 risk 标注 + **high 任务 approve 无意见 400**（强制留痕）+ precheck risk=high 写回 task（F16 联动）。**顺手修一个测试基建缺陷**：Server.Hub nil 时直调 handler panic——加 s.publish nil 守卫封装并统一全部子文件调用点。单测：三级策略断言。验证：go 9 包全绿
+
+## 2026-11-07 自驱迭代切片 24（A 测试扩充）
+
+- **I29 调度器侧分级策略回归锁**：TestRiskLevelReviewGate——高风险/中风险双任务各自进 review 后，断言 gate step 的 Input.risk 标注（high/medium 分别验证）+ task.update 事件流带 risk_level=high。修 1 处测试类型断言（Event.Data 是 any 接口，需 json round-trip 后取 map）。验证：scheduler 包测试全绿（含此新组）
