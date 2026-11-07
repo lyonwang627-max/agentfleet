@@ -12,9 +12,9 @@
   验收：cancel 后在途 run 的 ctx 被取消，任务终态为 canceled 且不再被 runner 结果覆盖；集成测试覆盖。
 - [x] **I2 Prometheus /metrics 端点** `done`（2026-11-07）
   实现：GET /metrics 手写 exposition（零 client 依赖）——tasks_by_status/tasks_total/agents_enabled/tokens_total{purpose,model}/rate_limit_rejected_total/eval_runs_total/uptime_seconds，HELP+TYPE 头按指标名去重；单测锁死关键行。压测对照可用。
-- [ ] **I3 Agent 克隆** `proposed` `S`
-  动意：Multica 心智——从现有 agent 派生变体调参；配合版本管理（克隆体继承最新版本快照）。
-  验收：POST /agents/{id}/clone → 新 agent 配置同快照、名称自动加后缀；前端舰队页加克隆按钮。
+- [x] **I3 Agent 克隆** `done`（2026-11-07，后端）
+  实现：POST /agents/{id}/clone——配置全复制（含 token 预算）、名称自动去重（-clone/-clone-2）、
+  全新版本链 v1（不继承历史，回溯看源 agent）、克隆体默认启用。单测：配置复制/命名去重/独立性（改克隆不污染源）/版本链新起。前端克隆按钮待 F 系列后续切片。
 - [ ] **I4 评测数据集导入导出** `proposed` `S`
   动机：数据集可移植（JSON 下载/上传），便于备份与分享；F17 处方闭环的再评测需要稳定数据集。
   验收：GET /eval-datasets/{id}/export 下载 JSON；POST 导入幂等；契约新增。

@@ -86,6 +86,9 @@ body `{"agent_id":1,"name":"晨会摘要","cron_expr":"30 9 * * 1-5","title":"�
 ### POST /automations/{id}/enable | /automations/{id}/disable → `{"id":1,"enabled":true}`
 SSE 事件：`automation.fired`（触发建任务）/ `automation.update`（CRUD 变更）
 
+### POST /agents/{id}/clone（v1.4 新增，I3）body 可选 `{"name":"自定义名"}`
+→ `{"id","name","cloned_from"}`；配置全复制、名称自动去重、全新版本链（v1=源当前配置）、默认启用
+
 ### GET /models（v1.4 模型可选化）→ `{"models":[{"name","provider":"ollama|builtin","available":bool}]}`
 动态发现：Ollama `/api/tags` 已装列表 + 内置 mock，不硬编码。Agent 表单据此渲染下拉框（后端不可达时前端降级为自由输入）。
 

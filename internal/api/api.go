@@ -48,6 +48,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/v1/agents/{id}/disable", s.setAgent(false))
 
 	// agent versions（F2：发布/回滚）
+	mux.HandleFunc("POST /api/v1/agents/{id}/clone", s.cloneAgent)     // 克隆派生（I3）
 	mux.HandleFunc("POST /api/v1/agents/{id}/publish", s.publishAgent)
 	mux.HandleFunc("GET /api/v1/agents/{id}/versions", s.listAgentVersions)
 	mux.HandleFunc("POST /api/v1/agents/{id}/versions/{version}/rollback", s.rollbackAgent)

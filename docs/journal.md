@@ -197,3 +197,11 @@
 ## 2026-11-07 自驱迭代切片 14（C 自提开发 I15）
 
 - **I15 eino 回调桥接完成**：TraceHandler（callbacks.Handler 五时点 + TimingChecker）→ fleetd run_steps；ctx 双通道设计（callbacks.InitCallbacks 注入切面 + TraceSinkKey 私有 key 传 sink——两套上下文值空间隔离）。实现坑（读内部源码解决）：StreamReader 泛型参数是 callbacks.CallbackOutput 而非 schema.Message；TimingChecker.Needed 带 ctx/info/timing 三参；流副本必须 Close 否则整条管道泄漏（eino 契约）。单测：三时点断言 + Generate 全链路。验证：eino tag 构建/vet/测试全过 + 主构建零影响
+
+## 2026-11-07 自驱迭代切片 15（B 开源调研）
+
+- **OpenHands Runtime 沙箱调研**（docs/research/openhands-runtime-sandbox.md）：每会话一容器 + agent server 端点化 + action 级 LLM 安全分析；对 agentfleet 借鉴按成本递增=workspace 状态机（S）→ Runtime 接口三实现（M，I16 入池——接真 coding-agent runner 的前置）→ action 级安全分析（与 F16 同源）；明确不抄容器默认化与 LLM 门禁默认化（成本论证）。已推送 463b25e
+
+## 2026-11-07 自驱迭代切片 16（C 自提开发 I3）
+
+- **I3 Agent 克隆完成（后端）**：POST /agents/{id}/clone——配置全复制（含 token 预算）、名称自动去重（-clone/-clone-2）、全新版本链 v1（回溯看源 agent）、默认启用。单测：配置复制/命名去重/独立性/版本链新起 4 断言。前端克隆按钮留后续切片。验证：go 9 包全绿
