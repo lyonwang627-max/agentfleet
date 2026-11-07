@@ -36,10 +36,10 @@
   动机：现在认领顺序固定 priority+id；把「选哪个任务」抽成 Strategy 接口（默认/fairness/deadline），为不同业务形态留扩展点。
   验收：接口 + 默认实现迁移 + 策略单测；行为不回归。
 
-- [ ] **I11 run 步级断点续跑** `proposed` `M`（源自 langgraph-checkpointer 调研，见 docs/research/）
-  动机：现在 run 失败只能整任务重试；借鉴 LangGraph checkpointer 的「从任意 checkpoint 恢复」——
-  给 run 步骤加确定性/非确定性标注（tool 步可跳过重放，llm 步不可），重试时从失败步骤继续，trace 标注 resumed_from。
-  验收：含 2+ tool 步的任务失败重试后，已完成 tool 步不重复执行（trace 可见 resumed_from 标记）；与 F11 Spill 组合。
+- [ ] **I11 run 步级断点续跑** `proposed` `M`（源自 langgraph-checkpointer + temporal-replay 两篇调研，见 docs/research/）
+  动机：现在 run 失败只能整任务重试；借鉴 LangGraph checkpoint 恢复 + Temporal 结果重放语义——
+  run 步骤标注确定性/非确定性：**确定性步（tool 调用）重试时返回已记录观察（Temporal 语义：结果重放而非跳过）**，非确定性步（llm）重新执行；trace 标注 resumed_from。
+  验收：含 2+ tool 步的任务失败重试后，tool 步观察来自已记录结果（不重复调用 MCP）；跨 agent 版本（F2 version）变化的续跑请求被拒绝并提示重新评估；与 F11 Spill 组合。
 
 - [x] **I13 任务状态漂移检测器** `done`（2026-11-07，源自 openhands-event-stream 调研）
   实现：GET /tasks/{id}/consistency——replayTaskStatus 纯函数折叠 task.update 事件（终态屏蔽后续/审批回退合法路径）派生应有状态 vs tasks.status；人为制造漂移检出 ✓ 正常零误报 ✓。测试技巧：直调 handler 时需 r.SetPathValue 注入路径参数（绕过 mux 匹配，PathValue 才有值）
