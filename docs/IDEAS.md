@@ -77,6 +77,10 @@
 - [x] **I24 并发闸占用超时告警** `done`（2026-11-07）
   实现：闸获取 select 加超时分支——超时任务延迟重排队（非 failed，拥塞不是错误）+ agent.gate_timeout 事件。**架构认知（测试确立）**：ClaimNextTask 已在认领时强制并发检查，闸超时只覆盖「认领与执行之间的竞态窗口」——卡死占闸的主场景由看门狗（运行中任务）与依赖级联（queued 任务）治理。单测：手动占闸 + 直调 execute 精确命中竞态窗口。
 
+- [ ] **I28 步骤级 LLM 路由** `proposed` `M`（源自 eino-adk-supervisor 调研，见 docs/research/）
+  动机：F11 多轮循环的工具选择是固定 JSON 协议；借鉴 eino ADK supervisor——decide 阶段基于「能力描述」由 LLM 选择委派对象（工具/子能力），supervisor 模式下沉到 run 内部。
+  验收：工具池带描述元数据；decide 提示含能力清单；与现有 handoff/审批语义兼容。
+
 ## 已完成（沉淀记录）
 
 - ~~任务级模型路由~~（F18-b，ADR-0002）
