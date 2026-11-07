@@ -245,3 +245,7 @@
 ## 2026-11-07 自驱迭代切片 21（A 测试扩充）
 
 - **Agent 版本管理 HTTP 层直测**（F2 handler 此前仅 store 级覆盖）：publish 201 → list v1 → rollback 200 产生 v2 → 链 2 条最新 v2。修 2 处测试自身问题：SetPathValue 的 version 段提取（rollback 路径 version 在倒数第二段）。验证：go 9 包全绿
+
+## 2026-11-07 深度冲刺切片 6（I21 Prompt 模板变量）
+
+- **I21 完成**：renderTemplate 纯函数——六变量（task.title/id、workspace.path/branch/name、agent.name）；设计原则三条：未知变量原样保留（写错被看见）、无模板快路径零开销、渲染只发生在执行副本（与 skill/workspace 注入同通道）。5 组单测。验证：go 9 包全绿

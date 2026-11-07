@@ -283,7 +283,7 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 		execPrompt += sb.String()
 	}
 	execTask := task
-	execTask.Prompt = execPrompt
+	execTask.Prompt = renderTemplate(execPrompt, &task, ws, agent.Name)
 
 	run := &model.Run{TaskID: task.ID, AgentID: agent.ID}
 	runID, err := s.store.CreateRun(ctx, run)

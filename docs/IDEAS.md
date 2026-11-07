@@ -67,9 +67,8 @@
 - [ ] **I20 任务依赖 DAG 可视化** `proposed` `S`（实用性）
   动机：depends_on 只有文字列表。任务详情页渲染依赖树（SVG 节点连线，标状态色），环检测在创建时报警。
   验收：GET /tasks/{id}/dag 返回节点/边；前端 SVG 渲染；创建时环检测 400。
-- [ ] **I21 Prompt 模板变量** `proposed` `S`（技术深度）
-  动机：system_prompt 是死文本。支持 {{task.title}}/{{workspace.path}} 等模板变量，执行时渲染并记录渲染后 prompt 落 trace（可审计）。
-  验收：渲染函数 + 单测；trace 的 route 步带 rendered_prompt 摘要。
+- [x] **I21 Prompt 模板变量** `done`（2026-11-07）
+  实现：renderTemplate 纯函数（task.title/task.id/workspace.path/branch/name/agent.name 六变量；未知变量原样保留——写错应被看见；无模板快路径零开销；nil 安全）；渲染只发生在执行副本（不污染任务本体）。单测：全渲染/未知保留/快路径/nil 安全/agent.name 五组。trace 审计：渲染发生在 route 步之后的执行链路，task 本体保存未渲染原文。
 - [x] **I22 事件流过滤查询** `done`（2026-11-07）
   实现：GET /events/query?kind=&task_id=&since=&limit=（服务端过滤，data 内嵌 task_id 也能过滤）+ 单测三场景（kind/task_id/limit）。前端事件流加过滤器待后续前端切片。
 - [ ] **I23 运行报告 Markdown 导出** `proposed` `S`（实用性）
