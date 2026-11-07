@@ -177,3 +177,7 @@
 ## 2026-11-07 自驱迭代切片 9（C 自提开发 I2）
 
 - **I2 /metrics 完成**：手写 Prometheus exposition（零 client 依赖）——任务状态分布/agents/usage 按用途与模型分桶/限流拒绝/评测数/uptime，HELP+TYPE 按指标名去重；聚合失败静默降级（metrics 不 500）。单测锁死 5 组关键行。压测对照口径就位。验证：go 8 包全绿
+
+## 2026-11-07 自驱迭代切片 10（A 测试扩充）
+
+- **runner 剧本分支直测 6 组**：extractAfter 空格回归锁（实弹 bug 回归）/审批放行分支/审批门分支/handoff 先于审批判定/搜索工具步与决策解耦/失败分支触发重试；**seed 冒烟 1 组**：一次 seed 产出 5 agent 舰队+4 任务+3 评测集 24 case+workspace+skill+automation，二次 seed 幂等。验证：go 9 包全绿
