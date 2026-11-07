@@ -269,3 +269,7 @@
 ## 2026-11-07 自驱迭代切片 24（A 测试扩充）
 
 - **I29 调度器侧分级策略回归锁**：TestRiskLevelReviewGate——高风险/中风险双任务各自进 review 后，断言 gate step 的 Input.risk 标注（high/medium 分别验证）+ task.update 事件流带 risk_level=high。修 1 处测试类型断言（Event.Data 是 any 接口，需 json round-trip 后取 map）。验证：scheduler 包测试全绿（含此新组）
+
+## 2026-11-07 补记：修 publish 无限递归
+
+- 上一轮的 python 正则把 publish 方法**自身的** s.Hub.Publish 也替换成了 s.publish（无限递归 → 栈溢出）。教训：**批量替换调用点前，先把定义处排除**（或替换后立即跑构建）。修正后 9 包全绿。

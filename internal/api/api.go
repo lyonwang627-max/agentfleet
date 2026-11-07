@@ -37,7 +37,7 @@ func (s *Server) SetRateLimit(perMinute int) { s.limiter = NewRateLimiter(perMin
 // publish 事件发布（nil 守卫）：测试直调 handler 时 Hub 可能为 nil。
 func (s *Server) publish(ctx context.Context, kind string, data map[string]any) {
 	if s.Hub != nil {
-		s.publish(ctx, kind, data)
+		s.Hub.Publish(ctx, kind, data)
 	}
 }
 
