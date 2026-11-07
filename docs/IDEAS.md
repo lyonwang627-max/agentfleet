@@ -59,6 +59,28 @@
   run_steps 加 parent_seq（循环观察步挂 decide 步下）+ 新 run 携 parent_run_id（handoff 链成树），瀑布图缩进渲染 + 跨 run 跳转。
   验收：handoff 后新 run 首步带 parent_run_id；瀑布图缩进展示嵌套；与 I15/F12 共用层级数据。
 
+- [ ] **I18 死信队列与手动重放** `proposed` `M`（生产深度，对标 MQ 死信语义）
+  动机：failed 任务与 done 混在列表里，重试语义模糊。failed 超过 max_retries 的任务进死信区（独立列表），支持查看失败上下文（最后 run 的错误与 trace 摘要）与一键重放（清 retry 计数重排队）。
+  验收：GET /tasks?dlq=true 死信列表；POST /tasks/{id}/replay 重置重试计数；集成测试覆盖「重试耗尽→死信→重放→成功」。
+- [ ] **I19 API Key 认证中间件** `proposed` `M`（生产深度，补全 F8 限流键升级路径）
+  动机：目前无认证（内网演示定位），但向一线产品看齐必须有鉴权层。X-API-Key 中间件 + api_keys 表（key 哈希/scopes/最近使用）+ 限流键从 IP 换 key。
+  验收：api_keys CRUD + 中间件校验（无 key 401/错 key 403/按 scope 放行）；--auth flag 开关默认关闭；限流键升级接线。
+- [ ] **I20 任务依赖 DAG 可视化** `proposed` `S`（实用性）
+  动机：depends_on 只有文字列表。任务详情页渲染依赖树（SVG 节点连线，标状态色），环检测在创建时报警。
+  验收：GET /tasks/{id}/dag 返回节点/边；前端 SVG 渲染；创建时环检测 400。
+- [ ] **I21 Prompt 模板变量** `proposed` `S`（技术深度）
+  动机：system_prompt 是死文本。支持 {{task.title}}/{{workspace.path}} 等模板变量，执行时渲染并记录渲染后 prompt 落 trace（可审计）。
+  验收：渲染函数 + 单测；trace 的 route 步带 rendered_prompt 摘要。
+- [ ] **I22 事件流过滤查询** `proposed` `S`（实用性）
+  动机：events 表已有全局 seq 但无查询端点。GET /events?kind=&task_id=&since=&limit= 服务端过滤，前端事件流可按类型/任务聚焦。
+  验收：端点 + 单测；前端事件流加过滤器。
+- [ ] **I23 运行报告 Markdown 导出** `proposed` `S`（实用性）
+  动机：run trace 是 JSON 视图；导出为可读 Markdown 报告（步骤表格+耗时+结果），归档/分享用。
+  验收：GET /runs/{id}/export.md；前端下载按钮。
+- [ ] **I24 并发闸占用超时告警** `proposed` `S`（技术深度）
+  动机：runner 卡死会占死并发闸（semaphore 无超时）。闸获取带超时并告警事件（与 F14 看门狗互补——看门狗看任务，这个看调度器自身）。
+  验收：闸获取超时告警事件 + 单测。
+
 ## 已完成（沉淀记录）
 
 - ~~任务级模型路由~~（F18-b，ADR-0002）
