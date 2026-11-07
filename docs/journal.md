@@ -233,3 +233,7 @@
 ## 2026-11-07 深度冲刺切片 4（I24 并发闸超时）
 
 - **I24 完成**：闸获取 select 加超时分支（150ms 可测覆盖/生产 60s）——超时任务延迟重排队（非 failed）+ agent.gate_timeout 事件。**架构认知（测试确立，比功能本身更有价值）**：ClaimNextTask 已在认领时强制并发检查——「runner 卡死占死并发闸」的担忧不成立（后续任务留在 queued 由看门狗/级联治理），闸超时仅覆盖认领-执行间的竞态窗口；测试因此改为手动占闸+直调 execute 精确命中。过程教训：drain 设计下测试收尾要先释放阻塞 runner（否则 Stop 死锁）；连续 Write 冲突三次——高竞争文件操作前必须 Read 最新态。验证：go 9 包全绿
+
+## 2026-11-07 自驱迭代切片 20（A 测试扩充）
+
+- **gateway.ChatRaw 3 组直测**：多消息透传+NDJSON/单响应解析（修测试自身错误：ChatRaw 是 stream:false 单响应语义，NDJSON 流式属 StreamChat——fake server 按语义修正）/HTTP 500 错误路径/mock 模式 fallback。ChatRaw 此前零测试（eino 适配器与多轮循环的底座）。验证：go 9 包全绿
