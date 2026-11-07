@@ -72,7 +72,7 @@ func TestDeadLetterListAndReplay(t *testing.T) {
 	}
 }
 
-func errPtr(s string) *string    { return &s }
-func intPtr(i int) *int          { return &i }
-func itoa(n int64) string        { return strings.TrimSpace(fmtInt(n)) }
-func fmtInt(n int64) string      { b, _ := json.Marshal(n); return string(b) }
+func errPtr(s string) *string { return &s }
+func intPtr(i int) *int       { return &i }
+func itoa(n int64) string     { return strings.TrimSpace(fmtInt(n)) }
+func fmtInt(n int64) string   { b, _ := json.Marshal(n); return string(b) }

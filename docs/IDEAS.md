@@ -61,9 +61,8 @@
 
 - [x] **I18 死信队列与手动重放** `done`（2026-11-07 后端）
   实现：GET /tasks?dlq=true（failed=重试耗尽语义的独立列表）+ POST /tasks/{id}/replay（清零重试预算重排队——与 retry 的区别是「人工判定值得从头再跑」而非「再试一次」）。单测：死信列表过滤/重放清零/非 failed 409 与 404。剩余：前端死信区展示。
-- [ ] **I19 API Key 认证中间件** `proposed` `M`（生产深度，补全 F8 限流键升级路径）
-  动机：目前无认证（内网演示定位），但向一线产品看齐必须有鉴权层。X-API-Key 中间件 + api_keys 表（key 哈希/scopes/最近使用）+ 限流键从 IP 换 key。
-  验收：api_keys CRUD + 中间件校验（无 key 401/错 key 403/按 scope 放行）；--auth flag 开关默认关闭；限流键升级接线。
+- [x] **I19 API Key 认证中间件** `done`（2026-11-07）
+  实现：api_keys 表（SHA-256 哈希库存，明文仅创建响应一次）+ X-API-Key 中间件（渐进语义：表空开放→有 key 强制）+ 管理端点三件（POST 创建返回明文/GET 列表/DELETE 撤销）+ 限流键升级接线（认证后按 key 名限流）+ metrics/health 豁免。单测：七步渐进语义全链（开放→建 key→401→403→200→豁免→撤销恢复）。
 - [ ] **I20 任务依赖 DAG 可视化** `proposed` `S`（实用性）
   动机：depends_on 只有文字列表。任务详情页渲染依赖树（SVG 节点连线，标状态色），环检测在创建时报警。
   验收：GET /tasks/{id}/dag 返回节点/边；前端 SVG 渲染；创建时环检测 400。

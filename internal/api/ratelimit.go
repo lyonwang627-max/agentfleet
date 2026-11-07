@@ -106,6 +106,14 @@ func clientIP(r *http.Request) string {
 	return host
 }
 
+// limiterKey 限流键：认证成功后为 key 名（auth 中间件写入 ctx），否则为 IP。
+func limiterKey(r *http.Request) string {
+	if v, ok := r.Context().Value(clientKeyCtx{}).(string); ok {
+		return v
+	}
+	return clientIP(r)
+}
+
 // rateLimitMiddleware 限流中间件：仅对变更类方法生效；拒绝时 429 + Retry-After。
 func (s *Server) rateLimitMiddleware(next http.Handler) http.Handler {
 	if s.limiter == nil {
@@ -114,7 +122,7 @@ func (s *Server) rateLimitMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost, http.MethodPatch, http.MethodDelete:
-			if !s.limiter.Allow(clientIP(r)) {
+			if !s.limiter.Allow(limiterKey(r)) { // 认证后按 key 名限流，否则按 IP（F8 升级路径）
 				s.limiter.rejected.Add(1)
 				w.Header().Set("Retry-After", strconv.Itoa(60))
 				writeErr(w, http.StatusTooManyRequests, errors.New("请求过于频繁，稍后再试（限流：变更类接口按 IP 令牌桶）"))

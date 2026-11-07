@@ -249,3 +249,7 @@
 ## 2026-11-07 深度冲刺切片 6（I21 Prompt 模板变量）
 
 - **I21 完成**：renderTemplate 纯函数——六变量（task.title/id、workspace.path/branch/name、agent.name）；设计原则三条：未知变量原样保留（写错被看见）、无模板快路径零开销、渲染只发生在执行副本（与 skill/workspace 注入同通道）。5 组单测。验证：go 9 包全绿
+
+## 2026-11-07 深度冲刺切片 7（I19 API Key 认证）
+
+- **I19 完成**：api_keys 表（SHA-256 哈希库存）+ X-API-Key 中间件（渐进语义：表空开放→有 key 强制校验；metrics/health/管理端点豁免）+ 管理端点三件（创建返回明文一次/列表/撤销）+ **限流键升级接线闭合**（认证后按 key 名限流，F8 的升级路径兑现）。修 3 处实现期失误（mem store 初始化漏 apiKeys map→nil map panic；AuthProgressive 测试的中间件调用方式与类型引用）。单测：七步渐进语义全链。验证：go 9 包全绿

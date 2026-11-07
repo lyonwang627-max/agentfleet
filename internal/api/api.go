@@ -48,7 +48,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/v1/agents/{id}/disable", s.setAgent(false))
 
 	// agent versions（F2：发布/回滚）
-	mux.HandleFunc("POST /api/v1/agents/{id}/clone", s.cloneAgent)     // 克隆派生（I3）
+	mux.HandleFunc("POST /api/v1/agents/{id}/clone", s.cloneAgent) // 克隆派生（I3）
 	mux.HandleFunc("POST /api/v1/agents/{id}/publish", s.publishAgent)
 	mux.HandleFunc("GET /api/v1/agents/{id}/versions", s.listAgentVersions)
 	mux.HandleFunc("POST /api/v1/agents/{id}/versions/{version}/rollback", s.rollbackAgent)
@@ -61,7 +61,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/v1/tasks/{id}/retry", s.taskAction)
 	mux.HandleFunc("POST /api/v1/tasks/{id}/cancel", s.taskAction)
 	mux.HandleFunc("POST /api/v1/tasks/{id}/approve", s.taskAction)
-	mux.HandleFunc("POST /api/v1/tasks/{id}/replay", s.taskAction) // I18 死信重放
+	mux.HandleFunc("POST /api/v1/tasks/{id}/replay", s.taskAction)     // I18 死信重放
 	mux.HandleFunc("POST /api/v1/tasks/{id}/precheck", s.precheckTask) // AI 预审（F16）
 
 	// runs & trace
@@ -111,7 +111,7 @@ func (s *Server) Routes() http.Handler {
 	// eval
 	mux.HandleFunc("GET /api/v1/eval-datasets", s.listDatasets)
 	mux.HandleFunc("GET /api/v1/eval-datasets/{id}/export", s.exportDataset) // I4 导出
-	mux.HandleFunc("POST /api/v1/eval-datasets/import", s.importDataset)    // I4 导入
+	mux.HandleFunc("POST /api/v1/eval-datasets/import", s.importDataset)     // I4 导入
 	mux.HandleFunc("GET /api/v1/evals", s.listEvals)
 	mux.HandleFunc("POST /api/v1/evals", s.createEval)
 	mux.HandleFunc("GET /api/v1/evals/{id}", s.getEval)
@@ -125,7 +125,7 @@ func (s *Server) Routes() http.Handler {
 		mux.Handle("/", h)
 	}
 
-	return logMiddleware(s.rateLimitMiddleware(mux))
+	return logMiddleware(s.authMiddleware(s.rateLimitMiddleware(mux)))
 }
 
 // ---- 通用 ----

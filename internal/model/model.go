@@ -250,6 +250,17 @@ type Skill struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
+// APIKey 认证凭据（I19）：明文只在创建响应出现一次，库存哈希。
+type APIKey struct {
+	ID          int64      `json:"id"`
+	Name        string     `json:"name"`
+	KeyHash     string     `json:"-"`
+	KeyPrefix   string     `json:"key_prefix"`
+	Scopes      string     `json:"scopes"`
+	LastUsedAt  *time.Time `json:"last_used_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+}
+
 // SSE 事件
 type Event struct {
 	Seq       int64     `json:"seq"`

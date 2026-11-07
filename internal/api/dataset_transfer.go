@@ -14,10 +14,10 @@ import (
 
 // DatasetExport 导出格式（契约稳定，可入 git）。
 type DatasetExport struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description"`
-	ExportedAt  string          `json:"exported_at"`
-	Cases       []ExportedCase  `json:"cases"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	ExportedAt  string         `json:"exported_at"`
+	Cases       []ExportedCase `json:"cases"`
 }
 
 type ExportedCase struct {

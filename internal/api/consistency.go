@@ -62,15 +62,14 @@ func (s *Server) taskConsistency(w http.ResponseWriter, r *http.Request) {
 	consistent := !seen || replayed == t.Status || t.Status == model.TaskCanceled
 	// canceled 任务的事件流可停在中间态（取消本身可不经事件标注），不算漂移
 	out := map[string]any{
-		"task_id":        id,
-		"actual_status":  string(t.Status),
+		"task_id":         id,
+		"actual_status":   string(t.Status),
 		"replayed_status": string(replayed),
-		"events_seen":    seen,
-		"consistent":     consistent,
+		"events_seen":     seen,
+		"consistent":      consistent,
 	}
 	if !consistent {
 		out["hint"] = "双写漂移：以 events 流重放结果为准排查（或确认是否为合法的审批回退路径）"
 	}
 	writeJSON(w, http.StatusOK, out)
 }
-

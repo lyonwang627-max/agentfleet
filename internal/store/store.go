@@ -96,6 +96,14 @@ type Store interface {
 	DeleteSkill(ctx context.Context, id int64) error
 	IncrSkillUsage(ctx context.Context, id int64) error
 
+	// api keys（I19 认证）
+	CreateAPIKey(ctx context.Context, name, keyHash, keyPrefix string) (int64, error)
+	ListAPIKeys(ctx context.Context) ([]model.APIKey, error)
+	FindAPIKeyByHash(ctx context.Context, keyHash string) (*model.APIKey, error)
+	DeleteAPIKey(ctx context.Context, id int64) error
+	TouchAPIKey(ctx context.Context, id int64) error
+	HasAnyAPIKey(ctx context.Context) (bool, error)
+
 	// events（SSE 增量拉取用）
 	AppendEvent(ctx context.Context, e *model.Event) (int64, error)
 	EventsSince(ctx context.Context, since int64, limit int) ([]model.Event, error)

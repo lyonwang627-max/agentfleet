@@ -28,6 +28,7 @@ type MemStore struct {
 	artifacts     map[int64]*model.Artifact
 	workspaces    map[int64]*model.Workspace
 	skills        map[int64]*model.Skill
+	apiKeys       map[int64]*model.APIKey
 	events        []model.Event
 	nextID        int64
 	lastEventSeq  int64
@@ -40,6 +41,7 @@ func NewMemStore() *MemStore {
 		convos: map[int64]*model.Conversation{}, msgs: map[int64][]model.Message{},
 		datasets: map[int64]*model.EvalDataset{}, cases: map[int64][]model.EvalCase{},
 		evalRuns: map[int64]*model.EvalRun{}, automations: map[int64]*model.Automation{},
+		apiKeys:       map[int64]*model.APIKey{},
 		agentVersions: map[int64]*model.AgentVersion{},
 		artifacts:     map[int64]*model.Artifact{},
 		workspaces:    map[int64]*model.Workspace{},
