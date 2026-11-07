@@ -141,3 +141,7 @@
 ## 2026-11-07 维护巡检（旧排程最后一响，已切维护节奏）
 
 - ci.sh 四段全过（gofmt/vet/race 测试/前端 build）；依赖探测：docker 不可用（F13-b 继续 等）、OTLP collector 不可达（F12 继续挂起）；offer-agent pytest 全绿。无动作项——下一班：明晚 02:30 维护班
+
+## 2026-11-07 自驱迭代切片 1（A 测试扩充）
+
+- **eval 包测试从 0 到 6 组**：expectedPoints 三形态解析 / expectedThreshold 缺省与越界回退 / fuzzyHit 语义（精确+关键词多数）/ scoreCase 启发式主链路（mock 网关确定性）/ finishWith 持久化 / ChatJSON 契约可达。eval 是评分核心此前零测试——本切片后全项目 8 包无一裸奔。验证：go 8 包全绿
