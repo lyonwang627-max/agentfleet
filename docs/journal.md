@@ -221,3 +221,7 @@
 ## 2026-11-07 深度冲刺切片 1（I18-a 死信队列后端）
 
 - **I18-a 完成**：GET /tasks?dlq=true（failed=重试耗尽语义独立列表）+ POST /tasks/{id}/replay（清零重试预算重排队，与 retry 语义区分：「人工判定值得从头再跑」）。修一个防御缺口：API 层 Sched.Wake() 调用点无 nil 守卫（测试直调 handler 时 panic）——生产同样受益。单测：死信列表过滤/replay 清零/404。验证：go 9 包全绿。剩余：I18-b 前端死信区
+
+## 2026-11-07 深度冲刺切片 2（I22 事件过滤查询）
+
+- **I22 完成**：GET /events/query?kind=&task_id=&since=&limit=——服务端过滤（data 内嵌 task_id 也可过滤），limit 默认 100 上限 1000；单测三场景（kind/task_id/limit）。与 SSE 实时流互补（SSE 管实时、本端点管历史）。验证：go 9 包全绿

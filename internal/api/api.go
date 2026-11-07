@@ -71,6 +71,7 @@ func (s *Server) Routes() http.Handler {
 
 	// 全局事件流
 	mux.HandleFunc("GET /api/v1/events", s.globalEvents)
+	mux.HandleFunc("GET /api/v1/events/query", s.queryEvents) // I22 过滤查询
 
 	// chat
 	mux.HandleFunc("POST /api/v1/chat", s.chat)

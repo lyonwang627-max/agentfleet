@@ -70,9 +70,8 @@
 - [ ] **I21 Prompt 模板变量** `proposed` `S`（技术深度）
   动机：system_prompt 是死文本。支持 {{task.title}}/{{workspace.path}} 等模板变量，执行时渲染并记录渲染后 prompt 落 trace（可审计）。
   验收：渲染函数 + 单测；trace 的 route 步带 rendered_prompt 摘要。
-- [ ] **I22 事件流过滤查询** `proposed` `S`（实用性）
-  动机：events 表已有全局 seq 但无查询端点。GET /events?kind=&task_id=&since=&limit= 服务端过滤，前端事件流可按类型/任务聚焦。
-  验收：端点 + 单测；前端事件流加过滤器。
+- [x] **I22 事件流过滤查询** `done`（2026-11-07）
+  实现：GET /events/query?kind=&task_id=&since=&limit=（服务端过滤，data 内嵌 task_id 也能过滤）+ 单测三场景（kind/task_id/limit）。前端事件流加过滤器待后续前端切片。
 - [ ] **I23 运行报告 Markdown 导出** `proposed` `S`（实用性）
   动机：run trace 是 JSON 视图；导出为可读 Markdown 报告（步骤表格+耗时+结果），归档/分享用。
   验收：GET /runs/{id}/export.md；前端下载按钮。
