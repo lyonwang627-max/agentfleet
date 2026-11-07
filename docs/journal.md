@@ -145,3 +145,11 @@
 ## 2026-11-07 自驱迭代切片 1（A 测试扩充）
 
 - **eval 包测试从 0 到 6 组**：expectedPoints 三形态解析 / expectedThreshold 缺省与越界回退 / fuzzyHit 语义（精确+关键词多数）/ scoreCase 启发式主链路（mock 网关确定性）/ finishWith 持久化 / ChatJSON 契约可达。eval 是评分核心此前零测试——本切片后全项目 8 包无一裸奔。验证：go 8 包全绿
+
+## 2026-11-07 自驱迭代切片 2（B 开源调研）
+
+- **LangGraph Checkpointer 调研**（docs/research/langgraph-checkpointer.md）：每 super-step 落 checkpoint + thread_id 续跑 + 时间旅行；对 agentfleet 的借鉴=I11 run 步级断点续跑入池（确定性步跳过重放，与 F11 Spill 组合）；明确不抄：时间旅行 fork（状态机复杂度爆炸）。已推送 870d124
+
+## 2026-11-07 自驱迭代切片 3（C 自提开发 I5）
+
+- **I5 完成（教训修正版）**：初版错把 OpenAPI 导出写在 agentfleet Makefile（引用不存在的 backend/ 目录——Go 标准库 mux 无自动 OpenAPI），回滚后落到正确的仓库 offer-agent（FastAPI 天然生成）。scripts/openapi_check.py export/drift-check 双模式，实弹 18.5KB 契约快照 + 双向校验。**教训：跨仓库写 Makefile/脚本前先确认目标目录结构**。I5 状态 done（落 offer-agent；本仓库契约=手写 api-contract.md 天然固化）

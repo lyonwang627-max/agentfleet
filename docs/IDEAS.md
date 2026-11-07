@@ -19,9 +19,7 @@
 - [ ] **I4 评测数据集导入导出** `proposed` `S`
   动机：数据集可移植（JSON 下载/上传），便于备份与分享；F17 处方闭环的再评测需要稳定数据集。
   验收：GET /eval-datasets/{id}/export 下载 JSON；POST 导入幂等；契约新增。
-- [ ] **I5 OpenAPI 规范固化进仓库** `proposed` `S`
-  动机：/docs 是运行时 Swagger；把 openapi.json 导出进 docs/ 并在 CI 校验漂移——契约即文档的加强版。
-  验收：make openapi 产出 docs/openapi.json；ci.sh 对比运行时输出无 diff。
+- [x] **I5 OpenAPI 规范固化** `done`（2026-11-07 落在 offer-agent——FastAPI 自动生成 OpenAPI 可导出固化+CI 漂移校验；agentfleet 为 Go 标准库 mux 无自动 OpenAPI，契约=手写 api-contract.md 天然固化，无需此机制）
 - [ ] **I6 chat 多轮上下文压缩** `proposed` `M`
   动机：试聊台长会话会把全部历史塞给模型；复用 F11 Spill 思想——超阈值压缩旧轮次为一行摘要。
   验收：>20 轮的会话仍能正常续聊且 prompt 长度有界；单测覆盖压缩触发。
