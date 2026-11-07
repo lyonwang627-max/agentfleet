@@ -1,5 +1,8 @@
 # ROADMAP — agentfleet 迭代任务清单
 
+> **项目现状（2026-11-07）**：P0 内容资产 / P1 功能（F1-F18 除两项依赖未就绪）/ P2 工程质量 全部收口。
+> 项目进入维护节奏：新功能冻结，仅巡检（ci.sh）+ 依赖就绪项（F12 需 OTLP collector、F13-b 需 PG 实例）+ 小修。
+
 > **开发流程约定**（动手前先读本文件）：
 > 1. 从「任务队列」挑**第一个** `[ ]` 未完成任务（顺序执行，不跳号）
 > 2. 验证纪律：后端改动必须 `cd /Users/lyonwang/code/agentfleet && go build ./... && go test ./...` 全绿；前端改动必须 `cd web && npm run build` 零报错
