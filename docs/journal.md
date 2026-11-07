@@ -165,3 +165,7 @@
 ## 2026-11-07 自驱迭代切片 6（C 自提开发 I13）
 
 - **I13 状态漂移检测器完成**：GET /tasks/{id}/consistency——replayTaskStatus 纯函数（终态屏蔽后续事件/审批回退合法折叠/无关 task 隔离）+ 一致与人为漂移双场景端点测试。技术收获：直调 handler 时 r.PathValue 为空（未经 mux 匹配），需 r.SetPathValue 注入——写进测试技巧。验证：go 8 包全绿
+
+## 2026-11-07 自驱迭代切片 7（A 测试扩充）
+
+- **scheduler 三个 sweep 函数直测补齐**（此前仅集成测试间接覆盖）：runAutomations 三场景（到期触发建任务+next_run 推进+未到期不重复 / 非法表达式自动禁用且不建任务）、sweepDependents 级联（前置 failed→依赖任务 failed+说明）。3 组单测全过。验证：go 8 包全绿
