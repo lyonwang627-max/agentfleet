@@ -67,6 +67,7 @@ func (s *Server) Routes() http.Handler {
 	// runs & trace
 	mux.HandleFunc("GET /api/v1/tasks/{id}/runs", s.listRuns)
 	mux.HandleFunc("GET /api/v1/runs/{id}", s.getRun)
+	mux.HandleFunc("GET /api/v1/runs/{id}/export.md", s.exportRunMarkdown) // I23 报告导出
 	mux.HandleFunc("GET /api/v1/runs/{id}/events", s.runEvents)
 
 	// 全局事件流

@@ -237,3 +237,7 @@
 ## 2026-11-07 自驱迭代切片 20（A 测试扩充）
 
 - **gateway.ChatRaw 3 组直测**：多消息透传+NDJSON/单响应解析（修测试自身错误：ChatRaw 是 stream:false 单响应语义，NDJSON 流式属 StreamChat——fake server 按语义修正）/HTTP 500 错误路径/mock 模式 fallback。ChatRaw 此前零测试（eino 适配器与多轮循环的底座）。验证：go 9 包全绿
+
+## 2026-11-07 深度冲刺切片 5（I23 run 报告导出）
+
+- **I23 完成**：GET /runs/{id}/export.md——renderRunMarkdown 纯函数（头部元数据+步骤表+最终产出截断）+ text/markdown attachment；单测断言头部/步骤表/产出截断六要素。验证：go 9 包全绿

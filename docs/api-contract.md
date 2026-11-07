@@ -35,6 +35,9 @@ body `{"title":"修复登录超时 bug","prompt":"详细任务说明…","agent_
 ### GET /events/query?kind=&task_id=&since=&limit=（v1.4 新增，I22）→ `{"items":[{seq,kind,data,created_at}],"total":n}`
 事件流历史过滤查询（与 SSE 实时流互补）；task_id 过滤匹配 data 内嵌字段；limit 默认 100 上限 1000
 
+### GET /runs/{id}/export.md（v1.4 新增，I23）→ text/markdown
+run 执行报告：头部元数据（任务/agent/状态/token/耗时）+ 步骤表 + 最终产出（>2000 字截断）
+
 ### GET /tasks/{id}/consistency（v1.4 新增，I13 状态漂移检测）→ `{"task_id","actual_status","replayed_status","events_seen","consistent","hint"?}`
 从 events 表重放 task.update 事件派生应有状态并与实际比对——双写漂移即报警（调试端点）
 
