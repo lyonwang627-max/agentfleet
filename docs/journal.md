@@ -125,3 +125,7 @@
 ## 2026-11-07 F15 chat 流式（切片 b，F15 收口）
 
 - **F15-b 完成（F15 整体收口）**：试聊台 fetch + ReadableStream 消费 /chat/stream——assistant 气泡增量追加、@@META@@ 解析 conv/tokens、流式不可达自动降级同步 /chat（旧后端兼容）；"正在思考"占位仅在无增量时显示。端到端实弹（真模型）：89 字逐字流 + META(conv=83, tokens=46, error='')。插曲：实弹 404 抓到旧二进制占端口（重启即解）。验证：前端构建零报错 + 后端单测 + 端到端实弹
+
+## 2026-11-07 Q1 API 集成测试
+
+- **Q1 完成**：TestFullFlowIntegration——httptest 起完整 Routes（MemStore+mock 网关），HTTP 全链路 0.09s 回归：health→建 agent→建任务→等 done→trace（裸数组端点）→审批门 review→带意见 approve→done→用量回填。过程修 3 处测试自身问题（空响应 nil map panic、runs 裸数组 vs 对象解析、超时写成 1 纳秒）。验证：go 7 包全绿

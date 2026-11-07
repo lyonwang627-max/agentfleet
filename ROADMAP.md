@@ -36,7 +36,7 @@
 - [x] F17: RSI 处方闭环——eval 报告 → LLM 处方 → 一键应用（版本管理发布，可回滚）→ 再评测验证 **[完成 2026-11-07：POST /evals/{id}/prescription（失败 case 诊断→system_prompt_addition 行为约束级处方）+ POST /agents/{id}/apply-prescription（追加 prompt+版本链发布）；实弹：代码评审评测→处方诊断「双写时序错误」→应用后 system_prompt 含处方段落、版本链可追溯]**
 
 ### P2 工程质量
-- [ ] Q1: 集成测试——httptest 起 API + MemStore 跑通「创建任务→mock 执行→handoff→审批→done」全链路
+- [x] Q1: 集成测试——httptest 起 API + MemStore 跑通「创建任务→mock 执行→handoff→审批→done」全链路 **[完成 2026-11-07：TestFullFlowIntegration 走完整 Routes HTTP 全链路（health→建 agent→建任务→执行→trace 数组解析→审批闭环→用量回填），0.09s 快速回归；过程修 3 处测试自身问题（nil map panic/裸数组端点解析/1 纳秒超时手误）]**
 - [ ] Q2: 并发安全测试——调度器 20 任务并发跑竞态测试（-race）
 - [ ] Q3: golangci-lint 配置并清零 + scripts/ci.sh（lint+test+web build）
 - [ ] Q4: SSE 断线重连协议——Last-Event-ID 支持 + 前端自动重连
