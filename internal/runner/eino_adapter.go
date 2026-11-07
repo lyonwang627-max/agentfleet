@@ -9,6 +9,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/cloudwego/eino/callbacks"
 	einomodel "github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/schema"
 
@@ -34,13 +35,38 @@ func (e *EinoChatModel) Generate(ctx context.Context, input []*schema.Message, _
 		}
 		msgs = append(msgs, gateway.ChatMessage{Role: string(m.Role), Content: m.Content})
 	}
+	// I15：eino 回调桥接——组件生命周期事件自动转 fleetd run_steps
+	handler := traceHandlerFromCtx(ctx)
+	ctx = withTraceCallbacks(ctx, handler, input)
+
 	text, tokens, err := e.gw.ChatRaw(ctx, msgs, 1024)
 	if err != nil {
+		callbacks.OnError(ctx, err)
 		return nil, err
 	}
 	out := schema.AssistantMessage(text, nil)
 	_ = tokens // token 计量在 gateway 层落 usage，这里不重复计
+	callbacks.OnEnd(ctx, &einomodel.CallbackOutput{Message: out})
 	return out, nil
+}
+
+// traceHandlerFromCtx 从 eino ctx 取我们注入的 TraceHandler（类型安全）。
+// 实现方式：Generate 的调用方（EinoRunner）把 sink 存在 ctx（TraceSinkKey）。
+type traceSinkKeyType struct{}
+
+var TraceSinkKey = traceSinkKeyType{}
+
+func traceHandlerFromCtx(ctx context.Context) *TraceHandler {
+	sink, ok := ctx.Value(TraceSinkKey).(func(*model.RunStep) error)
+	if !ok {
+		return nil
+	}
+	return &TraceHandler{Sink: sink}
+}
+
+// WithTraceSink 把 run_steps 落库通道挂上 ctx——EinoRunner.Execute 调用 Generate 前注入。
+func WithTraceSink(ctx context.Context, sink func(*model.RunStep) error) context.Context {
+	return context.WithValue(ctx, TraceSinkKey, sink)
 }
 
 // EinoRunner 基于 eino 抽象的执行器：与 llm runner 同语义（一次 JSON 决策），
@@ -57,6 +83,9 @@ func init() { // eino tag 构建时向主构建暴露工厂（无 tag 时 EinoRu
 }
 
 func (r *EinoRunner) Execute(ctx context.Context, req ExecRequest) (Result, error) {
+	if req.Recorder != nil {
+		ctx = WithTraceSink(ctx, func(step *model.RunStep) error { return req.Recorder(ctx, step) })
+	}
 	emit := func(kind model.StepKind, name string, in, out map[string]any, latencyMS int64, tokens int) {
 		if req.Recorder == nil {
 			return

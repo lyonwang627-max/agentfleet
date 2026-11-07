@@ -189,3 +189,11 @@
 ## 2026-11-07 自驱迭代切片 12（offer-agent 侧 A 测试扩充 24→30）
 
 - agentfleet 本侧无代码动作（ci 基线不变）。
+
+## 2026-11-07 自驱迭代切片 13（B 开源调研）
+
+- **eino Callbacks 调研**（docs/research/eino-callbacks-observability.md）：Handler 接口五生命周期时点（OnStart/OnStartStream/OnEnd/OnEndStream/OnError）+ 两级注册 + CozeLoop 父子关系保留；对 agentfleet 借鉴=I15 回调桥接入池（eino 组件事件转 run_steps，Recorder 的 eino 侧等价物）；明确不抄全局注册与外部 tracer（单控制面+零依赖约束）。已推送 1b78dfb
+
+## 2026-11-07 自驱迭代切片 14（C 自提开发 I15）
+
+- **I15 eino 回调桥接完成**：TraceHandler（callbacks.Handler 五时点 + TimingChecker）→ fleetd run_steps；ctx 双通道设计（callbacks.InitCallbacks 注入切面 + TraceSinkKey 私有 key 传 sink——两套上下文值空间隔离）。实现坑（读内部源码解决）：StreamReader 泛型参数是 callbacks.CallbackOutput 而非 schema.Message；TimingChecker.Needed 带 ctx/info/timing 三参；流副本必须 Close 否则整条管道泄漏（eino 契约）。单测：三时点断言 + Generate 全链路。验证：eino tag 构建/vet/测试全过 + 主构建零影响

@@ -47,9 +47,8 @@
   动机：现在 PATCH /agents/{id} 直接改运行时配置（编辑即上线，影响在途 run）；Dify 的 draft/published 分离让编辑不破坏生产。
   验收：agents.draft_config 列 + PATCH 只改 draft + POST /publish 快照生效 + draft hash 驱动「未发布变更」徽章 + rollback 先落 draft 可二次编辑（比现在多一档保守度）。
 
-- [ ] **I15 eino 回调桥接** `proposed` `S`（源自 eino-callbacks 调研，见 docs/research/）
-  动机：F7 适配器未接 eino callbacks.Handler——eino 编排层的组件生命周期（OnStart/OnEnd/OnError 五时点）不会自动进 fleetd trace。
-  验收：`-tags eino` 下实现 Handler 把组件事件转 run_steps（父子关系保留）；eino 构建测试链路通过；主构建零影响。
+- [x] **I15 eino 回调桥接** `done`（2026-11-07）
+  实现：TraceHandler（callbacks.Handler + TimingChecker，五时点签名含 StreamReader[CallbackOutput] 流副本必须 Close 的契约）→ fleetd run_steps；ctx 双通道（InitCallbacks 注入 + TraceSinkKey 传 sink）；Generate 触发 OnStart/OnEnd/OnError 切面；EinoRunner 自动挂 sink。单测：三时点断言 + Generate 全链路（-tags eino）。
 
 ## 已完成（沉淀记录）
 
