@@ -38,6 +38,11 @@
   动机：现在认领顺序固定 priority+id；把「选哪个任务」抽成 Strategy 接口（默认/fairness/deadline），为不同业务形态留扩展点。
   验收：接口 + 默认实现迁移 + 策略单测；行为不回归。
 
+- [ ] **I11 run 步级断点续跑** `proposed` `M`（源自 langgraph-checkpointer 调研，见 docs/research/）
+  动机：现在 run 失败只能整任务重试；借鉴 LangGraph checkpointer 的「从任意 checkpoint 恢复」——
+  给 run 步骤加确定性/非确定性标注（tool 步可跳过重放，llm 步不可），重试时从失败步骤继续，trace 标注 resumed_from。
+  验收：含 2+ tool 步的任务失败重试后，已完成 tool 步不重复执行（trace 可见 resumed_from 标记）；与 F11 Spill 组合。
+
 ## 已完成（沉淀记录）
 
 - ~~任务级模型路由~~（F18-b，ADR-0002）
