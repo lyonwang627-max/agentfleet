@@ -29,6 +29,9 @@ body `{"title":"修复登录超时 bug","prompt":"详细任务说明…","agent_
 ### POST /tasks/{id}/cancel → queued/running/review → canceled
 ### POST /tasks/{id}/approve  body 可选 `{"note":"审批意见"}`（v1.2 增强）
 → `{"id":1,"action":"approve"}`；意见注入任务 prompt（[审批记录] 段）并作为 gate 步骤落最近 run 的 trace
+### GET /metrics（v1.4 新增，I2 Prometheus 文本格式）→ `text/plain; version=0.0.4`
+指标：agentfleet_tasks_by_status / tasks_total / agents_enabled / tokens_total{purpose,model} / rate_limit_rejected_total / eval_runs_total / uptime_seconds
+
 ### GET /tasks/{id}/consistency（v1.4 新增，I13 状态漂移检测）→ `{"task_id","actual_status","replayed_status","events_seen","consistent","hint"?}`
 从 events 表重放 task.update 事件派生应有状态并与实际比对——双写漂移即报警（调试端点）
 

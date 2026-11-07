@@ -10,9 +10,8 @@
 - [ ] **I1 任务取消传播到在途 run** `proposed` `M`
   动机：现在 cancel 只改任务状态，已认领的 run 会继续跑完（浪费模型算力，用户在 /tasks 看到取消后仍变 done 的错乱）。
   验收：cancel 后在途 run 的 ctx 被取消，任务终态为 canceled 且不再被 runner 结果覆盖；集成测试覆盖。
-- [ ] **I2 Prometheus /metrics 端点** `proposed` `S`
-  动机：企业部署必备观测口径（调度循环耗时/队列深度/预算熔断计数），运维叙事 + Q5 压测时可对照。
-  验收：/metrics 输出文本格式指标；ci.sh 不受影响；README 观测段提及。
+- [x] **I2 Prometheus /metrics 端点** `done`（2026-11-07）
+  实现：GET /metrics 手写 exposition（零 client 依赖）——tasks_by_status/tasks_total/agents_enabled/tokens_total{purpose,model}/rate_limit_rejected_total/eval_runs_total/uptime_seconds，HELP+TYPE 头按指标名去重；单测锁死关键行。压测对照可用。
 - [ ] **I3 Agent 克隆** `proposed` `S`
   动意：Multica 心智——从现有 agent 派生变体调参；配合版本管理（克隆体继承最新版本快照）。
   验收：POST /agents/{id}/clone → 新 agent 配置同快照、名称自动加后缀；前端舰队页加克隆按钮。

@@ -169,3 +169,11 @@
 ## 2026-11-07 自驱迭代切片 7（A 测试扩充）
 
 - **scheduler 三个 sweep 函数直测补齐**（此前仅集成测试间接覆盖）：runAutomations 三场景（到期触发建任务+next_run 推进+未到期不重复 / 非法表达式自动禁用且不建任务）、sweepDependents 级联（前置 failed→依赖任务 failed+说明）。3 组单测全过。验证：go 8 包全绿
+
+## 2026-11-07 自驱迭代切片 8（B 开源调研）
+
+- **Temporal 确定性重放调研**（docs/research/temporal-deterministic-replay.md）：状态=纯函数(代码+事件日志)无需持久化、非确定性外化进 Activity、违反确定性即重放分叉；对 agentfleet 借鉴=I11 验收标准细化（tool 步「结果重放而非跳过」的 Temporal 语义 + 跨 agent 版本续跑拒绝）；明确不抄 durable execution 框架（成本论证）。已推送 4b94c13
+
+## 2026-11-07 自驱迭代切片 9（C 自提开发 I2）
+
+- **I2 /metrics 完成**：手写 Prometheus exposition（零 client 依赖）——任务状态分布/agents/usage 按用途与模型分桶/限流拒绝/评测数/uptime，HELP+TYPE 按指标名去重；聚合失败静默降级（metrics 不 500）。单测锁死 5 组关键行。压测对照口径就位。验证：go 8 包全绿
