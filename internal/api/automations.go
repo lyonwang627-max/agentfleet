@@ -50,7 +50,7 @@ func (s *Server) createAutomation(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
 	}
-	s.Hub.Publish(r.Context(), "automation.update", map[string]any{"automation_id": id, "action": "created"})
+	s.publish(r.Context(), "automation.update", map[string]any{"automation_id": id, "action": "created"})
 	writeJSON(w, http.StatusCreated, map[string]any{"id": id, "next_run": next})
 }
 
@@ -118,7 +118,7 @@ func (s *Server) patchAutomation(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusInternalServerError, err)
 			return
 		}
-		s.Hub.Publish(r.Context(), "automation.update", map[string]any{"automation_id": id, "action": "updated"})
+		s.publish(r.Context(), "automation.update", map[string]any{"automation_id": id, "action": "updated"})
 		writeJSON(w, http.StatusOK, map[string]any{"id": id, "next_run": next})
 		return
 	}
@@ -126,7 +126,7 @@ func (s *Server) patchAutomation(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
 	}
-	s.Hub.Publish(r.Context(), "automation.update", map[string]any{"automation_id": id, "action": "updated"})
+	s.publish(r.Context(), "automation.update", map[string]any{"automation_id": id, "action": "updated"})
 	writeJSON(w, http.StatusOK, map[string]any{"id": id})
 }
 
@@ -136,7 +136,7 @@ func (s *Server) deleteAutomation(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusNotFound, err)
 		return
 	}
-	s.Hub.Publish(r.Context(), "automation.update", map[string]any{"automation_id": id, "action": "deleted"})
+	s.publish(r.Context(), "automation.update", map[string]any{"automation_id": id, "action": "deleted"})
 	writeJSON(w, http.StatusOK, map[string]any{"id": id, "deleted": true})
 }
 
@@ -147,7 +147,7 @@ func (s *Server) setAutomation(enabled bool) http.HandlerFunc {
 			writeErr(w, http.StatusNotFound, err)
 			return
 		}
-		s.Hub.Publish(r.Context(), "automation.update", map[string]any{"automation_id": id, "enabled": enabled})
+		s.publish(r.Context(), "automation.update", map[string]any{"automation_id": id, "enabled": enabled})
 		writeJSON(w, http.StatusOK, map[string]any{"id": id, "enabled": enabled})
 	}
 }

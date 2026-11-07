@@ -41,6 +41,7 @@ type Task struct {
 	DependsOn    []int64    `json:"depends_on"`
 	WorkspaceID  int64      `json:"workspace_id,omitempty"` // 绑定执行环境（0=不绑定）
 	SkillIDs     []int64    `json:"skill_ids,omitempty"`    // 引用的经验（创建时注入 prompt）
+	RiskLevel    string     `json:"risk_level,omitempty"`   // I29: low|medium|high（审批分级）
 	HandoffCount int        `json:"-"`
 	MaxHandoffs  int        `json:"-"`
 	RetryCount   int        `json:"-"`

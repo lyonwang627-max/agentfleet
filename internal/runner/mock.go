@@ -83,10 +83,14 @@ func (m *MockRunner) Execute(ctx context.Context, req ExecRequest) (Result, erro
 			Note:  fmt.Sprintf("%s 完成初步处理，移交 %s 继续执行其职责", req.Agent.Name, target)}, nil
 
 	case strings.Contains(prompt, "审批"):
-		emit(model.StepGate, "approval-gate", map[string]any{"reason": "产出涉及对外发布"},
-			map[string]any{"status": "等待人工审批"}, 40, 0)
-		return Result{Reply: "（草稿）" + head(prompt, 200), NeedsApproval: true,
-			Note: "涉及对外发布，需要人工确认后执行"}, nil
+		risk := "medium"
+		if strings.Contains(prompt, "对外发布") || strings.Contains(prompt, "删除") || strings.Contains(prompt, "资金") {
+			risk = "high" // I29：涉及不可逆操作升级为高风险
+		}
+		emit(model.StepGate, "approval-gate", map[string]any{"reason": "产出涉及需要人工确认的操作", "risk": risk},
+			map[string]any{"status": "等待人工审批", "risk_level": risk}, 40, 0)
+		return Result{Reply: "（草稿）" + head(prompt, 200), NeedsApproval: true, RiskLevel: risk,
+			Note: "涉及需人工确认的操作，风险等级 " + risk}, nil
 
 	default:
 		time.Sleep(80 * time.Millisecond) // 让瀑布图有真实可感的耗时分布

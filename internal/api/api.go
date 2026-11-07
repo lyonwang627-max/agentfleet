@@ -34,6 +34,13 @@ type Server struct {
 // SetRateLimit 开启 IP 级限流（次/分钟；<=0 关闭）。在 Routes() 前调用。
 func (s *Server) SetRateLimit(perMinute int) { s.limiter = NewRateLimiter(perMinute) }
 
+// publish 事件发布（nil 守卫）：测试直调 handler 时 Hub 可能为 nil。
+func (s *Server) publish(ctx context.Context, kind string, data map[string]any) {
+	if s.Hub != nil {
+		s.publish(ctx, kind, data)
+	}
+}
+
 func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 
@@ -225,7 +232,7 @@ func (s *Server) createAgent(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
 	}
-	s.Hub.Publish(r.Context(), "agent.update", map[string]any{"agent_id": id, "action": "created"})
+	s.publish(r.Context(), "agent.update", map[string]any{"agent_id": id, "action": "created"})
 	writeJSON(w, http.StatusCreated, map[string]any{"id": id})
 }
 
@@ -333,7 +340,7 @@ func (s *Server) patchAgent(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
 	}
-	s.Hub.Publish(r.Context(), "agent.update", map[string]any{"agent_id": id, "action": "updated"})
+	s.publish(r.Context(), "agent.update", map[string]any{"agent_id": id, "action": "updated"})
 	writeJSON(w, http.StatusOK, map[string]any{"id": id})
 }
 
@@ -344,7 +351,7 @@ func (s *Server) setAgent(enabled bool) http.HandlerFunc {
 			writeErr(w, http.StatusNotFound, err)
 			return
 		}
-		s.Hub.Publish(r.Context(), "agent.update", map[string]any{"agent_id": id, "enabled": enabled})
+		s.publish(r.Context(), "agent.update", map[string]any{"agent_id": id, "enabled": enabled})
 		writeJSON(w, http.StatusOK, map[string]any{"id": id, "enabled": enabled})
 	}
 }
@@ -382,7 +389,7 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
 	}
-	s.Hub.Publish(r.Context(), "task.update", map[string]any{"task_id": id, "status": "queued"})
+	s.publish(r.Context(), "task.update", map[string]any{"task_id": id, "status": "queued"})
 	if s.Sched != nil {
 		s.Sched.Wake() // 事件驱动：建任务即时派发（F13-a）
 	}
@@ -497,6 +504,11 @@ func (s *Server) taskAction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		record := fmt.Sprintf("[审批记录] %s 人工放行", now.Format("2006-01-02 15:04"))
+		// I29：高风险任务的 approve 必须附审批意见（强制留痕，说明为什么放行）
+		if t.RiskLevel == "high" && strings.TrimSpace(in.Note) == "" {
+			writeErr(w, http.StatusBadRequest, errors.New("高风险任务审批必须附审批意见（note）"))
+			return
+		}
 		if strings.TrimSpace(in.Note) != "" {
 			record += "\n审批意见: " + strings.TrimSpace(in.Note)
 		}
@@ -516,7 +528,7 @@ func (s *Server) taskAction(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusNotFound, errors.New("未知操作"))
 		return
 	}
-	s.Hub.Publish(ctx, "task.update", map[string]any{"task_id": id, "status": "changed", "action": action})
+	s.publish(ctx, "task.update", map[string]any{"task_id": id, "status": "changed", "action": action})
 	if s.Sched != nil {
 		s.Sched.Wake() // retry/approve 后即时派发（F13-a）
 	}
@@ -733,7 +745,7 @@ func (s *Server) createEval(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.Eval.Start(r.Context(), id, in.DatasetID, in.AgentID)
-	s.Hub.Publish(r.Context(), "eval.update", map[string]any{"eval_id": id, "status": "running"})
+	s.publish(r.Context(), "eval.update", map[string]any{"eval_id": id, "status": "running"})
 	writeJSON(w, http.StatusCreated, map[string]any{"id": id, "status": "running"})
 }
 

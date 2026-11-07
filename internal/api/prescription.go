@@ -110,7 +110,7 @@ func (s *Server) applyPrescription(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
 	}
-	s.Hub.Publish(r.Context(), "agent.update", map[string]any{
+	s.publish(r.Context(), "agent.update", map[string]any{
 		"agent_id": agentID, "action": "prescription_applied", "eval_id": in.EvalID, "version": version})
 	writeJSON(w, http.StatusOK, map[string]any{
 		"agent_id": agentID, "applied_from_eval": in.EvalID, "version": version,

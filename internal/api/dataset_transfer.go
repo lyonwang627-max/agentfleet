@@ -94,6 +94,6 @@ func (s *Server) importDataset(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
 	}
-	s.Hub.Publish(r.Context(), "eval.update", map[string]any{"dataset_id": did, "action": "imported", "cases": len(cases)})
+	s.publish(r.Context(), "eval.update", map[string]any{"dataset_id": did, "action": "imported", "cases": len(cases)})
 	writeJSON(w, http.StatusCreated, map[string]any{"id": did, "cases": len(cases)})
 }

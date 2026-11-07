@@ -348,14 +348,21 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 	switch {
 	case execErr != nil:
 		s.failTask(ctx, &task, execErr.Error())
-	case res.NeedsApproval:
-		note := "人工审批门：" + res.Note
-		_, _ = s.store.AppendStep(ctx, runID, &model.RunStep{Kind: model.StepGate, Name: "waiting-approval", Note: res.Note})
+	case res.NeedsApproval || res.RiskLevel == "high":
+		// I29 风险分级：medium=人审放行即过；high=阻断+强制审批意见
+		risk := res.RiskLevel
+		if risk == "" {
+			risk = "medium"
+		}
+		note := "人工审批门（风险 " + risk + "）：" + res.Note
+		_, _ = s.store.AppendStep(ctx, runID, &model.RunStep{Kind: model.StepGate, Name: "waiting-approval",
+			Note: note, Input: map[string]any{"risk_level": risk}})
 		_ = s.store.UpdateTask(ctx, task.ID, store.TaskPatch{
 			Status: ptrStatus(model.TaskReview), Result: ptrStr(res.Reply), Error: ptrStr(note),
-			FinishedAt: &fin})
-		s.emit(ctx, "task.update", map[string]any{"task_id": task.ID, "status": string(model.TaskReview), "run_id": runID})
-		log.Printf("[scheduler] task#%d 等待人工审批", task.ID)
+			RiskLevel: ptrStr(risk), FinishedAt: &fin})
+		s.emit(ctx, "task.update", map[string]any{"task_id": task.ID, "status": string(model.TaskReview),
+			"run_id": runID, "risk_level": risk})
+		log.Printf("[scheduler] task#%d 等待人工审批（风险 %s）", task.ID, risk)
 	case res.HandoffTo != "":
 		s.handoff(ctx, &task, runID, res)
 	default:

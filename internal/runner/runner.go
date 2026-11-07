@@ -36,7 +36,15 @@ type Result struct {
 	HandoffTo     string          // 非空 = 交接给该名字的 agent
 	Note          string          // handoff / 审批说明
 	NeedsApproval bool            // true = 任务进入人工审批门（task.status=review）
+	RiskLevel     string          // I29: low|medium|high（空=按 NeedsApproval 推导 medium）
 	Artifacts     []ArtifactDraft // 结构化产物（报告/补丁等，落 artifacts 表）
+}
+
+// RiskLevels 审批风险三级（I29）与策略的映射。
+var RiskLevels = map[string]string{
+	"low":    "直接执行",          // 不进审批门
+	"medium": "人工审批",          // review 门，approve 即放行
+	"high":   "人工审批（需附说明）", // review 门，approve 必须带审批意见
 }
 
 type Runner interface {

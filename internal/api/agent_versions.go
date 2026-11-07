@@ -38,7 +38,7 @@ func (s *Server) publishAgent(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
 	}
-	s.Hub.Publish(r.Context(), "agent.update", map[string]any{"agent_id": id, "action": "published", "version": version})
+	s.publish(r.Context(), "agent.update", map[string]any{"agent_id": id, "action": "published", "version": version})
 	writeJSON(w, http.StatusCreated, map[string]any{"agent_id": id, "version": version})
 }
 
@@ -105,7 +105,7 @@ func (s *Server) rollbackAgent(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
 	}
-	s.Hub.Publish(r.Context(), "agent.update", map[string]any{"agent_id": id, "action": "rolled_back",
+	s.publish(r.Context(), "agent.update", map[string]any{"agent_id": id, "action": "rolled_back",
 		"from_version": version, "new_version": newVersion})
 	writeJSON(w, http.StatusOK, map[string]any{"agent_id": id, "rolled_back_from": version, "new_version": newVersion})
 }

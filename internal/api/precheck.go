@@ -61,7 +61,7 @@ func (s *Server) precheckTask(w http.ResponseWriter, r *http.Request) {
 			Output: map[string]any{"recommendation": p.Recommendation, "risk_level": p.RiskLevel},
 			Note:   p.Reason})
 	}
-	s.Hub.Publish(r.Context(), "task.precheck", map[string]any{
+	s.publish(r.Context(), "task.precheck", map[string]any{
 		"task_id": id, "recommendation": p.Recommendation, "risk_level": p.RiskLevel})
 	writeJSON(w, http.StatusOK, p)
 }

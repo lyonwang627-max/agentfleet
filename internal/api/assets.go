@@ -54,7 +54,7 @@ func (s *Server) createWorkspace(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
 	}
-	s.Hub.Publish(r.Context(), "workspace.update", map[string]any{"workspace_id": id, "action": "created"})
+	s.publish(r.Context(), "workspace.update", map[string]any{"workspace_id": id, "action": "created"})
 	writeJSON(w, http.StatusCreated, map[string]any{"id": id})
 }
 

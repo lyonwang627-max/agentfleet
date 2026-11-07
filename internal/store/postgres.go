@@ -187,14 +187,14 @@ func taskStatusOr(s model.TaskStatus) model.TaskStatus {
 }
 
 const taskCols = `id, title, prompt, agent_id, priority, status, depends_on,
-	COALESCE(workspace_id,0), COALESCE(skill_ids,'[]'::jsonb),
+	COALESCE(workspace_id,0), COALESCE(skill_ids,'[]'::jsonb), COALESCE(risk_level,''),
 	handoff_count, max_handoffs, retry_count, max_retries, visible_after, result, error, created_at, started_at, finished_at`
 
 func scanTask(row pgx.Row) (*model.Task, error) {
 	t := &model.Task{}
 	var deps, skills []byte
 	if err := row.Scan(&t.ID, &t.Title, &t.Prompt, &t.AgentID, &t.Priority, &t.Status, &deps,
-		&t.WorkspaceID, &skills,
+		&t.WorkspaceID, &skills, &t.RiskLevel,
 		&t.HandoffCount, &t.MaxHandoffs, &t.RetryCount, &t.MaxRetries, &t.VisibleAfter,
 		&t.Result, &t.Error, &t.CreatedAt, &t.StartedAt, &t.FinishedAt); err != nil {
 		return nil, err

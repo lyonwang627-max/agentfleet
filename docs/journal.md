@@ -257,3 +257,11 @@
 ## 2026-11-07 自驱迭代切片 22（A 测试扩充）
 
 - **StreamChat 回归锁 4 组**：NDJSON 增量拼接/eval_count 优先/无 eval_count 回退行计数/HTTP 500/mock 逐字。**抓到真 bug：done 行不带 eval_count 时行计数漏计**（tokens++ 在 Done 检查之后）——移到 Done 检查前修复。StreamChat 此前零测试（F15 底座）。验证：go 9 包全绿
+
+## 2026-11-07 自驱迭代切片 23（B 开源调研）
+
+- **OpenHands action 级安全分析调研**（docs/research/openhands-action-security.md）：LLM 自标注/风险参数内嵌/分离 guardrail 三路线演进；对 agentfleet 的结论=**F16 分离预审比 OpenHands 当前默认（自标注）更稳健——罕见领先点**；I29 审批风险分级入池（needs_approval 布尔→三级策略，预审 risk_level 可直接联动）。已推送 7e34fe4
+
+## 2026-11-07 深度冲刺切片 6（I29 审批风险分级）
+
+- **I29 完成**：Task/Result 加 RiskLevel（low/medium/high）+ mock 按关键词定级（不可逆操作→high）+ 调度器 review 门带 risk 标注 + **high 任务 approve 无意见 400**（强制留痕）+ precheck risk=high 写回 task（F16 联动）。**顺手修一个测试基建缺陷**：Server.Hub nil 时直调 handler panic——加 s.publish nil 守卫封装并统一全部子文件调用点。单测：三级策略断言。验证：go 9 包全绿
