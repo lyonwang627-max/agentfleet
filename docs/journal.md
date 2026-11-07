@@ -241,3 +241,7 @@
 ## 2026-11-07 深度冲刺切片 5（I23 run 报告导出）
 
 - **I23 完成**：GET /runs/{id}/export.md——renderRunMarkdown 纯函数（头部元数据+步骤表+最终产出截断）+ text/markdown attachment；单测断言头部/步骤表/产出截断六要素。验证：go 9 包全绿
+
+## 2026-11-07 自驱迭代切片 21（A 测试扩充）
+
+- **Agent 版本管理 HTTP 层直测**（F2 handler 此前仅 store 级覆盖）：publish 201 → list v1 → rollback 200 产生 v2 → 链 2 条最新 v2。修 2 处测试自身问题：SetPathValue 的 version 段提取（rollback 路径 version 在倒数第二段）。验证：go 9 包全绿
