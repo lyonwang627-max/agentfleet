@@ -80,6 +80,10 @@
   动机：F11 多轮循环的工具选择是固定 JSON 协议；借鉴 eino ADK supervisor——decide 阶段基于「能力描述」由 LLM 选择委派对象（工具/子能力），supervisor 模式下沉到 run 内部。
   验收：工具池带描述元数据；decide 提示含能力清单；与现有 handoff/审批语义兼容。
 
+- [ ] **I29 审批风险分级** `proposed` `S`（源自 openhands-action-security 调研，见 docs/research/）
+  动机：needs_approval 是布尔；借鉴 OpenHands 的 LOW/MEDIUM/HIGH 三级——映射「直接执行/人审/阻断+说明」三策略。F16 预审已输出 risk_level 字段可直接联动。
+  验收：runner Result 增加 RiskLevel；调度器按级别分派策略；预审 risk=high 的任务强制人审即使 runner 未标记。
+
 ## 已完成（沉淀记录）
 
 - ~~任务级模型路由~~（F18-b，ADR-0002）
