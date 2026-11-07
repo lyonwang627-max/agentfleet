@@ -56,6 +56,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/tasks", s.listTasks)
 	mux.HandleFunc("POST /api/v1/tasks", s.createTask)
 	mux.HandleFunc("GET /api/v1/tasks/{id}", s.getTask)
+	mux.HandleFunc("GET /api/v1/tasks/{id}/consistency", s.taskConsistency) // 状态漂移检测（I13）
 	mux.HandleFunc("POST /api/v1/tasks/{id}/retry", s.taskAction)
 	mux.HandleFunc("POST /api/v1/tasks/{id}/cancel", s.taskAction)
 	mux.HandleFunc("POST /api/v1/tasks/{id}/approve", s.taskAction)

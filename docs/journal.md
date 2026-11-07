@@ -157,3 +157,11 @@
 ## 2026-11-07 自驱迭代切片 4（offer-agent 侧 A 测试扩充 16→24）
 
 - agentfleet 本侧无代码动作（ci 基线不变）。
+
+## 2026-11-07 自驱迭代切片 5（B 开源调研）
+
+- **OpenHands 事件流架构调研**（docs/research/openhands-event-stream.md）：State=事件流（event sourcing）、v1 不可变强类型事件；对 agentfleet 借鉴=I13 任务状态漂移检测器入池（events 重放 vs tasks.status 一致性——把双写妥协变成有护栏的妥协）；明确不抄全面 event sourcing（关系型查询需求主导，成本大于收益）。已推送 2b19d98
+
+## 2026-11-07 自驱迭代切片 6（C 自提开发 I13）
+
+- **I13 状态漂移检测器完成**：GET /tasks/{id}/consistency——replayTaskStatus 纯函数（终态屏蔽后续事件/审批回退合法折叠/无关 task 隔离）+ 一致与人为漂移双场景端点测试。技术收获：直调 handler 时 r.PathValue 为空（未经 mux 匹配），需 r.SetPathValue 注入——写进测试技巧。验证：go 8 包全绿

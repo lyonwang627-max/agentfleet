@@ -41,9 +41,8 @@
   给 run 步骤加确定性/非确定性标注（tool 步可跳过重放，llm 步不可），重试时从失败步骤继续，trace 标注 resumed_from。
   验收：含 2+ tool 步的任务失败重试后，已完成 tool 步不重复执行（trace 可见 resumed_from 标记）；与 F11 Spill 组合。
 
-- [ ] **I13 任务状态漂移检测器** `proposed` `S`（源自 openhands-event-stream 调研，见 docs/research/）
-  动机：tasks.status 与 events 流是双写（v0 模式妥协）；借鉴 OpenHands event sourcing——从 events 表重放某任务的 task.update 事件可派生应有状态，与 tasks.status 不一致即报警。
-  验收：重放函数 + 调试端点（或挂 ci.sh）能检出人为制造的漂移；正常路径零误报。
+- [x] **I13 任务状态漂移检测器** `done`（2026-11-07，源自 openhands-event-stream 调研）
+  实现：GET /tasks/{id}/consistency——replayTaskStatus 纯函数折叠 task.update 事件（终态屏蔽后续/审批回退合法路径）派生应有状态 vs tasks.status；人为制造漂移检出 ✓ 正常零误报 ✓。测试技巧：直调 handler 时需 r.SetPathValue 注入路径参数（绕过 mux 匹配，PathValue 才有值）
 
 ## 已完成（沉淀记录）
 
