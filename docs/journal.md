@@ -181,3 +181,11 @@
 ## 2026-11-07 自驱迭代切片 10（A 测试扩充）
 
 - **runner 剧本分支直测 6 组**：extractAfter 空格回归锁（实弹 bug 回归）/审批放行分支/审批门分支/handoff 先于审批判定/搜索工具步与决策解耦/失败分支触发重试；**seed 冒烟 1 组**：一次 seed 产出 5 agent 舰队+4 任务+3 评测集 24 case+workspace+skill+automation，二次 seed 幂等。验证：go 9 包全绿
+
+## 2026-11-07 自驱迭代切片 11（B 开源调研）
+
+- **Dify draft/publish 版本发布调研**（docs/research/dify-draft-publish-versioning.md）：draft/published 两态分离 + draft hash 分叉追踪 + restore-to-draft；对 agentfleet 借鉴=I14 draft/published 分离入池（PATCH 改 draft、publish 快照生效、回滚先落 draft——比 F2 现状多一档保守度）；明确不抄 YAML+Git 多环境与应用内环境变量（规模不匹配）。已推送 6542097
+
+## 2026-11-07 自驱迭代切片 12（offer-agent 侧 A 测试扩充 24→30）
+
+- agentfleet 本侧无代码动作（ci 基线不变）。
