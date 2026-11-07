@@ -213,3 +213,7 @@
 ## 2026-11-07 自驱迭代切片 18（C 自提开发 I4）
 
 - **I4 数据集导入导出完成**：GET export（attachment JSON，文件名自动生成）+ POST import（空 cases 400）；roundtrip 内容保真单测（points 数组/threshold 数值全保真）。服务 F17 再评测与数据集分享。验证：go 9 包全绿
+
+## 2026-11-07 自驱迭代切片 19（A 测试扩充）
+
+- **skills CRUD 全生命周期直测**（创建带 tags/列表带引用计数/更新/删除后 404）+ **chat 同步端点 shape 断言**（reply/conversation_id）——两处零测试区补齐。验证：go 9 包全绿
