@@ -281,3 +281,7 @@
 ## 2026-11-07 深度冲刺切片 7（I1 任务取消传播）
 
 - **I1 完成（按上轮 Celery 调研定稿方案实现）**：ExecRequest.CancelCheck（调度器注入——DB 重取任务状态，认领-取消竞态二次确认）+ llm runner 每轮 decide 前检查（工具步边界退出）+ mock 入口检查 + ErrCanceled 专门分支（不重试不告警，run 收尾带 canceled 标注）。单测：slowRunner 两步之间取消传播（0.02s）+ mock 入口取消。「取消后仍变 done」的错乱从根上修复。验证：go 9 包全绿
+
+## 2026-11-08 自驱迭代切片 26（A 测试扩充）
+
+- **I1 端到端断言补齐（调度器级）**：TestCancelPropagationEndToEnd——cooperativeRunner 进入步边界等待区后 cancel → runner 经 CancelCheck 协作退出 → 任务终态 canceled 且 200ms 窗口内无翻转（确认 failTask 不介入）→ run 带 canceled 标注。上轮只有 runner 单元级，全链路语义现在锁死。验证：go 9 包全绿
