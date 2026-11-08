@@ -27,6 +27,7 @@ body `{"title":"修复登录超时 bug","prompt":"详细任务说明…","agent_
 ### GET /tasks/{id} → 上述 + `prompt","result","error","deps":[{"id","title","status"}]`
 ### POST /tasks/{id}/retry → 重派（failed→queued，清空 error）
 ### POST /tasks/{id}/cancel → queued/running/review → canceled
+**v1.4 增强（I1 取消传播）**：running 任务取消后，runner 在下一个工具步/决策轮边界协作式退出（不重试不告警），run 带 "canceled: 协作式取消退出" 标注；认领-取消竞态由 DB 二次确认兜底
 ### POST /tasks/{id}/approve  body 可选 `{"note":"审批意见"}`（v1.2 增强）
 → `{"id":1,"action":"approve"}`；意见注入任务 prompt（[审批记录] 段）并作为 gate 步骤落最近 run 的 trace
 ### GET /metrics（v1.4 新增，I2 Prometheus 文本格式）→ `text/plain; version=0.0.4`

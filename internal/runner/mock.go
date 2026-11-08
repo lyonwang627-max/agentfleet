@@ -19,6 +19,10 @@ type MockRunner struct{}
 func NewMock() *MockRunner { return &MockRunner{} }
 
 func (m *MockRunner) Execute(ctx context.Context, req ExecRequest) (Result, error) {
+	// I1 取消传播：入口即边界（mock 单步剧本）
+	if req.CancelCheck != nil && req.CancelCheck() {
+		return Result{}, ErrCanceled
+	}
 	prompt := req.Task.Prompt
 	emit := func(kind model.StepKind, name string, in, out map[string]any, latencyMS int64, tokens int) {
 		if req.Recorder == nil {

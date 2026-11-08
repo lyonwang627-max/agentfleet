@@ -273,3 +273,11 @@
 ## 2026-11-07 补记：修 publish 无限递归
 
 - 上一轮的 python 正则把 publish 方法**自身的** s.Hub.Publish 也替换成了 s.publish（无限递归 → 栈溢出）。教训：**批量替换调用点前，先把定义处排除**（或替换后立即跑构建）。修正后 9 包全绿。
+
+## 2026-11-07 自驱迭代切片 25（B 开源调研）
+
+- **Celery revoke/terminate 语义调研**（docs/research/celery-revoke-semantics.md）：两档撤销（集合跳过 vs 信号终止）+ 时序竞态 + 社区三原则（协作式取消/幂等/优雅关闭）；**I1 取消传播方案据此定稿**——CancelCheck 注入 + 工具步边界检查 + ErrCanceled 不重试 + DB 二次确认，明确不抄 terminate（无进程可杀）与广播撤销集合（DB 状态天然持久）。已推送 2be81b0
+
+## 2026-11-07 深度冲刺切片 7（I1 任务取消传播）
+
+- **I1 完成（按上轮 Celery 调研定稿方案实现）**：ExecRequest.CancelCheck（调度器注入——DB 重取任务状态，认领-取消竞态二次确认）+ llm runner 每轮 decide 前检查（工具步边界退出）+ mock 入口检查 + ErrCanceled 专门分支（不重试不告警，run 收尾带 canceled 标注）。单测：slowRunner 两步之间取消传播（0.02s）+ mock 入口取消。「取消后仍变 done」的错乱从根上修复。验证：go 9 包全绿

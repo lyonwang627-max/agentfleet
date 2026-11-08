@@ -7,6 +7,7 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -317,8 +318,13 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 		Input: map[string]any{"tier": string(tier), "model": routedModel, "retry": task.RetryCount},
 		Note:  "F18-b 任务级路由"})
 
+	// I1 取消传播：CancelCheck 注入（DB 重取任务状态——认领与取消的竞态由二次确认兜底）
+	cancelCheck := func() bool {
+		fresh, err := s.store.GetTask(context.Background(), task.ID)
+		return err != nil || fresh.Status != model.TaskRunning
+	}
 	res, execErr := rn.Execute(ctx, runner.ExecRequest{Agent: *agent, Task: execTask, Recorder: recorder,
-		Workspace: ws, Skills: skills, ModelOverride: routedModel})
+		Workspace: ws, Skills: skills, ModelOverride: routedModel, CancelCheck: cancelCheck})
 
 	// 结构化产物落库（artifacts：报告/补丁/执行记录）
 	for _, d := range res.Artifacts {
@@ -346,6 +352,12 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 	}
 
 	switch {
+	case errors.Is(execErr, runner.ErrCanceled):
+		// I1 协作式取消：任务已被 cancel 端点置为 canceled（终态），此处只收尾 run
+		run.Status = model.RunFailed
+		run.Error = "canceled: 协作式取消退出"
+		_ = s.store.UpdateRun(ctx, run)
+		log.Printf("[scheduler] task#%d 协作式取消退出（不重试）", task.ID)
 	case execErr != nil:
 		s.failTask(ctx, &task, execErr.Error())
 	case res.NeedsApproval || res.RiskLevel == "high":

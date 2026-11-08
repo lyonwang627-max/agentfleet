@@ -5,6 +5,7 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -29,7 +30,13 @@ type ExecRequest struct {
 	Skills    []model.Skill    // 任务引用的经验（已由调度器解析，注入参考信息）
 	// ModelOverride 任务级路由的模型覆盖（F18-b；空=用 agent.Model）
 	ModelOverride string
+	// CancelCheck 取消检查（I1，调度器注入）：返回 true = 任务已被取消，
+	// runner 应在下一个安全边界（工具步/循环轮次开始）退出并返回 ErrCanceled。
+	CancelCheck func() bool
 }
+
+// ErrCanceled 协作式取消信号（I1）：调度器收到后不重试不告警，任务保持 canceled。
+var ErrCanceled = errors.New("任务已取消")
 
 type Result struct {
 	Reply         string          // 任务产出（写入 task.result）

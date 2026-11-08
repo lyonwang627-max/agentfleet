@@ -95,7 +95,15 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 
 	user := fmt.Sprintf("# 任务\n%s\n\n# 详细说明\n%s\n\n只输出一个 JSON 对象。", req.Task.Title, req.Task.Prompt)
 
+	// I1 取消传播：每轮决策前检查（工具步边界=runToolLoop 的每次 decide 入口）
+	cancelCheck := req.CancelCheck
+	if cancelCheck == nil {
+		cancelCheck = func() bool { return false }
+	}
 	decide := func(system, user string) (decision, error) {
+		if cancelCheck() {
+			return decision{}, ErrCanceled
+		}
 		raw, tokens, err := execLLM.ChatJSON(ctx, system, user, 900)
 		if err != nil {
 			return decision{}, err
