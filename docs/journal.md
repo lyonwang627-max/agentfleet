@@ -386,3 +386,9 @@
 
 - sweepProgress 此前 26%：3 组直测——阈值内跳过（即使 judge 判停滞也不打扰）/超阈值停滞（task.stalled 事件 + failTask 重试语义 queued-or-failed + error 带停滞说明）/fail-open（judge 不健康放行）。digestSteps 0%→3 断言（空兜底/行格式/超 1200 rune 截断）。
 - 9 包 -race 全绿。
+
+## 2026-11-10 C 切片：I33 工具步级审批第 1/2 轮（LLM runner 闸）
+
+- 高风险工具（I29 同源关键词）在 callTool 执行前拦截：ToolGateError 哨兵中止 runToolLoop（语义扩展：callTool 可中止循环）→ Execute 映射 NeedsApproval/high——**不是失败，任务进 review 门**；gate 步 tool-approval-gate 带工具/参数快照落 trace。
+- 放行契约：approve 审批意见必须提及工具名（防一次审批放行全部工具）；F3 审批记录注入 task prompt → 重跑时闸自然放行，参数修正经意见注入由模型消费（与 F3 审批闭环同机制，零新基建）。
+- 单测 4 组：高风险拦截/低风险回归/批准后放行（观察回灌）/判定表。9 包 -race 全绿。第 2 轮：mock 剧本路径 + reject 留痕。

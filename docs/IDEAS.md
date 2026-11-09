@@ -95,10 +95,11 @@
   验收：@all 时模型选人输出带理由；显式 @ 行为完全不回归；选人失败回退全员唤醒。
   实现：selectRoomAgents（ChatJSON + roomSelectorSystem 选人器人格，roster=enabled 成员 name:role+提示词头 60，上下文=最近 6 条头部）→ ≤2 名有效选人（名单外幽灵名过滤、去重）；响应 additive 字段 selection（名字+理由）。单测 4 组：智能选人（ghost 过滤）/非法 JSON 回退全员/全无效名回退/显式 @ 不经选人器。真模型实弹（qwen3.5）：@all → 选中 intake 带理由 → intake 链式 @fixer 协作；幻觉 @ops（seed 无此名）被安全忽略。
 
-- [ ] **I33 工具步级审批（risk 下沉到工具调用粒度）** `proposed` `M`（源自 langgraph-interrupt 调研，见 docs/research/）
+- [ ] **I33 工具步级审批（risk 下沉到工具调用粒度）** `in-progress`（1/2 LLM runner 闸完成 2026-11-10，源自 langgraph-interrupt 调研，见 docs/research/）
   动机：审批门现为任务级（review→approve→requeue 整任务重跑）；LangGraph 工具内 interrupt 证明审批可随工具走——
   high 风险任务（I29）的特定工具调用（对外发布/删除/资金类）执行前暂停，approve 带参数修正后执行，reject 跳过该工具继续。
   验收：mock 剧本高风险工具步进 review 门（带工具名/参数快照）；approve 带参数修正注入当步执行；reject 跳过并在 trace 留 gate-reject 步；F11 工具循环内同样生效。
+  第 1 轮（LLM runner 生产路径）：highRiskTool 关键词判定（I29 同源：发布/删除/资金/部署）+ callTool 包装闸（ToolGateError 哨兵中止 runToolLoop——runToolLoop 语义扩展：callTool 可中止）→ Execute 映射 NeedsApproval/high + gate 步 tool-approval-gate 带工具/参数快照（不是失败，任务进 review 门）。放行契约：approve 审批意见必须提及工具名（toolApproved 防一次审批放行全部工具），F3 审批记录注入 task prompt 重跑时闸自然放行；参数修正经审批意见注入 prompt 由模型消费（与 F3 同机制）。单测 4 组：高风险拦截（gate 步+快照）/低风险回归/批准后放行（工具真实执行+观察回灌）/判定表。第 2 轮：mock 剧本工具路径评估 + reject（cancel）trace 留痕 gate-reject 步。
 
 ## 已完成（沉淀记录）
 

@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -33,6 +34,35 @@ type decision struct {
 
 const maxToolSteps = 4 // 多轮工具循环上限（防上下文膨胀与死循环）
 
+// ToolGateError 工具级审批中断（I33）：高风险工具调用在执行前暂停，任务进 review 门。
+// approve 后审批记录（含工具名）注入 task prompt，重跑时闸放行（与 F3 审批记录消费同机制）。
+type ToolGateError struct {
+	Ref  string
+	Args map[string]any
+}
+
+func (e *ToolGateError) Error() string { return "工具级审批: " + e.Ref }
+
+// highRiskTool 工具风险关键词（I29 同源：对外发布/删除/资金/部署）。
+func highRiskTool(ref string) bool {
+	l := strings.ToLower(ref)
+	for _, k := range []string{"发布", "publish", "删除", "delete", "drop", "资金", "payment", "transfer", "deploy", "退款"} {
+		if strings.Contains(l, k) {
+			return true
+		}
+	}
+	return false
+}
+
+// toolApproved 审批记录是否已覆盖该工具（approve note 需提及工具名——防止一次审批放行所有工具）。
+func toolApproved(prompt, ref string) bool {
+	tool := ref
+	if i := strings.LastIndex(ref, "/"); i >= 0 {
+		tool = ref[i+1:]
+	}
+	return strings.Contains(prompt, "[审批记录]") && strings.Contains(prompt, tool)
+}
+
 // runToolLoop 多轮工具循环（F11-a）：决策 →（要工具则执行→观察→再决策）→ … → 最终决策。
 // 抽成纯函数：decide/callTool 由调用方注入（生产=网关+MCP 注册中心，测试=fake）。
 // 返回最终决策、完整观察轨迹、实际步数；步数耗尽用最后一次决策收尾（不失败——已有信息仍可用）。
@@ -55,6 +85,11 @@ func runToolLoop(
 			return d, observations, step, nil
 		}
 		out, toolErr := callTool(d.Tool, d.ToolArgs)
+		var gateErr *ToolGateError
+		if toolErr != nil && errors.As(toolErr, &gateErr) {
+			// I33 工具闸：中止循环上抛，由 Execute 映射为审批门（不是失败）
+			return last, observations, step, toolErr
+		}
 		observation := out
 		if toolErr != nil {
 			observation = "工具执行失败: " + toolErr.Error()
@@ -126,6 +161,12 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 		return d, nil
 	}
 	callTool := func(ref string, args map[string]any) (string, error) {
+		// I33 工具级审批：高风险工具在执行前拦截（审批记录提及该工具名才放行）
+		if highRiskTool(ref) && !toolApproved(req.Task.Prompt, ref) {
+			emit(model.StepGate, "tool-approval-gate", map[string]any{"tool": ref, "args": args},
+				map[string]any{"status": "等待人工审批（工具级）", "risk_level": "high"}, 30, 0)
+			return "", &ToolGateError{Ref: ref, Args: args}
+		}
 		return CallMCPTool(ref, args)
 	}
 	onToolTurn := func(turn int, d decision, observation string) {
@@ -136,6 +177,13 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 	start := timeNow()
 	d, observations, steps, loopErr := runToolLoop(system, user, decide, callTool, onToolTurn)
 	latency := timeNow().Sub(start).Milliseconds()
+	var gateErr *ToolGateError
+	if loopErr != nil && errors.As(loopErr, &gateErr) {
+		// I33：工具级审批——不是失败，任务进 review 门；approve 后审批记录入 prompt 重跑放行
+		return Result{Reply: "（暂停）工具调用需人工审批：" + gateErr.Ref,
+			NeedsApproval: true, RiskLevel: "high",
+			Note: fmt.Sprintf("工具级审批: %s 参数 %v（approve 意见需提及工具名以放行）", gateErr.Ref, gateErr.Args)}, nil
+	}
 	if loopErr != nil {
 		emit(model.StepLLM, "llm-failed", map[string]any{"model": req.Agent.Model}, map[string]any{"error": loopErr.Error()}, latency, totalTokens)
 		return Result{}, fmt.Errorf("llm: %w", loopErr)
