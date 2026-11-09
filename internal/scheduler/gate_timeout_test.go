@@ -17,9 +17,9 @@ import (
 // 依赖级联治理）。闸超时覆盖的是「认领与执行之间的竞态窗口」，因此测试手动
 // 占闸 + 直调 execute 精确命中该路径。
 func TestGateTimeoutRequeues(t *testing.T) {
-	origTimeout := gateAcquireTimeout
-	gateAcquireTimeout = 150 * time.Millisecond
-	defer func() { gateAcquireTimeout = origTimeout }()
+	origTimeout := gateAcquireTimeout.Load() // atomic：与在途 execute goroutine 并发（-race）
+	gateAcquireTimeout.Store(int64(150 * time.Millisecond))
+	defer func() { gateAcquireTimeout.Store(origTimeout) }()
 
 	st := store.NewMemStore()
 	s := New(st, NewHub(st))

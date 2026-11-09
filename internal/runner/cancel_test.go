@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -35,8 +36,8 @@ func (r *slowRunner) Execute(ctx context.Context, req ExecRequest) (Result, erro
 
 // I1 取消传播（单元级）：CancelCheck 翻转后 runner 在步边界返回 ErrCanceled。
 func TestCancelCheckPropagates(t *testing.T) {
-	canceled := false
-	check := func() bool { return canceled }
+	var canceled atomic.Bool // runner goroutine 并发读，须原子（-race 检出的裸 bool 竞争）
+	check := func() bool { return canceled.Load() }
 
 	r := &slowRunner{step1Done: make(chan struct{})}
 	done := make(chan error, 1)
@@ -47,7 +48,7 @@ func TestCancelCheckPropagates(t *testing.T) {
 	}()
 
 	<-r.step1Done   // 等 step1 完成（进入步边界等待区）
-	canceled = true // 模拟 cancel 端点触发
+	canceled.Store(true) // 模拟 cancel 端点触发
 
 	select {
 	case err := <-done:

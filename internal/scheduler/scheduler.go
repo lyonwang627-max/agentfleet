@@ -12,6 +12,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/lyonwang/agentfleet/internal/gateway"
@@ -30,7 +31,10 @@ const (
 var timeNow = time.Now
 
 // gateAcquireTimeout 并发闸获取超时（I24）：可测试覆盖。
-var gateAcquireTimeout = 60 * time.Second
+// atomic.Int64（纳秒）：测试会与在途 execute goroutine 并发改写（-race 检出裸包级变量竞争）。
+var gateAcquireTimeout atomic.Int64
+
+func init() { gateAcquireTimeout.Store(int64(60 * time.Second)) }
 
 // spillThreshold 上下文 Spill 阈值（rune 数）：超过则 handoff 时压缩 prompt（F11-b）。
 const spillThreshold = 1500
@@ -244,7 +248,7 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 		defer func() { <-g }()
 	case <-ctx.Done():
 		return
-	case <-time.After(gateAcquireTimeout):
+	case <-time.After(time.Duration(gateAcquireTimeout.Load())):
 		// I24 并发闸超时：runner 卡死不再无限占闸——任务带延迟重排队 + 告警事件
 		// （与 F14 看门狗互补：看门狗管已执行任务的进展，这里管还没拿到闸的）
 		visible := timeNow().Add(retryBackoff * 2)
@@ -253,7 +257,7 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 			Error: ptrStr("并发闸等待超时（agent 疑似卡死），已延迟重排队")})
 		s.emit(ctx, "agent.gate_timeout", map[string]any{
 			"task_id": task.ID, "agent": agent.Name, "retry_after_s": (retryBackoff * 2).Seconds()})
-		log.Printf("[scheduler] task#%d 并发闸等待超时（%s），延迟重排队", task.ID, gateAcquireTimeout)
+		log.Printf("[scheduler] task#%d 并发闸等待超时（%s），延迟重排队", task.ID, time.Duration(gateAcquireTimeout.Load()))
 		return
 	}
 

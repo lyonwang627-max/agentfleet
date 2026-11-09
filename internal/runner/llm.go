@@ -101,6 +101,9 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 		cancelCheck = func() bool { return false }
 	}
 	steerCheck := req.SteerDrain // 取走一次性插话（注入后清空）
+	if steerCheck == nil {       // 与 CancelCheck 同款 nil 守卫：直调/测试路径无插话源
+		steerCheck = func() string { return "" }
+	}
 	decide := func(system, user string) (decision, error) {
 		if cancelCheck() {
 			return decision{}, ErrCanceled

@@ -310,3 +310,15 @@
 - **后端（9 包全绿）**：①Projects（项目分组 + repos 上下文 + 任务计数）②Labels（任务标签 + label/project_id 过滤）③TaskComments 评论线程（人评论 / @agent 唤醒其以任务+线程上下文回帖，单评论≤2 唤醒）④Steer 运行中插话（steer_note 原子取清 + runner 决策边界注入 + 评论留痕 + 仅 running 可插 409）。
 - **前端**：lucide-react 图标全量接入（10 项导航带图标）；/projects 项目页（建/删/repos 徽章/任务数/查看项目任务）；任务详情新增评论线程（头像区分人/agent）+ running 时 Steer 插话条。
 - **真模型实弹**：项目创建 ✓ / label 过滤 ✓ / 评论 @reviewer → 「评分 95 分，优秀」以任务上下文回帖 ✓（线程 2 条）。
+
+## 2026-11-10 I20 任务依赖 DAG 全量收口（C 切片，后端+前端）
+
+- **后端（c4e3a6e）**：detectCycle DFS 三色 + validateNoCycle（防御深度——创建时序决定传递环不可达，deps 只能引用已存在任务）+ GET /tasks/{id}/dag（子图节点/边 + cycle 真算）+ **createTask 缺失依赖 400**（防任务永久 blocked 静默卡死）+ deps 去重保序 + TaskPatch.DependsOn（mem/pg 双实现）。回归锁：算法单测 + HTTP 级（子图/真环标记/400/去重）。
+- **前端（1d5bef4）**：DepGraph SVG——最长路径分层（依赖在上任务在下）+ 贝塞尔连线 + SF 状态色 + fitLabel 像素预算截断（CJK≈11px/ASCII≈6.2px，getComputedTextLength 实测零溢出）+ cycle 红环警示。**顺手抓到 TaskDetail 钩子违规真崩溃**：loadComments 的 useEffect 在早退 return 之后（ba05750 引入），loading→loaded 切换钩子数变化整页白屏——移至早退前修复。
+- 实弹：fleetd dag 端点 3 节点 2 边 ✓；浏览器验收渲染正确、控制台零错误 ✓。
+
+## 2026-11-10 A 切片：llm.go Execute 全链路直测（33.2%→65.2%）+ 两处 -race 竞争修复
+
+- **LLMRunner.Execute 8 组直测**（此前 0%）：mock 网关 Fallback 注入逐轮控制 ChatJSON——finish 留痕（decide 步 steps/observations/tokens 合计）/非 JSON 原文降级/工具循环失败观察回灌（第 2 轮 user 含观察）与 tool 步留痕/步数耗尽强制收尾/取消传播（ErrCanceled + llm-failed 步 + LLM 不被调用）/插话注入当轮/长回复>400 rune 固化 report 产物/buildSystemPrompt 双形态。
+- **抓到真 bug：SteerDrain 无 nil 守卫**（llm.go——cancelCheck 有守卫 steerCheck 没有，直调 ExecRequest 不带插话源即 nil 解引用 panic）。修齐。
+- **-race 抓到两处既有竞争**：①cancel_test 裸 bool（测试 goroutine 写 canceled、runner goroutine 读）→ atomic.Bool；②gate_timeout_test 与在途 execute goroutine 并发改写包级 gateAcquireTimeout → atomic.Int64（纳秒）。全量 9 包 -race 全绿。
