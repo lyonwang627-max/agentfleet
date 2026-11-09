@@ -4,7 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>agentfleet · 多 Agent 任务管控台</title>
-    <style>html { background: #0a0e14; }</style>
+    <script>
+      // 主题初始化（I9）：必须在首帧渲染前设置，避免闪烁
+      document.documentElement.dataset.theme = localStorage.getItem("af-theme") === "light" ? "light" : "dark";
+    </script>
+    <style>html { background: #1e1e20; } html[data-theme="light"] { background: #ffffff; }</style>
   </head>
   <body>
     <div id="root"></div>

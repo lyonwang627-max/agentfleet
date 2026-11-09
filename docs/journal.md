@@ -345,3 +345,10 @@
 
 - Start（异步评测入口）此前 0%：3 组直测——满分路径（要点取题目子串 → mock 回显全命中 → avg=10/pass=100 落库）、agent 缺失 failed（无报告）、空数据集 failed；waitForStatus 轮询终态（Start 是 goroutine）。round1 四舍五入边界 4 组。finish failed 路径随失败场景覆盖。
 - 9 包 -race 全绿。
+
+## 2026-11-10 C 切片：I9 前端主题切换（暗/亮）
+
+- 亮色 token 全量覆盖（macOS light 中性梯 + SF 语义色亮版）+ **复合层变量化**（glass/hairline/row-hover/scroll-thumb/drop-shadow 五变量，@theme 定义暗默认、[data-theme=light] 覆写）——全部工具类经 var() 级联，组件零 token 改动。
+- index.html 首帧前内联初始化（localStorage af-theme，防闪烁）；Layout 顶栏 Sun/Moon 切换按钮；violet 徽章亮暗自适应。
+- **回归自纠**：build 抓到 1d5bef4 钩子修复时误删的 viewTrace（当时 tsc 退出码被管道掩蔽：`tsc | head; $?` 读的是 head 的退出码——校验编译必须 `tsc; $?` 直连）已恢复。
+- 双主题浏览器验收：暗色零回归、亮色白底浅面板发丝线正确、localStorage 刷新持久 ✓。

@@ -22,6 +22,35 @@
   --color-bad: #ff453a;          /* SF red */
   --color-info: #64d2ff;         /* SF cyan */
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* 复合层（I9 主题化）：玻璃/发丝线/悬停/滚动条——亮暗两套分别取值 */
+  --glass-bg: rgba(30, 30, 32, 0.72);
+  --hairline: rgba(255, 255, 255, 0.1);
+  --row-hover-bg: rgba(255, 255, 255, 0.05);
+  --scroll-thumb: rgba(255, 255, 255, 0.14);
+  --drop-shadow: rgba(0, 0, 0, 0.35);
+}
+
+/* ---------- 亮色主题（I9）：macOS light 中性梯 + SF 语义色亮版 ----------
+   只覆写 token，全部工具类经 var() 级联生效，无组件级改动 */
+[data-theme="light"] {
+  --color-bg: #ffffff;           /* 窗口底 */
+  --color-panel: #f5f5f7;        /* 分组面 */
+  --color-panel2: #e8e8ed;       /* 交互面 */
+  --color-border: #d2d2d7;       /* 极淡分隔 */
+  --color-fg: #1d1d1f;           /* Apple 近黑 */
+  --color-muted: #6e6e73;        /* SF secondary */
+  --color-accent: #007aff;       /* 系统蓝 */
+  --color-accent-dim: #0071e3;   /* 蓝深阶（亮色模式 hover） */
+  --color-ok: #34c759;
+  --color-warn: #ff9500;
+  --color-bad: #ff3b30;
+  --color-info: #32ade6;
+  --glass-bg: rgba(255, 255, 255, 0.78);
+  --hairline: rgba(0, 0, 0, 0.09);
+  --row-hover-bg: rgba(0, 0, 0, 0.045);
+  --scroll-thumb: rgba(0, 0, 0, 0.18);
+  --drop-shadow: rgba(0, 0, 0, 0.12);
 }
 
 html,
@@ -41,17 +70,17 @@ body {
 
 /* ---------- 层次：留白优先，阴影极轻（Apple 用层级不用投影装饰） ---------- */
 .elev-1 {
-  box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 0.5px var(--hairline);
 }
 .elev-2 {
   box-shadow:
-    0 0 0 0.5px rgba(255, 255, 255, 0.1),
-    0 8px 24px rgba(0, 0, 0, 0.35);
+    0 0 0 0.5px var(--hairline),
+    0 8px 24px var(--drop-shadow);
 }
 
 /* 毛玻璃（侧栏/顶栏） */
 .glass {
-  background: rgba(30, 30, 32, 0.72);
+  background: var(--glass-bg);
   backdrop-filter: saturate(1.4) blur(20px);
   -webkit-backdrop-filter: saturate(1.4) blur(20px);
 }
@@ -77,7 +106,7 @@ body {
   transition: background-color 120ms ease-out;
 }
 .row-hover:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--row-hover-bg);
 }
 
 .press {
@@ -114,11 +143,10 @@ main {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+  scrollbar-color: var(--scroll-thumb) transparent;
 }
 *::-webkit-scrollbar { width: 8px; height: 8px; }
-*::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.14); border-radius: 4px; }
-*::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.22); }
+*::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 4px; }
 
 @media (prefers-reduced-motion: reduce) {
   .signal-run,

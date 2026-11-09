@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, KanbanSquare, Timer, Wrench, MessagesSquare, Users, FlaskConical, Gauge, FolderKanban, History } from 'lucide-react';
+import { LayoutDashboard, KanbanSquare, Timer, Wrench, MessagesSquare, Users, FlaskConical, Gauge, FolderKanban, History, Moon, Sun } from 'lucide-react';
+import { useState } from 'react';
 import { useHealth } from '../hooks';
 import { fmtDuration } from '../ui';
 
@@ -21,10 +22,20 @@ export default function Layout() {
   const down = health.error !== null;
   const h = health.data;
 
+  // I9 主题切换：data-theme 驱动 token 覆盖，localStorage 记忆（首帧前 index.html 内联脚本已初始化）
+  const [theme, setTheme] = useState<'dark' | 'light'>(() =>
+    document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem('af-theme', next);
+    setTheme(next);
+  };
+
   return (
     <div className="flex h-full min-h-screen">
       {/* 侧边栏 */}
-      <aside className="glass flex w-52 shrink-0 flex-col border-r border-white/6">
+      <aside className="glass flex w-52 shrink-0 flex-col border-r border-[var(--hairline)]">
         <div className="px-5 pb-2 pt-6">
           <div className="text-[15px] font-semibold tracking-tight text-fg">
             agent<span className="text-accent">fleet</span>
@@ -42,7 +53,7 @@ export default function Layout() {
               end={n.to === '/'}
               className={({ isActive }) =>
                 `flex items-center gap-2.5 rounded-lg px-3 py-[7px] text-[13px] transition-colors ${
-                  isActive ? 'bg-accent font-medium text-white' : 'text-muted hover:bg-white/5 hover:text-fg'
+                  isActive ? 'bg-accent font-medium text-white' : 'text-muted hover:bg-[var(--row-hover-bg)] hover:text-fg'
                 }`
               }
             >
@@ -59,7 +70,7 @@ export default function Layout() {
       {/* 主区 */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* 顶栏健康状态 */}
-        <header className="glass flex items-center gap-3 border-b border-white/6 px-6 py-3">
+        <header className="glass flex items-center gap-3 border-b border-[var(--hairline)] px-6 py-3">
           <span
             className={`signal ${down ? 'signal-bad' : 'signal-ok'}`}
             aria-hidden
@@ -76,7 +87,9 @@ export default function Layout() {
                 <span
                   className={`rounded border px-1 py-px font-mono ${
                     h.llm.mode === 'ollama'
-                      ? 'border-violet-500/40 bg-violet-500/10 text-violet-300'
+                      ? theme === 'dark'
+                        ? 'border-violet-500/40 bg-violet-500/10 text-violet-300'
+                        : 'border-violet-600/40 bg-violet-500/10 text-violet-700'
                       : 'border-accent-dim/50 bg-accent/10 text-accent'
                   }`}
                 >
@@ -88,6 +101,14 @@ export default function Layout() {
               <span>运行 {fmtDuration(h.uptime_s * 1000)}</span>
             </span>
           )}
+          <button
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? '切换到亮色主题' : '切换到暗色主题'}
+            title={theme === 'dark' ? '亮色主题' : '暗色主题'}
+            className="ml-auto rounded-lg p-1.5 text-muted transition-colors hover:bg-[var(--row-hover-bg)] hover:text-fg"
+          >
+            {theme === 'dark' ? <Sun size={15} strokeWidth={2} /> : <Moon size={15} strokeWidth={2} />}
+          </button>
         </header>
 
         {/* 后端不可达横幅（优雅降级，不白屏） */}

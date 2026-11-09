@@ -72,6 +72,25 @@ export default function TaskDetail() {
     } catch { /* 非 running 会失败——按钮只在 running 显示 */ }
   };
 
+  // run trace 展开视图（误删恢复：1d5bef4 钩子修复时遗漏——TS 编译被管道掩蔽未拦截）
+  const viewTrace = async (runId: number) => {
+    if (openRunId === runId) {
+      setOpenRunId(null);
+      setTrace(null);
+      return;
+    }
+    setOpenRunId(runId);
+    setTraceLoading(true);
+    setTraceErr(null);
+    try {
+      setTrace(await api.getRun(runId));
+    } catch (e) {
+      setTraceErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTraceLoading(false);
+    }
+  };
+
   if (task.loading) return <SkeletonBlock rows={6} />;
   if (task.error) return <ErrorText>{task.error}</ErrorText>;
   const t = task.data;
