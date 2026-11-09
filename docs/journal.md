@@ -381,3 +381,8 @@
 - 版本面板：dirty 驱动「有草稿待发布」徽章 + 按钮文案「发布当前配置」↔「发布草稿」切换 + 发布后联动刷新 dirty。
 - 真机闭环（fleetd 重启 + 实弹）：PATCH 草稿 → live 不变（curl 双查证）→ 页面草稿态三件套呈现 → 点发布 → v1 落线（版本链 config=草稿值）→ dirty 清零 → 徽章消失按钮复位。
 - 前端构建零报错（tsc 直连校验）。I14 整体 done。
+
+## 2026-11-10 A 切片：watchdog sweep 分支直测（F14 补齐）
+
+- sweepProgress 此前 26%：3 组直测——阈值内跳过（即使 judge 判停滞也不打扰）/超阈值停滞（task.stalled 事件 + failTask 重试语义 queued-or-failed + error 带停滞说明）/fail-open（judge 不健康放行）。digestSteps 0%→3 断言（空兜底/行格式/超 1200 rune 截断）。
+- 9 包 -race 全绿。
