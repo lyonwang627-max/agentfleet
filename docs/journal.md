@@ -340,3 +340,8 @@
 
 - selectRoomAgents：ChatJSON 选人器（roster 数据复用 I30 花名册 name:role+提示词头），@all 从全员唤醒改为 ≤2 名智能选人（名单外过滤/去重），失败回退全员兜底；显式 @ 不经此通道（派发可审计性）。响应 additive 字段 selection 带理由。
 - 单测 4 组全过 + 9 包 -race 全绿。真模型实弹（qwen3.5）：@all 数据库连接池告警 → 选中 intake（理由=值班职责）→ intake 链式 @fixer → fixer 幻觉 @ops 被安全忽略——智能选人+链式协作+名字防御三层语义一次验证。
+
+## 2026-11-10 A 切片：eval 引擎编排层直测（50.6%→84.4%）
+
+- Start（异步评测入口）此前 0%：3 组直测——满分路径（要点取题目子串 → mock 回显全命中 → avg=10/pass=100 落库）、agent 缺失 failed（无报告）、空数据集 failed；waitForStatus 轮询终态（Start 是 goroutine）。round1 四舍五入边界 4 组。finish failed 路径随失败场景覆盖。
+- 9 包 -race 全绿。
