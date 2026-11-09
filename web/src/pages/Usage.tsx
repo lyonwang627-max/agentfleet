@@ -26,8 +26,8 @@ export default function Usage() {
             <span
               className={`rounded border px-2 py-1 text-[11px] ${
                 u.rate_limit.rejected_total > 0
-                  ? 'border-rose-500/40 bg-rose-500/10 text-rose-300'
-                  : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                  ? 'border-bad/40 bg-bad/10 text-bad'
+                  : 'border-ok/40 bg-ok/10 text-ok'
               }`}
               title="变更类接口按 IP 令牌桶限流"
             >
@@ -43,7 +43,7 @@ export default function Usage() {
                 type="button"
                 onClick={() => setWin(w)}
                 className={`px-3 py-1 text-xs transition-colors ${
-                  win === w ? 'bg-sky-600/25 font-medium text-sky-300' : 'bg-panel2 text-muted hover:text-fg'
+                  win === w ? 'bg-[#f0a830]/15 font-medium text-[#f0a830]' : 'bg-panel2 text-muted hover:text-fg'
                 }`}
               >
                 {w === '24h' ? '近 24 小时' : '近 7 天'}

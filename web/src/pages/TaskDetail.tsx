@@ -62,7 +62,7 @@ export default function TaskDetail() {
     <div className="space-y-4">
       <TaskArtifacts taskId={t.id} />
       <div className="flex items-center gap-2 text-xs text-muted">
-        <Link to="/tasks" className="hover:text-sky-300">
+        <Link to="/tasks" className="hover:text-[#f0a830]">
           任务看板
         </Link>
         <span>/</span>
@@ -81,7 +81,7 @@ export default function TaskDetail() {
       >
         <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs md:grid-cols-4">
           <Field label="Agent">
-            <Link to={`/agents/${t.agent_id}`} className="hover:text-sky-300">
+            <Link to={`/agents/${t.agent_id}`} className="hover:text-[#f0a830]">
               {t.agent_name || `#${t.agent_id}`}
             </Link>
           </Field>
@@ -93,26 +93,26 @@ export default function TaskDetail() {
           <Field label="结束时间">{fmtTime(t.finished_at)}</Field>
           {(t.blocked_by?.length ?? 0) > 0 && (
             <Field label="阻塞于">
-              <span className="text-amber-300">#{t.blocked_by.join(', #')}</span>
+              <span className="text-[#f0a830]">#{t.blocked_by.join(', #')}</span>
             </Field>
           )}
         </div>
         <div className="mt-3">
           <div className="mb-1 text-[11px] text-muted">Prompt</div>
-          <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded border border-border bg-bg p-2 font-mono text-xs text-slate-300">
+          <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded border border-border bg-bg p-2 font-mono text-xs text-muted">
             {t.prompt || '—'}
           </pre>
         </div>
         {t.result !== null && t.result !== undefined && (
           <div className="mt-3">
-            <div className="mb-1 text-[11px] text-emerald-400/80">Result</div>
+            <div className="mb-1 text-[11px] text-ok/80">Result</div>
             <JsonBlock value={t.result} />
           </div>
         )}
         {t.error && (
           <div className="mt-3">
             <div className="mb-1 text-[11px] text-rose-400/80">Error</div>
-            <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded border border-rose-600/40 bg-rose-600/10 p-2 font-mono text-xs text-rose-300">
+            <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded border border-bad/40 bg-bad/10 p-2 font-mono text-xs text-bad">
               {t.error}
             </pre>
           </div>
@@ -125,7 +125,7 @@ export default function TaskDetail() {
                 <Link
                   key={d.id}
                   to={`/tasks/${d.id}`}
-                  className="flex items-center gap-1.5 rounded border border-border bg-panel2 px-2 py-1 text-xs hover:border-slate-500"
+                  className="flex items-center gap-1.5 rounded border border-border bg-panel2 px-2 py-1 text-xs hover:border-border"
                 >
                   <span className="font-mono text-muted">#{d.id}</span>
                   <span className="max-w-40 truncate">{d.title}</span>
@@ -191,7 +191,7 @@ function RunRow({ r, open, onToggle }: { r: RunSummary; open: boolean; onToggle:
       </Btn>
       <a
         href={`/api/v1/runs/${r.id}/export.md`}
-        className="rounded border border-border bg-panel2 px-2.5 py-1 text-xs font-medium text-fg transition-colors hover:border-slate-500"
+        className="rounded border border-border bg-panel2 px-2.5 py-1 text-xs font-medium text-fg transition-colors hover:border-border"
       >
         导出报告
       </a>
@@ -298,7 +298,7 @@ function StepRow({
             {step.note && (
               <div>
                 <div className="mb-1 text-[11px] text-muted">Note</div>
-                <div className="rounded border border-border bg-bg p-2 text-xs text-slate-300">{step.note}</div>
+                <div className="rounded border border-border bg-bg p-2 text-xs text-muted">{step.note}</div>
               </div>
             )}
           </div>
@@ -314,7 +314,7 @@ function KindBadge2({ kind }: { kind: string }) {
     kind === 'llm'
       ? 'bg-violet-500/70'
       : kind === 'tool'
-        ? 'bg-blue-500/70'
+        ? 'bg-[#6aa9f8]/70'
         : kind === 'handoff'
           ? 'bg-orange-500/70'
           : kind === 'gate'
@@ -340,13 +340,13 @@ function TaskArtifacts({ taskId }: { taskId: number }) {
             onClick={() => setOpenId(openId === a.id ? null : a.id)}
             className="flex w-full flex-wrap items-center gap-3 text-left"
           >
-            <span className="rounded border border-blue-500/30 bg-blue-500/10 px-1.5 py-0.5 text-[11px] text-blue-300">{a.kind}</span>
+            <span className="rounded border border-[#6aa9f8]/30 bg-[#6aa9f8]/10 px-1.5 py-0.5 text-[11px] text-[#6aa9f8]">{a.kind}</span>
             <span className="font-mono text-fg">{a.name}</span>
             <span className="text-muted">{a.size}B</span>
             <span className="ml-auto font-mono text-[10px] text-muted">{fmtTime(a.created_at)}</span>
           </button>
           {openId === a.id && (
-            <pre className="mt-2 max-h-64 overflow-auto rounded border border-border bg-bg p-2 font-mono text-[11px] leading-relaxed text-slate-300">
+            <pre className="mt-2 max-h-64 overflow-auto rounded border border-border bg-bg p-2 font-mono text-[11px] leading-relaxed text-muted">
               {detail.data?.content ?? '加载中…'}
             </pre>
           )}

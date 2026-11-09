@@ -117,7 +117,7 @@ export default function Chat() {
                 setConversationId(null);
                 setMessages([]);
               }}
-              className="rounded border border-border bg-bg px-2 py-1 text-xs text-fg outline-none focus:border-sky-600/60"
+              className="rounded border border-border bg-bg px-2 py-1 text-xs text-fg outline-none focus:border-accent-dim"
             >
               {items.length === 0 && <option value="">无可用 Agent</option>}
               {items.map((a: AgentSummary) => (
@@ -143,7 +143,7 @@ export default function Chat() {
               <div
                 className={`max-w-[85%] rounded-lg px-3 py-2 text-xs leading-relaxed ${
                   m.role === 'user'
-                    ? 'rounded-br-sm bg-sky-600/25 text-sky-100'
+                    ? 'rounded-br-sm bg-[#f0a830]/15 text-[#f5b95a]'
                     : 'rounded-bl-sm border border-border bg-panel2 text-fg'
                 }`}
               >
@@ -170,7 +170,7 @@ export default function Chat() {
           {err && <ErrorText>{err}</ErrorText>}
           <div className="flex gap-2">
             <input
-              className="flex-1 rounded border border-border bg-bg px-3 py-2 text-xs text-fg outline-none placeholder:text-muted focus:border-sky-600/60"
+              className="flex-1 rounded border border-border bg-bg px-3 py-2 text-xs text-fg outline-none placeholder:text-muted focus:border-accent-dim"
               placeholder={`向 ${sel?.name ?? 'Agent'} 发送消息…`}
               value={input}
               onChange={(e) => setInput(e.target.value)}

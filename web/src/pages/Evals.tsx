@@ -57,7 +57,7 @@ export default function Evals() {
               <select
                 value={agentId}
                 onChange={(e) => setAgentId(e.target.value)}
-                className="w-full rounded border border-border bg-bg px-2.5 py-1.5 text-xs text-fg outline-none focus:border-sky-600/60"
+                className="w-full rounded border border-border bg-bg px-2.5 py-1.5 text-xs text-fg outline-none focus:border-accent-dim"
               >
                 {agentItems.length === 0 && <option value="">无可用 Agent</option>}
                 {agentItems.map((a) => (
@@ -72,7 +72,7 @@ export default function Evals() {
               <select
                 value={datasetId}
                 onChange={(e) => setDatasetId(e.target.value)}
-                className="w-full rounded border border-border bg-bg px-2.5 py-1.5 text-xs text-fg outline-none focus:border-sky-600/60"
+                className="w-full rounded border border-border bg-bg px-2.5 py-1.5 text-xs text-fg outline-none focus:border-accent-dim"
               >
                 {datasetItems.length === 0 && <option value="">无可用数据集</option>}
                 {datasetItems.map((d: EvalDataset) => (
@@ -112,7 +112,7 @@ export default function Evals() {
                 type="button"
                 onClick={() => setSelectedId(ev.id)}
                 className={`flex w-full flex-wrap items-center gap-2 border-b border-border/60 px-4 py-2.5 text-left text-xs last:border-b-0 ${
-                  selectedId === ev.id ? 'bg-sky-600/10' : 'hover:bg-panel2'
+                  selectedId === ev.id ? 'bg-[#f0a830]/8' : 'hover:bg-panel2'
                 }`}
               >
                 <span className="font-mono text-muted">#{ev.id}</span>
@@ -196,14 +196,14 @@ function EvalReportView({ evalId, agentName }: { evalId: number; agentName: (id:
                       <span
                         className={`inline-flex rounded border px-1.5 py-0.5 text-[11px] ${
                           c.pass
-                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                            : 'border-rose-500/30 bg-rose-500/10 text-rose-300'
+                            ? 'border-ok/40 bg-ok/10 text-ok'
+                            : 'border-rose-500/30 bg-bad/10 text-bad'
                         }`}
                       >
                         {c.pass ? '通过' : '未通过'}
                       </span>
                     </td>
-                    <td className="px-4 py-2 leading-relaxed text-slate-300">{c.judge_comment || '—'}</td>
+                    <td className="px-4 py-2 leading-relaxed text-muted">{c.judge_comment || '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -221,7 +221,7 @@ function BigStat({ label, value, accent }: { label: string; value: ReactNode; ac
   return (
     <div className="rounded-lg border border-border bg-panel px-4 py-4">
       <div className="text-xs text-muted">{label}</div>
-      <div className={`mt-1 text-3xl font-semibold tabular-nums ${accent ? 'text-sky-300' : 'text-fg'}`}>{value}</div>
+      <div className={`mt-1 text-3xl font-semibold tabular-nums ${accent ? 'text-[#f0a830]' : 'text-fg'}`}>{value}</div>
     </div>
   );
 }

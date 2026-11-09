@@ -68,7 +68,7 @@ export default function Automations() {
   return (
     <div className="space-y-4">
       {notice && (
-        <div className="rounded border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-300">
+        <div className="rounded border border-ok/40 bg-ok/10 px-4 py-2 text-xs text-ok">
           {notice}
         </div>
       )}
@@ -129,13 +129,13 @@ export default function Automations() {
             {(autos.data?.items ?? []).map((a) => (
               <div key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border/60 px-4 py-3 text-xs last:border-b-0">
                 <span className="font-mono text-muted">#{a.id}</span>
-                <span className={`h-1.5 w-1.5 rounded-full ${a.enabled ? 'bg-emerald-500' : 'bg-slate-500'}`} aria-hidden />
+                <span className={`h-1.5 w-1.5 rounded-full ${a.enabled ? 'bg-ok' : 'bg-slate-500'}`} aria-hidden />
                 <span className="font-medium text-fg">{a.name}</span>
-                <span className="rounded border border-border px-1.5 py-px font-mono text-[11px] text-sky-300">{a.cron_expr}</span>
+                <span className="rounded border border-border px-1.5 py-px font-mono text-[11px] text-[#f0a830]">{a.cron_expr}</span>
                 <span className="text-muted">→ {a.agent_name ?? `agent#${a.agent_id}`} · {a.title}</span>
                 <span className="ml-auto flex items-center gap-3 font-mono text-[11px] tabular-nums">
                   <span className="text-muted">上次 {a.last_run ? fmtTime(a.last_run) : '—'}</span>
-                  <span className="text-sky-300">下次 {a.next_run ? fmtTime(a.next_run) : '—'}</span>
+                  <span className="text-[#f0a830]">下次 {a.next_run ? fmtTime(a.next_run) : '—'}</span>
                 </span>
                 <span className="flex w-full items-center justify-end gap-2">
                   <Btn onClick={() => void toggle(a)}>{a.enabled ? '停用' : '启用'}</Btn>
@@ -151,7 +151,7 @@ export default function Automations() {
 }
 
 const inputCls =
-  'w-full rounded border border-border bg-bg px-2.5 py-1.5 text-xs text-fg outline-none focus:border-sky-600/60';
+  'w-full rounded border border-border bg-bg px-2.5 py-1.5 text-xs text-fg outline-none focus:border-accent-dim';
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (

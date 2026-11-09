@@ -1,21 +1,53 @@
 import type { ReactNode } from 'react';
 
+/* ============================================================
+   全局组件 v2 —— mission control
+   - Panel：只包表单与统计；数据列表用轻量 Section（无卡片壳）
+   - 信号灯徽章替代色块徽章
+   - 按压 0.96、行 hover 120ms（better-ui 精确值）
+   ============================================================ */
+
 // ---------- 骨架屏 ----------
 export function Skeleton({ className = 'h-4' }: { className?: string }) {
   return <div className={`animate-pulse rounded bg-panel2 ${className}`} />;
 }
 
-export function SkeletonBlock({ rows = 3 }: { rows?: number }) {
+export function SkeletonBlock({ rows = 3 }: { rows: number }) {
   return (
     <div className="space-y-2">
       {Array.from({ length: rows }, (_, i) => (
-        <Skeleton key={i} className="h-12" />
+        <Skeleton key={i} className="h-9" />
       ))}
     </div>
   );
 }
 
-// ---------- 面板 ----------
+// ---------- 分区（替代数据列表的卡片壳：仅标题 + 内容，无边框包覆） ----------
+export function Section({
+  title,
+  right,
+  children,
+  className = '',
+}: {
+  title?: ReactNode;
+  right?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={`min-w-0 ${className}`}>
+      {(title || right) && (
+        <header className="mb-2 flex h-7 items-center justify-between border-b border-border pb-1.5">
+          <h2 className="text-[13px] font-medium text-fg">{title}</h2>
+          {right}
+        </header>
+      )}
+      {children}
+    </section>
+  );
+}
+
+// ---------- 面板（保留给表单/统计等真正需要分组的场景；阴影层次替代边框） ----------
 export function Panel({
   title,
   right,
@@ -30,10 +62,10 @@ export function Panel({
   bodyClass?: string;
 }) {
   return (
-    <div className={`card-sheen card-lift rounded-lg border border-border bg-panel ${className}`}>
+    <div className={`elev-1 rounded-lg bg-panel ${className}`}>
       {(title || right) && (
-        <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-          <div className="text-[13px] font-semibold tracking-wide text-fg">{title}</div>
+        <div className="flex h-10 items-center justify-between border-b border-border px-4">
+          <div className="text-[13px] font-medium text-fg">{title}</div>
           {right}
         </div>
       )}
@@ -42,103 +74,79 @@ export function Panel({
   );
 }
 
-// ---------- 徽章 ----------
-const STATUS_STYLE: Record<string, string> = {
-  queued: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
-  running: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
-  review: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-  done: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-  failed: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
-  canceled: 'bg-zinc-500/15 text-zinc-400 border-zinc-500/30',
-  ok: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-  error: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
-  pending: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
+// ---------- 信号灯（全站状态可视的锚点） ----------
+export function Signal({ state }: { state: 'run' | 'ok' | 'bad' | 'idle' }) {
+  return <i className={`signal signal-${state}`} aria-hidden />;
+}
+
+// ---------- 状态徽章：信号灯 + 文字（色不再是唯一通道） ----------
+const STATUS_SIGNAL: Record<string, 'run' | 'ok' | 'bad' | 'idle'> = {
+  queued: 'idle', running: 'run', review: 'run', done: 'ok',
+  failed: 'bad', canceled: 'idle', ok: 'ok', error: 'bad', pending: 'idle',
 };
 const STATUS_LABEL: Record<string, string> = {
-  queued: '排队中',
-  running: '运行中',
-  review: '待审核',
-  done: '已完成',
-  failed: '失败',
-  canceled: '已取消',
+  queued: '排队', running: '运行', review: '待审', done: '完成',
+  failed: '失败', canceled: '取消',
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  const style = STATUS_STYLE[status] ?? 'bg-slate-500/15 text-slate-300 border-slate-500/30';
   return (
-    <span className={`inline-flex shrink-0 items-center gap-1.5 rounded border px-1.5 py-0.5 text-[11px] font-medium ${style}`}>
-      {status === 'running' && <i className="pulse-dot h-1.5 w-1.5 rounded-full bg-sky-400" aria-hidden />}
-      {status === 'review' && <i className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden />}
+    <span className="inline-flex shrink-0 items-center gap-1.5 text-[11px] text-muted">
+      <Signal state={STATUS_SIGNAL[status] ?? 'idle'} />
       {STATUS_LABEL[status] ?? status}
     </span>
   );
 }
 
-// step 类型徽章：llm 紫 / tool 蓝 / handoff 橙 / gate 黄
+// step 类型徽章：保持轻量文字标签
 export const KIND_STYLE: Record<string, string> = {
-  llm: 'bg-violet-500/15 text-violet-300 border-violet-500/40',
-  tool: 'bg-blue-500/15 text-blue-300 border-blue-500/40',
-  handoff: 'bg-orange-500/15 text-orange-300 border-orange-500/40',
-  gate: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/40',
-  done: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40',
-  error: 'bg-rose-500/15 text-rose-300 border-rose-500/40',
+  llm: 'text-violet-300',
+  tool: 'text-[#6aa9f8]',
+  handoff: 'text-[#f0a830]',
+  gate: 'text-[#e3d05a]',
+  done: 'text-ok',
+  error: 'text-bad',
 };
 export const KIND_BG: Record<string, string> = {
-  llm: 'bg-violet-500',
-  tool: 'bg-blue-500',
-  handoff: 'bg-orange-500',
-  gate: 'bg-yellow-500',
+  llm: 'bg-violet-400', tool: 'bg-[#6aa9f8]', handoff: 'bg-[#f0a830]', gate: 'bg-[#e3d05a]',
 };
 const KIND_LABEL: Record<string, string> = {
-  llm: 'LLM',
-  tool: '工具',
-  handoff: '交接',
-  gate: '门禁',
+  llm: 'LLM', tool: '工具', handoff: '交接', gate: '门禁',
 };
 
 export function KindBadge({ kind }: { kind: string }) {
-  const style = KIND_STYLE[kind] ?? 'bg-slate-500/15 text-slate-300 border-slate-500/40';
   return (
-    <span className={`inline-flex w-14 shrink-0 items-center justify-center rounded border px-1 py-0.5 font-mono text-[11px] ${style}`}>
+    <span className={`shrink-0 font-mono text-[11px] ${KIND_STYLE[kind] ?? 'text-muted'}`}>
       {KIND_LABEL[kind] ?? kind}
     </span>
   );
 }
 
 export function PriorityBadge({ p }: { p: number }) {
-  const style =
-    p >= 7
-      ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
-      : p >= 4
-        ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-        : 'bg-slate-500/15 text-slate-300 border-slate-500/30';
-  return (
-    <span className={`inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[11px] ${style}`}>
-      P{p}
-    </span>
-  );
+  const tone = p >= 7 ? 'text-bad' : p >= 4 ? 'text-[#f0a830]' : 'text-muted';
+  return <span className={`shrink-0 font-mono text-[11px] tabular-nums ${tone}`}>P{p}</span>;
 }
 
-// ---------- 统计卡 ----------
+// ---------- 统计卡（保留卡片：统计确实需要分组；去渐变） ----------
 export function StatCard({ label, value, hint, accent }: { label: string; value: ReactNode; hint?: string; accent?: boolean }) {
   return (
-    <div className="card-sheen card-lift rounded-lg border border-border bg-panel px-4 py-3.5">
-      <div className="text-[11px] font-medium uppercase tracking-wider text-muted">{label}</div>
-      <div className={`mt-1.5 text-2xl font-semibold tabular-nums ${accent ? 'brand-text' : 'text-fg'}`}>{value}</div>
+    <div className="elev-1 rounded-lg bg-panel px-3.5 py-3">
+      <div className="text-[11px] text-muted">{label}</div>
+      <div className={`mt-1 font-mono text-xl font-medium tabular-nums ${accent ? 'text-[#f0a830]' : 'text-fg'}`}>{value}</div>
       {hint && <div className="mt-0.5 text-[11px] text-muted">{hint}</div>}
     </div>
   );
 }
 
-// ---------- JSON 展示（超长折叠） ----------
+// ---------- JSON 展示 ----------
 export function JsonBlock({ value, label, maxShow = 1400 }: { value: unknown; label?: string; maxShow?: number }) {
   const text = value === undefined || value === null ? '—' : safeJson(value);
   const long = text.length > maxShow;
   return (
     <div>
-      {label && <div className="mb-1 text-[11px] font-medium text-muted">{label}</div>}
+      {label && <div className="mb-1 text-[11px] text-muted">{label}</div>}
       <pre
-        className={`overflow-auto rounded border border-border bg-bg p-2 font-mono text-xs leading-relaxed text-slate-300 ${
+        className={`overflow-auto rounded bg-bg p-2 font-mono text-xs leading-relaxed text-muted ${
           long ? 'max-h-40' : 'max-h-96'
         }`}
       >
@@ -173,7 +181,6 @@ export function fmtNum(n?: number | null): string {
   return String(n);
 }
 
-/** 成功率/通过率：兼容 0-1 与 0-100 两种口径 */
 export function fmtRate(v?: number | null): string {
   if (v === undefined || v === null) return '—';
   const pct = v > 0 && v <= 1 ? v * 100 : v;
@@ -186,7 +193,7 @@ export function fmtDuration(ms?: number | null): string {
   return `${ms}ms`;
 }
 
-// ---------- 按钮 ----------
+// ---------- 按钮（按压反馈 + 精确缓动） ----------
 export function Btn({
   children,
   onClick,
@@ -203,10 +210,9 @@ export function Btn({
   type?: 'button' | 'submit';
 }) {
   const styles: Record<string, string> = {
-    default: 'border-border bg-panel2 text-fg hover:border-border-hover hover:bg-panel',
-    primary:
-      'border-sky-500/60 bg-gradient-to-b from-sky-500/25 to-sky-600/15 text-sky-200 hover:from-sky-500/35 hover:to-sky-600/25 hover:border-sky-400/70',
-    danger: 'border-rose-600/50 bg-rose-600/15 text-rose-300 hover:bg-rose-600/25',
+    default: 'border-border bg-panel2 text-fg hover:bg-[#1f2d47]',
+    primary: 'border-accent-dim bg-[#f0a830]/15 text-[#f5b95a] hover:bg-[#f0a830]/25 hover:border-[#f0a830]',
+    danger: 'border-bad/40 bg-bad/10 text-bad hover:bg-bad/20',
     ghost: 'border-transparent bg-transparent text-muted hover:text-fg',
   };
   return (
@@ -214,7 +220,7 @@ export function Btn({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex items-center gap-1 rounded border px-2.5 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${styles[variant]} ${className}`}
+      className={`press inline-flex items-center gap-1 rounded border px-2.5 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${styles[variant]} ${className}`}
     >
       {children}
     </button>
@@ -223,6 +229,6 @@ export function Btn({
 
 export function ErrorText({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded border border-rose-600/40 bg-rose-600/10 px-3 py-2 text-xs text-rose-300">{children}</div>
+    <div className="rounded border border-bad/40 bg-bad/10 px-3 py-2 text-xs text-bad">{children}</div>
   );
 }

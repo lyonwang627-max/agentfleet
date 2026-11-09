@@ -63,10 +63,10 @@ export default function Overview() {
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
           {items.map((a) => (
-            <div key={a.id} className="rounded-lg border border-border bg-panel p-4 transition-colors hover:border-slate-500/50">
+            <div key={a.id} className="rounded-lg border border-border bg-panel p-4 transition-colors hover:border-border/50">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <Link to={`/agents/${a.id}`} className="truncate text-sm font-semibold text-fg hover:text-sky-300">
+                  <Link to={`/agents/${a.id}`} className="truncate text-sm font-semibold text-fg hover:text-[#f0a830]">
                     {a.name}
                   </Link>
                   <div className="truncate text-xs text-muted">{a.role || '—'}</div>
@@ -74,8 +74,8 @@ export default function Overview() {
                 <span
                   className={`inline-flex shrink-0 items-center rounded border px-1.5 py-0.5 text-[11px] ${
                     a.enabled
-                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                      : 'border-zinc-500/30 bg-zinc-500/10 text-zinc-400'
+                      ? 'border-ok/40 bg-ok/10 text-ok'
+                      : 'border-border bg-muted/10 text-muted'
                   }`}
                 >
                   {a.enabled ? '已启用' : '已停用'}
@@ -88,10 +88,10 @@ export default function Overview() {
               </div>
               <div className="mt-3 flex items-end justify-between">
                 <div className="flex gap-4 text-xs">
-                  <span className="text-sky-300">
+                  <span className="text-[#f0a830]">
                     运行 <span className="font-mono text-sm tabular-nums">{a.running ?? 0}</span>
                   </span>
-                  <span className="text-amber-300">
+                  <span className="text-[#f0a830]">
                     排队 <span className="font-mono text-sm tabular-nums">{a.queued ?? 0}</span>
                   </span>
                 </div>
@@ -123,7 +123,7 @@ function MiniStat({ label, value, sub, accent }: { label: string; value: string 
   return (
     <div className="rounded-lg border border-border bg-panel px-4 py-3">
       <div className="text-xs text-muted">{label}</div>
-      <div className={`mt-0.5 text-xl font-semibold tabular-nums ${accent ? 'text-sky-300' : 'text-fg'}`}>{value}</div>
+      <div className={`mt-0.5 text-xl font-semibold tabular-nums ${accent ? 'text-[#f0a830]' : 'text-fg'}`}>{value}</div>
       {sub && <div className="text-[11px] text-muted">{sub}</div>}
     </div>
   );
@@ -162,7 +162,7 @@ function EventFeed() {
       title={
         <span className="flex items-center gap-2">
           实时事件流
-          <span className={`inline-flex h-1.5 w-1.5 rounded-full ${connected ? 'bg-emerald-500' : 'bg-zinc-500'}`} />
+          <span className={`inline-flex h-1.5 w-1.5 rounded-full ${connected ? 'bg-ok' : 'bg-muted'}`} />
           <span className="text-[11px] font-normal text-muted">SSE {connected ? '已连接' : '未连接'}</span>
         </span>
       }
@@ -171,7 +171,7 @@ function EventFeed() {
           <select
             value={kindFilter}
             onChange={(e) => setKindFilter(e.target.value)}
-            className="rounded border border-border bg-bg px-1.5 py-0.5 text-[11px] text-fg outline-none focus:border-sky-600/60"
+            className="rounded border border-border bg-bg px-1.5 py-0.5 text-[11px] text-fg outline-none focus:border-accent-dim"
           >
             <option value="all">全部</option>
             {kinds.map((k) => (
@@ -196,7 +196,7 @@ function EventFeed() {
               <KindBadge kind={e.ev.kind} />
               <span className="ml-auto font-mono text-[10px] text-muted">{fmtTime(new Date(e.at).toISOString())}</span>
             </div>
-            <div className="mt-1 line-clamp-2 break-all font-mono text-[11px] leading-relaxed text-slate-400">
+            <div className="mt-1 line-clamp-2 break-all font-mono text-[11px] leading-relaxed text-muted">
               {e.ev.data ? JSON.stringify(e.ev.data) : '—'}
             </div>
           </div>

@@ -81,13 +81,13 @@ export default function AgentDetail() {
   };
 
   const inputCls =
-    'w-full rounded border border-border bg-bg px-2.5 py-1.5 text-xs text-fg outline-none placeholder:text-muted focus:border-sky-600/60';
+    'w-full rounded border border-border bg-bg px-2.5 py-1.5 text-xs text-fg outline-none placeholder:text-muted focus:border-accent-dim';
   const s = a.stats;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-xs text-muted">
-        <Link to="/" className="hover:text-sky-300">
+        <Link to="/" className="hover:text-[#f0a830]">
           舰队总览
         </Link>
         <span>/</span>
@@ -114,13 +114,13 @@ export default function AgentDetail() {
               <span
                 className={`rounded border px-1.5 py-0.5 text-[11px] ${
                   a.enabled
-                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                    : 'border-zinc-500/30 bg-zinc-500/10 text-zinc-400'
+                    ? 'border-ok/40 bg-ok/10 text-ok'
+                    : 'border-border bg-muted/10 text-muted'
                 }`}
               >
                 {a.enabled ? '已启用' : '已停用'}
               </span>
-              {saved && <span className="text-emerald-400">已保存</span>}
+              {saved && <span className="text-ok">已保存</span>}
             </span>
           }
         >
@@ -183,7 +183,7 @@ export default function AgentDetail() {
             <div key={r.id} className="flex flex-wrap items-center gap-3 border-b border-border/60 px-4 py-2 text-xs last:border-b-0">
               <span className="font-mono text-muted">#{r.id}</span>
               <StatusBadge status={r.status} />
-              <Link to={`/tasks/${r.task_id}`} className="max-w-48 truncate hover:text-sky-300" title={r.task_title}>
+              <Link to={`/tasks/${r.task_id}`} className="max-w-48 truncate hover:text-[#f0a830]" title={r.task_title}>
                 {r.task_title}
               </Link>
               <span className="ml-auto text-muted">
@@ -279,12 +279,12 @@ function AgentVersions({ agentId }: { agentId: number }) {
       title={`版本历史（${items.length}）`}
       right={
         <span className="flex items-center gap-2">
-          {msg && <span className="text-emerald-400">{msg}</span>}
+          {msg && <span className="text-ok">{msg}</span>}
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="发布备注（可选）"
-            className="w-40 rounded border border-border bg-bg px-2 py-1 text-xs text-fg outline-none focus:border-sky-600/60"
+            className="w-40 rounded border border-border bg-bg px-2 py-1 text-xs text-fg outline-none focus:border-accent-dim"
           />
           <Btn variant="primary" disabled={busy} onClick={() => void act(async () => {
             const r = await api.publishAgent(agentId, note.trim());
@@ -306,7 +306,7 @@ function AgentVersions({ agentId }: { agentId: number }) {
       )}
       {items.map((v) => (
         <div key={v.id} className="flex flex-wrap items-center gap-3 border-b border-border/60 px-4 py-2.5 text-xs last:border-b-0">
-          <span className="rounded border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 font-mono text-[11px] text-sky-300">
+          <span className="rounded border border-accent-dim/50 bg-sky-500/10 px-1.5 py-0.5 font-mono text-[11px] text-[#f0a830]">
             v{v.version}
           </span>
           <span className="text-fg">{v.note || '（无备注）'}</span>

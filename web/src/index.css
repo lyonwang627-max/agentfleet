@@ -1,15 +1,29 @@
 @import "tailwindcss";
 
+/* ============================================================
+   agentfleet 设计系统 v2 —— mission control
+   母题：任务控制中心。运维的母语是信号灯，不是营销页。
+   原则（源自设计评审，反 SaaS-card kit）：
+   1. 列表优先于卡片——内容是数据行，不是待封装的礼物
+   2. 阴影做层次，边框只做分隔——边框不再装饰
+   3. 密度是特性——工程师界面，一屏看到更多状态
+   4. boldness 只花一处：信号灯系统（琥珀脉冲）
+   ============================================================ */
+
 @theme {
-  /* 分层色板：bg 最深 → panel 主面 → panel2 浮起，三层拉开制造纵深 */
-  --color-bg: #070a10;
-  --color-panel: #101724;
-  --color-panel2: #192233;
-  --color-border: #233046;
-  --color-border-hover: #33456a;
-  --color-fg: #dbe4f0;
-  --color-muted: #8d9db3;
-  --color-accent: #38bdf8;
+  /* 深空蓝中性梯（单一 ramp，每步有职责） */
+  --color-bg: #0b1220;          /* 页面底：最深 */
+  --color-panel: #111a2c;       /* 组件面：一级抬升 */
+  --color-panel2: #182438;      /* 交互面：hover/输入 */
+  --color-border: #22314b;      /* 分隔线：只做结构 */
+  --color-fg: #e8eef8;          /* 正文 */
+  --color-muted: #8ba0bf;       /* 次要文字 */
+  --color-accent: #f0a830;      /* 信号琥珀：唯一 bold 色 */
+  --color-accent-dim: #b97f1f;  /* 琥珀暗阶：边框/hover 用 */
+  --color-ok: #3ecf8e;          /* 信号绿：done/健康 */
+  --color-warn: #f0a830;        /* 信号琥珀：running/告警（与 accent 同源）*/
+  --color-bad: #f0716a;         /* 信号红：failed/危险 */
+  --color-info: #6aa9f8;        /* 信号蓝：info 类事件 */
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 
@@ -20,100 +34,92 @@ body,
 }
 
 body {
-  /* 主背景：底部带一点品牌蓝的径向渐晕，消除大面积死黑 */
   background-color: var(--color-bg);
-  background-image: radial-gradient(1200px 600px at 70% -10%, rgba(56, 189, 248, 0.05), transparent 60%);
   color: var(--color-fg);
   font-family: ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
   -webkit-font-smoothing: antialiased;
-  font-feature-settings: "tnum";
+  font-feature-settings: "tnum"; /* 全局表格数字 */
 }
 
-/* 数字全局等宽对齐（指标卡/表格/耗时） */
+/* ---------- 层次：阴影替代装饰性边框（better-ui） ---------- */
+.elev-1 {
+  box-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.04),
+    0 1px 2px oklch(0 0 0 / 0.4);
+}
+.elev-2 {
+  box-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.05),
+    0 4px 16px oklch(0 0 0 / 0.45);
+}
+
+/* ---------- 信号灯系统：全站唯一的 boldness ---------- */
+@keyframes signal-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 oklch(0.78 0.15 78 / 0.45); }
+  50% { opacity: 0.75; box-shadow: 0 0 0 5px oklch(0.78 0.15 78 / 0); }
+}
+.signal {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+.signal-run { background: var(--color-warn); animation: signal-pulse 1.8s ease-in-out infinite; }
+.signal-ok { background: var(--color-ok); }
+.signal-bad { background: var(--color-bad); }
+.signal-idle { background: var(--color-muted); }
+
+/* ---------- 行交互（高频反馈 ≤150ms，better-ui） ---------- */
+.row-hover {
+  transition: background-color 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+.row-hover:hover {
+  background-color: oklch(0.45 0.06 250 / 0.16);
+}
+
+/* 按下缩放（better-ui：0.96 / 150ms / ease-out） */
+.press {
+  transition: transform 150ms ease-out;
+}
+.press:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+/* ---------- 等宽数据 ---------- */
 .tabular-nums,
 [class*="font-mono"] {
   font-variant-numeric: tabular-nums;
 }
 
-/* 卡片质感：顶部一像素高光 + hover 边框提亮 */
-.card-sheen {
-  position: relative;
-}
-.card-sheen::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent 4%, rgba(148, 178, 214, 0.18) 50%, transparent 96%);
-  pointer-events: none;
-}
-.card-lift {
-  transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
-}
-.card-lift:hover {
-  border-color: var(--color-border-hover);
-}
-
-/* 品牌字标渐变 */
-.brand-text {
-  background: linear-gradient(120deg, #e8f2ff 30%, #7dd3fc 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-/* 运行中脉动点 */
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.35; transform: scale(0.8); }
-}
-.pulse-dot {
-  animation: pulse-dot 1.6s ease-in-out infinite;
-}
-
-/* 页面级淡入（克制，无位移） */
+/* 页面淡入（唯一入场动画；其余交互即时） */
 @keyframes page-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 main {
-  animation: page-in 0.25s ease-out;
+  animation: page-in 0.2s ease-out;
 }
 
 ::selection {
-  background: rgba(56, 189, 248, 0.28);
+  background: oklch(0.78 0.15 78 / 0.3);
 }
 
-/* 统一 focus 可见性 */
 :focus-visible {
-  outline: 2px solid rgba(56, 189, 248, 0.55);
+  outline: 2px solid oklch(0.78 0.15 78 / 0.6);
   outline-offset: 1px;
   border-radius: 4px;
 }
 
-/* 深色滚动条（更细更淡） */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #263349 transparent;
+  scrollbar-color: #26385a transparent;
 }
-*::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
-}
-*::-webkit-scrollbar-thumb {
-  background: #263349;
-  border-radius: 4px;
-}
-*::-webkit-scrollbar-thumb:hover {
-  background: #33456a;
-}
+*::-webkit-scrollbar { width: 7px; height: 7px; }
+*::-webkit-scrollbar-thumb { background: #26385a; border-radius: 4px; }
+*::-webkit-scrollbar-thumb:hover { background: #33486e; }
 
 @media (prefers-reduced-motion: reduce) {
-  .pulse-dot,
-  main {
-    animation: none;
-  }
-  .card-lift {
-    transition: none;
-  }
+  .signal-run,
+  main { animation: none; }
+  .press, .row-hover { transition: none; }
 }

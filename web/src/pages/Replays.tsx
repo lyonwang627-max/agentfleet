@@ -25,7 +25,7 @@ export default function Replays() {
         <Panel title={`会话（${items.length}）`} bodyClass="p-0">
           {conversations.loading && <div className="p-4"><SkeletonBlock rows={4} /></div>}
           {conversations.error && (
-            <div className="p-4 text-xs text-rose-300">{conversations.error}</div>
+            <div className="p-4 text-xs text-bad">{conversations.error}</div>
           )}
           {!conversations.loading && items.length === 0 && (
             <div className="px-4 py-8 text-center text-xs text-muted">
@@ -38,7 +38,7 @@ export default function Replays() {
               type="button"
               onClick={() => setSelectedId(c.id)}
               className={`flex w-full flex-col gap-1 border-b border-border/60 px-4 py-2.5 text-left text-xs last:border-b-0 ${
-                current === c.id ? 'bg-sky-600/10' : 'hover:bg-panel2'
+                current === c.id ? 'bg-[#f0a830]/8' : 'hover:bg-panel2'
               }`}
             >
               <div className="flex w-full items-center gap-2">
@@ -64,7 +64,7 @@ export default function Replays() {
         {current === null && !conversations.loading && (
           <Panel><div className="py-10 text-center text-xs text-muted">从左侧选择一个会话进行回放</div></Panel>
         )}
-        {detail.error && <Panel><div className="text-xs text-rose-300">{detail.error}</div></Panel>}
+        {detail.error && <Panel><div className="text-xs text-bad">{detail.error}</div></Panel>}
       </div>
     </div>
   );
@@ -80,7 +80,7 @@ function ReplayTimeline({ detail }: { detail: NonNullable<import('../types').Con
               <div
                 className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-xs leading-relaxed ${
                   m.role === 'user'
-                    ? 'rounded-br-sm bg-sky-600/25 text-sky-50'
+                    ? 'rounded-br-sm bg-[#f0a830]/15 text-fg'
                     : 'rounded-bl-sm border border-border bg-panel2 text-fg'
                 }`}
               >

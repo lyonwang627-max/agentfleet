@@ -22,16 +22,13 @@ export default function Layout() {
     <div className="flex h-full min-h-screen">
       {/* 侧边栏 */}
       <aside className="flex w-44 shrink-0 flex-col border-r border-border bg-panel/80 backdrop-blur">
-        <div className="flex items-center gap-2.5 border-b border-border px-4 py-4">
-          <span
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-sky-400 to-indigo-600 text-[13px] font-bold text-white shadow-[0_0_14px_rgba(56,189,248,0.35)]"
-            aria-hidden
-          >
-            ⚡
-          </span>
-          <div className="min-w-0">
-            <div className="brand-text truncate text-sm font-bold tracking-wide">agentfleet</div>
-            <div className="mt-0.5 text-[11px] text-muted">多 Agent 任务管控台</div>
+        <div className="border-b border-border px-4 py-4">
+          <div className="font-mono text-[13px] font-semibold tracking-tight text-fg">
+            agent<span className="text-[#f0a830]">fleet</span>
+          </div>
+          <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">
+            <i className={`signal ${down ? 'signal-bad' : 'signal-ok'}`} aria-hidden />
+            任务控制台
           </div>
         </div>
         <nav className="flex flex-col gap-0.5 p-2">
@@ -42,7 +39,7 @@ export default function Layout() {
               end={n.to === '/'}
               className={({ isActive }) =>
                 `rounded px-3 py-2 text-sm transition-colors ${
-                  isActive ? 'bg-sky-600/15 font-medium text-sky-300' : 'text-muted hover:bg-panel2 hover:text-fg'
+                  isActive ? 'bg-[#f0a830]/10 font-medium text-[#f0a830]' : 'text-muted hover:bg-panel2 hover:text-fg'
                 }`
               }
             >
@@ -50,10 +47,8 @@ export default function Layout() {
             </NavLink>
           ))}
         </nav>
-        <div className="mt-auto p-3 text-[10px] leading-relaxed text-muted">
-          API v1 · localhost:8090
-          <br />
-          Vite + React 18 + Tailwind v4
+        <div className="mt-auto p-3 font-mono text-[10px] text-muted">
+          :8090 · v1
         </div>
       </aside>
 
@@ -62,7 +57,7 @@ export default function Layout() {
         {/* 顶栏健康状态 */}
         <header className="flex items-center gap-3 border-b border-border bg-panel/70 px-5 py-2.5 backdrop-blur">
           <span
-            className={`inline-flex h-2 w-2 rounded-full ${down ? 'bg-rose-500' : 'pulse-dot bg-emerald-500'}`}
+            className={`signal ${down ? 'signal-bad' : 'signal-ok'}`}
             aria-hidden
           />
           <span className="text-[13px] font-medium">{down ? '后端离线' : `后端 ${h?.status ?? '…'}`}</span>
@@ -78,7 +73,7 @@ export default function Layout() {
                   className={`rounded border px-1 py-px font-mono ${
                     h.llm.mode === 'ollama'
                       ? 'border-violet-500/40 bg-violet-500/10 text-violet-300'
-                      : 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+                      : 'border-accent-dim/50 bg-[#f0a830]/10 text-[#f0a830]'
                   }`}
                 >
                   {h.llm.mode}
@@ -93,7 +88,7 @@ export default function Layout() {
 
         {/* 后端不可达横幅（优雅降级，不白屏） */}
         {down && (
-          <div className="border-b border-amber-600/40 bg-amber-600/10 px-5 py-2 text-xs text-amber-300">
+          <div className="border-b border-accent-dim/50 bg-[#f0a830]/10 px-5 py-2 text-xs text-[#f0a830]">
             后端未启动：<span className="font-mono">make run</span>（监听 http://localhost:8090 ）。页面已降级，显示骨架屏；后端恢复后自动重试。
           </div>
         )}
