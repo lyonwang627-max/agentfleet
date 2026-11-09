@@ -36,6 +36,7 @@
   动机：现在 run 失败只能整任务重试；借鉴 LangGraph checkpoint 恢复 + Temporal 结果重放语义——
   run 步骤标注确定性/非确定性：**确定性步（tool 调用）重试时返回已记录观察（Temporal 语义：结果重放而非跳过）**，非确定性步（llm）重新执行；trace 标注 resumed_from。
   验收：含 2+ tool 步的任务失败重试后，tool 步观察来自已记录结果（不重复调用 MCP）；跨 agent 版本（F2 version）变化的续跑请求被拒绝并提示重新评估；与 F11 Spill 组合。
+  2026-11-10 langgraph-interrupt 调研补强验收：恢复=重放 → tool 步副作用须幂等（upsert 语义），与 Temporal「结果重放」双源互证；resume 值应结构化（非纯文本）。见 docs/research/langgraph-interrupt-resume.md。
 
 - [x] **I13 任务状态漂移检测器** `done`（2026-11-07，源自 openhands-event-stream 调研）
   实现：GET /tasks/{id}/consistency——replayTaskStatus 纯函数折叠 task.update 事件（终态屏蔽后续/审批回退合法路径）派生应有状态 vs tasks.status；人为制造漂移检出 ✓ 正常零误报 ✓。测试技巧：直调 handler 时需 r.SetPathValue 注入路径参数（绕过 mux 匹配，PathValue 才有值）
@@ -93,6 +94,11 @@
   @all/未指定时由模型从 roster（I30 花名册已带技能描述，selector 数据已就位）选最相关 1-2 名。
   验收：@all 时模型选人输出带理由；显式 @ 行为完全不回归；选人失败回退全员唤醒。
   实现：selectRoomAgents（ChatJSON + roomSelectorSystem 选人器人格，roster=enabled 成员 name:role+提示词头 60，上下文=最近 6 条头部）→ ≤2 名有效选人（名单外幽灵名过滤、去重）；响应 additive 字段 selection（名字+理由）。单测 4 组：智能选人（ghost 过滤）/非法 JSON 回退全员/全无效名回退/显式 @ 不经选人器。真模型实弹（qwen3.5）：@all → 选中 intake 带理由 → intake 链式 @fixer 协作；幻觉 @ops（seed 无此名）被安全忽略。
+
+- [ ] **I33 工具步级审批（risk 下沉到工具调用粒度）** `proposed` `M`（源自 langgraph-interrupt 调研，见 docs/research/）
+  动机：审批门现为任务级（review→approve→requeue 整任务重跑）；LangGraph 工具内 interrupt 证明审批可随工具走——
+  high 风险任务（I29）的特定工具调用（对外发布/删除/资金类）执行前暂停，approve 带参数修正后执行，reject 跳过该工具继续。
+  验收：mock 剧本高风险工具步进 review 门（带工具名/参数快照）；approve 带参数修正注入当步执行；reject 跳过并在 trace 留 gate-reject 步；F11 工具循环内同样生效。
 
 ## 已完成（沉淀记录）
 

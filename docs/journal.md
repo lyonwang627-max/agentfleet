@@ -367,3 +367,10 @@
 - getAgent 响应带 draft_config + has_unpublished_changes（前端徽章留第 2 轮）。
 - 单测 4 组：PATCH 不落线/publish 落线+版本/无草稿纯快照/rollback 清草稿。9 包 -race 全绿。
 - 教训复现：直调 handler 需 SetPathValue（第三次踩，已固化为测试注释惯例）。
+
+## 2026-11-10 B 调研：LangGraph interrupt/resume（docs/research/langgraph-interrupt-resume.md）
+
+- interrupt(payload) 抛可恢复异常 + Command(resume) 值成为 node 内返回值的契约；resume=node 从头重放 → 四条纪律（副作用幂等/多 interrupt 按索引/禁裸 try/禁循环 interrupt）。
+- 三种 HITL 模式（Approve/Review&Edit/工具内 interrupt）——工具内 interrupt 是粒度最细形态。
+- **对 agentfleet**：粒度下沉缺口→I33 工具步级审批入池（risk 分级下沉到工具调用，approve 带参数修正）；I11 验收补强（恢复=重放→副作用幂等，与 Temporal 双源互证）；Steer↔resume 值同构确认。
+- 明确不抄：动态图框架/thread_id 持久化（DB 即 checkpointer）/response_schema 校验。
