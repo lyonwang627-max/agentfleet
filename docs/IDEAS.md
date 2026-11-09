@@ -63,9 +63,11 @@
   实现：GET /tasks?dlq=true（failed=重试耗尽语义的独立列表）+ POST /tasks/{id}/replay（清零重试预算重排队——与 retry 的区别是「人工判定值得从头再跑」而非「再试一次」）。单测：死信列表过滤/重放清零/非 failed 409 与 404。剩余：前端死信区展示。
 - [x] **I19 API Key 认证中间件** `done`（2026-11-07）
   实现：api_keys 表（SHA-256 哈希库存，明文仅创建响应一次）+ X-API-Key 中间件（渐进语义：表空开放→有 key 强制）+ 管理端点三件（POST 创建返回明文/GET 列表/DELETE 撤销）+ 限流键升级接线（认证后按 key 名限流）+ metrics/health 豁免。单测：七步渐进语义全链（开放→建 key→401→403→200→豁免→撤销恢复）。
-- [ ] **I20 任务依赖 DAG 可视化** `proposed` `S`（实用性）
-  动机：depends_on 只有文字列表。任务详情页渲染依赖树（SVG 节点连线，标状态色），环检测在创建时报警。
-  验收：GET /tasks/{id}/dag 返回节点/边；前端 SVG 渲染；创建时环检测 400。
+- [x] **I20 任务依赖 DAG 可视化** `done`（2026-11-10，后端 c4e3a6e + 前端 1d5bef4）
+  实现：detectCycle DFS 三色 + validateNoCycle（防御深度；创建时序决定传递环不可达——deps 只能引用已存在任务）+
+  GET /tasks/{id}/dag（子图节点/边 + cycle 真算）+ createTask 缺失依赖 400（防永久 blocked 卡死）+ deps 去重 +
+  TaskPatch.DependsOn（mem/pg 双实现）+ 前端 DepGraph SVG（最长路径分层/贝塞尔连线/状态着色/像素预算截断零溢出/红环警示）。
+  顺手修 TaskDetail 钩子违规崩溃（useEffect 在早退 return 后）。回归锁：算法单测 + HTTP 级 + 浏览器 getComputedTextLength 实测。
 - [x] **I21 Prompt 模板变量** `done`（2026-11-07）
   实现：renderTemplate 纯函数（task.title/task.id/workspace.path/branch/name/agent.name 六变量；未知变量原样保留——写错应被看见；无模板快路径零开销；nil 安全）；渲染只发生在执行副本（不污染任务本体）。单测：全渲染/未知保留/快路径/nil 安全/agent.name 五组。trace 审计：渲染发生在 route 步之后的执行链路，task 本体保存未渲染原文。
 - [x] **I22 事件流过滤查询** `done`（2026-11-07）
