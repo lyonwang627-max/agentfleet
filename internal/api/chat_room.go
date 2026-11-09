@@ -93,12 +93,25 @@ func (s *Server) chatRoom(w http.ResponseWriter, r *http.Request) {
 		filtered = append(filtered, n)
 	}
 	names = filtered
+	var selection []roomSelection // @all 智能选人结果（I32；nil=未触发或回退全员）
 	if all {
-		if autos, _ := s.Store.ListAgents(ctx, store.AgentFilter{}); len(autos) >= 0 {
-			for _, a := range autos {
-				if a.Enabled && a.Name != "all" {
-					if !containsStr(names, a.Name) {
-						names = append(names, a.Name)
+		// I32 候选集收窄：@all 不再全员唤醒——模型从 roster（含职责描述）选最相关 ≤2 名；
+		// 选人失败（LLM 不可达/解析失败/全无效名）回退全员唤醒（原有行为兜底）。
+		// 显式 @ 不经此通道——派发可审计性优先（autogen 调研结论）。
+		if selected, err := s.selectRoomAgents(ctx, convID, in.Message); err == nil && len(selected) > 0 {
+			selection = selected
+			for _, sel := range selected {
+				if !containsStr(names, sel.Name) {
+					names = append(names, sel.Name)
+				}
+			}
+		} else {
+			if autos, _ := s.Store.ListAgents(ctx, store.AgentFilter{}); len(autos) >= 0 {
+				for _, a := range autos {
+					if a.Enabled && a.Name != "all" {
+						if !containsStr(names, a.Name) {
+							names = append(names, a.Name)
+						}
 					}
 				}
 			}
@@ -118,8 +131,12 @@ func (s *Server) chatRoom(w http.ResponseWriter, r *http.Request) {
 				Model: a.Model, Purpose: "chat", CompletionTokens: 64, Requests: 1})
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"conversation_id": convID, "replies": replies, "woken": len(replies)})
+	resp := map[string]any{
+		"conversation_id": convID, "replies": replies, "woken": len(replies)}
+	if len(selection) > 0 {
+		resp["selection"] = selection // @all 智能选人明细（名字+理由）
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // wakeRoomAgents 串行唤醒：读时间线 → 该 agent 人格回帖 → 扫描回帖里的 @ 链式。
@@ -177,6 +194,85 @@ func (s *Server) buildRoomPrompt(ctx context.Context, convID int64, agent *model
 - 基于时间线上下文直接回应 @你 的内容；可用 @其他成员名 请他们接力（只在确有必要时）。
 - 回答保持简洁（3 句内优先），不要复述别人的发言。
 - 你只输出你要说的话本身，不要任何前缀。`, wokenBy, tl)
+}
+
+// roomSelection 智能选人明细（I32）：名字 + 一句话理由。
+type roomSelection struct {
+	Name   string `json:"name"`
+	Reason string `json:"reason"`
+}
+
+// roomSelectorSystem 选人器人格：只输出 selections JSON，最多 2 名。
+const roomSelectorSystem = `你是群聊选人器。根据会话上下文从成员名单中选出最相关的执行者。
+只输出一个 JSON 对象：{"selections":[{"name":"成员名","reason":"选择理由（一句话）"}]}。
+最多选 2 名；若没有成员相关可选 0 名；禁止选不在名单里的名字。`
+
+// selectRoomAgents @all 智能选人（I32，candidate_func 思想）：模型只做候选集内选人
+// 这个「步骤级」环节；返回 ≤2 个有效成员（名字必须在 enabled roster 内）。
+func (s *Server) selectRoomAgents(ctx context.Context, convID int64, message string) ([]roomSelection, error) {
+	autos, err := s.Store.ListAgents(ctx, store.AgentFilter{})
+	if err != nil {
+		return nil, err
+	}
+	var roster strings.Builder
+	valid := map[string]bool{}
+	for _, a := range autos {
+		if !a.Enabled || a.Name == "all" {
+			continue
+		}
+		valid[a.Name] = true
+		roster.WriteString(a.Name + " : " + a.Role)
+		if head := headRoom(a.SystemPrompt, 60); head != "" {
+			roster.WriteString("（" + head + "）")
+		}
+		roster.WriteString("\n")
+	}
+	if roster.Len() == 0 {
+		return nil, fmt.Errorf("无可用成员")
+	}
+	// 上下文：最近 6 条消息头部（复用 I6 时间线，轻量即可）
+	msgs, _ := s.Store.ListMessages(ctx, convID)
+	var recent strings.Builder
+	if n := len(msgs); n > 0 {
+		for _, m := range msgs[maxInt(0, n-6):] {
+			recent.WriteString(historyLine(m, 60) + "\n")
+		}
+	}
+	user := fmt.Sprintf(`成员名单（name : 职责）：
+%s
+最新消息：%s
+最近对话：
+%s
+选出最相关的执行者（最多 2 名）。`, roster.String(), headRoom(message, 100), recent.String())
+	raw, _, err := s.LLM.ChatJSON(ctx, roomSelectorSystem, user, 300)
+	if err != nil {
+		return nil, err
+	}
+	var out struct {
+		Selections []roomSelection `json:"selections"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	validOut := []roomSelection{}
+	picked := map[string]bool{}
+	for _, sel := range out.Selections {
+		if valid[sel.Name] && !picked[sel.Name] {
+			picked[sel.Name] = true
+			validOut = append(validOut, sel)
+		}
+		if len(validOut) >= 2 {
+			break
+		}
+	}
+	return validOut, nil
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func headRoom(s string, n int) string {

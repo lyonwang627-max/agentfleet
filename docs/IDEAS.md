@@ -86,11 +86,12 @@
 - [x] **I30 小队模式** `done`（2026-11-09，对标 Multica squads 源码调研定稿）
   实现：squad/squad_members 表与 CRUD（leader 必为 agent、成员混编、UNIQUE 幂等）+ leader briefing（运行协议：只协调不动手/转派/无动作记录/派完即停 + 花名册含技能 + 小队指令）注入 system prompt + 任务创建接受 squad_id（缺省 leader/非 leader 400）+ 成员完成自动生成 leader 跟进评估任务（事件驱动闭环）。端到端测试：建队→briefing 四要素→leader handoff→成员完成→跟进任务生成。
 
-- [ ] **I32 群聊候选集收窄（@all 智能选人）** `proposed` `S`（源自 autogen-group-chat 调研，见 docs/research/）
+- [x] **I32 群聊候选集收窄（@all 智能选人）** `done`（2026-11-10）
   动机：room 的 @all 现在全员唤醒（token 浪费且常不必要）；AutoGen candidate_func 思想——
   LLM 只做「候选集内选人」这一步骤级自动环节：显式 @ 优先（可审计的权威通道不变），
   @all/未指定时由模型从 roster（I30 花名册已带技能描述，selector 数据已就位）选最相关 1-2 名。
   验收：@all 时模型选人输出带理由；显式 @ 行为完全不回归；选人失败回退全员唤醒。
+  实现：selectRoomAgents（ChatJSON + roomSelectorSystem 选人器人格，roster=enabled 成员 name:role+提示词头 60，上下文=最近 6 条头部）→ ≤2 名有效选人（名单外幽灵名过滤、去重）；响应 additive 字段 selection（名字+理由）。单测 4 组：智能选人（ghost 过滤）/非法 JSON 回退全员/全无效名回退/显式 @ 不经选人器。真模型实弹（qwen3.5）：@all → 选中 intake 带理由 → intake 链式 @fixer 协作；幻觉 @ops（seed 无此名）被安全忽略。
 
 ## 已完成（沉淀记录）
 

@@ -335,3 +335,8 @@
 - 三种团队形态（RoundRobin 固定轮转 / Selector LLM 选人 / Swarm handoff）+ selector_prompt 三占位符（participants/roles/history）+ 双钩子（selector_func 全接管可回退、candidate_func 候选集收窄）+ Termination 体系（五种条件、|/& 组合、自动 reset、stop_reason 可观测）。
 - **对 agentfleet 五点借鉴**：候选集收窄→I32 入池（@all 智能选人，I30 花名册数据已就位）；Termination 组合+stop_reason（防爆炸从硬编码常量升级为可观测终止原因）；woken 去重与 allow_repeated_speaker 同构确认；Steer↔ExternalTermination 同族确认；description 即选人依据验证花名册路线。
 - 明确不抄：LLM selector 替代显式 @（派发可审计性）、Swarm 形态（handoff 状态机已覆盖）、组件序列化框架。
+
+## 2026-11-10 C 切片：I32 群聊候选集收窄（@all 智能选人）
+
+- selectRoomAgents：ChatJSON 选人器（roster 数据复用 I30 花名册 name:role+提示词头），@all 从全员唤醒改为 ≤2 名智能选人（名单外过滤/去重），失败回退全员兜底；显式 @ 不经此通道（派发可审计性）。响应 additive 字段 selection 带理由。
+- 单测 4 组全过 + 9 包 -race 全绿。真模型实弹（qwen3.5）：@all 数据库连接池告警 → 选中 intake（理由=值班职责）→ intake 链式 @fixer → fixer 幻觉 @ops 被安全忽略——智能选人+链式协作+名字防御三层语义一次验证。
