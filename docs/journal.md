@@ -322,3 +322,10 @@
 - **LLMRunner.Execute 8 组直测**（此前 0%）：mock 网关 Fallback 注入逐轮控制 ChatJSON——finish 留痕（decide 步 steps/observations/tokens 合计）/非 JSON 原文降级/工具循环失败观察回灌（第 2 轮 user 含观察）与 tool 步留痕/步数耗尽强制收尾/取消传播（ErrCanceled + llm-failed 步 + LLM 不被调用）/插话注入当轮/长回复>400 rune 固化 report 产物/buildSystemPrompt 双形态。
 - **抓到真 bug：SteerDrain 无 nil 守卫**（llm.go——cancelCheck 有守卫 steerCheck 没有，直调 ExecRequest 不带插话源即 nil 解引用 panic）。修齐。
 - **-race 抓到两处既有竞争**：①cancel_test 裸 bool（测试 goroutine 写 canceled、runner goroutine 读）→ atomic.Bool；②gate_timeout_test 与在途 execute goroutine 并发改写包级 gateAcquireTimeout → atomic.Int64（纳秒）。全量 9 包 -race 全绿。
+
+## 2026-11-10 C 切片：I6 chat 多轮上下文压缩（commit 6f4d925）
+
+- **诊断修正动机**：实际缺陷与 IDEAS 描述相反——sync/stream chat 此前每轮只发当前消息（模型无多轮记忆），群聊 buildRoomPrompt 才是真·全量无界。正解=补历史 + 压缩一起做。
+- chatHistoryTranscript 纯函数：阈值 20/保留 12，较早消息确定性折叠 40 rune 单行（非模型摘要，F11 Spill 同原则）；三处接线（sync/stream/room，PromptTokens 按有界时间线计量）。单测 6 组含 60000→<6000 rune 有界证明与 mock 回显多轮记忆。
+- 真模型实弹（qwen3.5，conv#86）：第 1 轮埋暗号 → 第 2 轮准确召回「gamma55」——多轮记忆端到端 ✓。
+- 顺手补登 I1 状态 done（a15f77c/323a212 此前漏登记）。适配 TestChatStreamChunksAndMeta 断言（prompt 形态演进为时间线）。
