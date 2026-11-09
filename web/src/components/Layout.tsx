@@ -8,6 +8,7 @@ const NAV = [
   { to: '/automations', label: '自动化规则' },
   { to: '/studio', label: '工作台' },
   { to: '/chat', label: '试聊台' },
+  { to: '/room', label: '群聊会话' },
   { to: '/replays', label: '会话回放' },
   { to: '/evals', label: '评测中心' },
   { to: '/usage', label: '用量看板' },

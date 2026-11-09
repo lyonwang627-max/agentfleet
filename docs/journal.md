@@ -299,3 +299,8 @@
 ## 2026-11-09 I31 群聊会话（共享上下文 + @ 唤醒）
 
 - **对标 Multica 群聊内核的轻量实现**：POST /chat/room——一条共享消息流，@agent 名即唤醒（中文名正则含 CJK），该 agent 读全量时间线以自己人格回帖（message.agent_name 记录发言人）；@all 全员唤醒；**agent 回帖互 @ 链式触发**（深度≤2、单轮≤4 防爆炸）。conversations.mode=room / messages.agent_name 两列 additive。测试：@解析/全链路（双 @ 双回帖/续聊共享时间线/链式为设计行为）。Chat 页前端接入留下轮。9 包全绿
+
+### I31 前端 + 实弹补充
+
+- **/room 群聊页**：@ 快捷条（点击插入 mention/@all）、共享时间线气泡（各 agent 名字着色区分）、唤醒数徽章。构建零报错。
+- **真模型实弹（14.4s）惊艳**：用户只 @intake → intake 读时间线定位后**主动 @fixer 链式唤醒** → fixer 回帖确认修复动作并尝试 @ops（超单轮上限被防爆炸截断）——agent 间自主协作真实发生。修一次路由注册丢失（python tab 替换在 api.go 失灵，Edit 补上——同 App.tsx 教训）。

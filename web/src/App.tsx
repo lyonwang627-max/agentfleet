@@ -6,6 +6,7 @@ import Chat from './pages/Chat';
 import Evals from './pages/Evals';
 import Overview from './pages/Overview';
 import Replays from './pages/Replays';
+import Room from './pages/Room';
 import Studio from './pages/Studio';
 import TaskDetail from './pages/TaskDetail';
 import Tasks from './pages/Tasks';
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="studio" element={<Studio />} />
         <Route path="replays" element={<Replays />} />
         <Route path="chat" element={<Chat />} />
+        <Route path="room" element={<Room />} />
         <Route path="evals" element={<Evals />} />
         <Route path="usage" element={<Usage />} />
         <Route path="*" element={<div className="text-sm text-muted">404 · 页面不存在</div>} />

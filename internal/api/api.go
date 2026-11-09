@@ -84,6 +84,7 @@ func (s *Server) Routes() http.Handler {
 	// chat
 	mux.HandleFunc("POST /api/v1/chat", s.chat)
 	mux.HandleFunc("POST /api/v1/chat/stream", s.chatStream)         // F15-a 流式
+	mux.HandleFunc("POST /api/v1/chat/room", s.chatRoom)             // I31 群聊（@ 唤醒）
 	mux.HandleFunc("GET /api/v1/conversations", s.listConversations) // F6 回放数据层
 	mux.HandleFunc("GET /api/v1/conversations/{id}", s.getConversation)
 
