@@ -112,7 +112,7 @@ export default function Evals() {
                 type="button"
                 onClick={() => setSelectedId(ev.id)}
                 className={`flex w-full flex-wrap items-center gap-2 border-b border-border/60 px-4 py-2.5 text-left text-xs last:border-b-0 ${
-                  selectedId === ev.id ? 'bg-[#f0a830]/8' : 'hover:bg-panel2'
+                  selectedId === ev.id ? 'bg-accent/10' : 'hover:bg-panel2'
                 }`}
               >
                 <span className="font-mono text-muted">#{ev.id}</span>
@@ -221,7 +221,7 @@ function BigStat({ label, value, accent }: { label: string; value: ReactNode; ac
   return (
     <div className="rounded-lg border border-border bg-panel px-4 py-4">
       <div className="text-xs text-muted">{label}</div>
-      <div className={`mt-1 text-3xl font-semibold tabular-nums ${accent ? 'text-[#f0a830]' : 'text-fg'}`}>{value}</div>
+      <div className={`mt-1 text-3xl font-semibold tabular-nums ${accent ? 'text-accent' : 'text-fg'}`}>{value}</div>
     </div>
   );
 }

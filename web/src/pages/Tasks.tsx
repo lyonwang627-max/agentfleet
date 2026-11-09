@@ -67,7 +67,7 @@ export default function Tasks() {
         <NewTaskForm agents={agents.data?.items ?? []} onCreated={() => void load()} />
         <div className="flex overflow-hidden rounded border border-border">
           <button type="button" onClick={() => setView('board')}
-            className={`px-3 py-1 text-xs transition-colors ${view === 'board' ? 'bg-[#f0a830]/15 font-medium text-[#f0a830]' : 'bg-panel2 text-muted hover:text-fg'}`}>
+            className={`px-3 py-1 text-xs transition-colors ${view === 'board' ? 'bg-accent/15 font-medium text-accent' : 'bg-panel2 text-muted hover:text-fg'}`}>
             看板
           </button>
           <button type="button" onClick={() => setView('dlq')}
@@ -89,7 +89,7 @@ export default function Tasks() {
           {tasks.map((t) => (
             <div key={t.id} className="flex flex-wrap items-center gap-3 border-b border-border/60 px-4 py-2.5 text-xs last:border-b-0">
               <span className="font-mono text-muted">#{t.id}</span>
-              <Link to={`/tasks/${t.id}`} className="max-w-72 truncate font-medium text-fg hover:text-[#f0a830]">{t.title}</Link>
+              <Link to={`/tasks/${t.id}`} className="max-w-72 truncate font-medium text-fg hover:text-accent">{t.title}</Link>
               <StatusBadge status={t.status} />
               <span className="text-muted">agent {t.agent_name}</span>
               <span className="ml-auto font-mono text-[10px] text-muted">{fmtTime(t.created_at)}</span>
@@ -135,7 +135,7 @@ export default function Tasks() {
 function TaskCard({ t, busy, onAct }: { t: TaskSummary; busy: boolean; onAct: (a: 'retry' | 'cancel' | 'approve') => void }) {
   return (
     <div className="rounded-md border border-border bg-panel p-2.5">
-      <Link to={`/tasks/${t.id}`} className="line-clamp-2 text-xs font-medium leading-relaxed hover:text-[#f0a830]">
+      <Link to={`/tasks/${t.id}`} className="line-clamp-2 text-xs font-medium leading-relaxed hover:text-accent">
         {t.title}
       </Link>
       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
@@ -144,7 +144,7 @@ function TaskCard({ t, busy, onAct }: { t: TaskSummary; busy: boolean; onAct: (a
         <span className="truncate">{t.agent_name || `agent#${t.agent_id}`}</span>
       </div>
       {(t.blocked_by?.length ?? 0) > 0 && (
-        <div className="mt-1.5 text-[11px] text-[#f0a830]/80">阻塞于 #{t.blocked_by.join(', #')}</div>
+        <div className="mt-1.5 text-[11px] text-accent/80">阻塞于 #{t.blocked_by.join(', #')}</div>
       )}
       <div className="mt-2 flex items-center justify-between gap-1">
         <span className="font-mono text-[10px] text-muted">{fmtTime(t.created_at)}</span>

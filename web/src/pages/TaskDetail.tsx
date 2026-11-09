@@ -62,7 +62,7 @@ export default function TaskDetail() {
     <div className="space-y-4">
       <TaskArtifacts taskId={t.id} />
       <div className="flex items-center gap-2 text-xs text-muted">
-        <Link to="/tasks" className="hover:text-[#f0a830]">
+        <Link to="/tasks" className="hover:text-accent">
           任务看板
         </Link>
         <span>/</span>
@@ -81,7 +81,7 @@ export default function TaskDetail() {
       >
         <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs md:grid-cols-4">
           <Field label="Agent">
-            <Link to={`/agents/${t.agent_id}`} className="hover:text-[#f0a830]">
+            <Link to={`/agents/${t.agent_id}`} className="hover:text-accent">
               {t.agent_name || `#${t.agent_id}`}
             </Link>
           </Field>
@@ -93,7 +93,7 @@ export default function TaskDetail() {
           <Field label="结束时间">{fmtTime(t.finished_at)}</Field>
           {(t.blocked_by?.length ?? 0) > 0 && (
             <Field label="阻塞于">
-              <span className="text-[#f0a830]">#{t.blocked_by.join(', #')}</span>
+              <span className="text-accent">#{t.blocked_by.join(', #')}</span>
             </Field>
           )}
         </div>
@@ -314,7 +314,7 @@ function KindBadge2({ kind }: { kind: string }) {
     kind === 'llm'
       ? 'bg-violet-500/70'
       : kind === 'tool'
-        ? 'bg-[#6aa9f8]/70'
+        ? 'bg-info/70'
         : kind === 'handoff'
           ? 'bg-orange-500/70'
           : kind === 'gate'
@@ -340,7 +340,7 @@ function TaskArtifacts({ taskId }: { taskId: number }) {
             onClick={() => setOpenId(openId === a.id ? null : a.id)}
             className="flex w-full flex-wrap items-center gap-3 text-left"
           >
-            <span className="rounded border border-[#6aa9f8]/30 bg-[#6aa9f8]/10 px-1.5 py-0.5 text-[11px] text-[#6aa9f8]">{a.kind}</span>
+            <span className="rounded border border-info/30 bg-info/10 px-1.5 py-0.5 text-[11px] text-info">{a.kind}</span>
             <span className="font-mono text-fg">{a.name}</span>
             <span className="text-muted">{a.size}B</span>
             <span className="ml-auto font-mono text-[10px] text-muted">{fmtTime(a.created_at)}</span>

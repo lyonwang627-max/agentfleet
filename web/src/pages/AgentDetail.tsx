@@ -87,7 +87,7 @@ export default function AgentDetail() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-xs text-muted">
-        <Link to="/" className="hover:text-[#f0a830]">
+        <Link to="/" className="hover:text-accent">
           舰队总览
         </Link>
         <span>/</span>
@@ -183,7 +183,7 @@ export default function AgentDetail() {
             <div key={r.id} className="flex flex-wrap items-center gap-3 border-b border-border/60 px-4 py-2 text-xs last:border-b-0">
               <span className="font-mono text-muted">#{r.id}</span>
               <StatusBadge status={r.status} />
-              <Link to={`/tasks/${r.task_id}`} className="max-w-48 truncate hover:text-[#f0a830]" title={r.task_title}>
+              <Link to={`/tasks/${r.task_id}`} className="max-w-48 truncate hover:text-accent" title={r.task_title}>
                 {r.task_title}
               </Link>
               <span className="ml-auto text-muted">
@@ -306,7 +306,7 @@ function AgentVersions({ agentId }: { agentId: number }) {
       )}
       {items.map((v) => (
         <div key={v.id} className="flex flex-wrap items-center gap-3 border-b border-border/60 px-4 py-2.5 text-xs last:border-b-0">
-          <span className="rounded border border-accent-dim/50 bg-sky-500/10 px-1.5 py-0.5 font-mono text-[11px] text-[#f0a830]">
+          <span className="rounded border border-accent-dim/50 bg-sky-500/10 px-1.5 py-0.5 font-mono text-[11px] text-accent">
             v{v.version}
           </span>
           <span className="text-fg">{v.note || '（无备注）'}</span>

@@ -143,7 +143,7 @@ export default function Chat() {
               <div
                 className={`max-w-[85%] rounded-lg px-3 py-2 text-xs leading-relaxed ${
                   m.role === 'user'
-                    ? 'rounded-br-sm bg-[#f0a830]/15 text-[#f5b95a]'
+                    ? 'rounded-br-sm bg-accent/15 text-accent-dim'
                     : 'rounded-bl-sm border border-border bg-panel2 text-fg'
                 }`}
               >

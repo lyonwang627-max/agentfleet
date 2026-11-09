@@ -43,7 +43,7 @@ export default function Usage() {
                 type="button"
                 onClick={() => setWin(w)}
                 className={`px-3 py-1 text-xs transition-colors ${
-                  win === w ? 'bg-[#f0a830]/15 font-medium text-[#f0a830]' : 'bg-panel2 text-muted hover:text-fg'
+                  win === w ? 'bg-accent/15 font-medium text-accent' : 'bg-panel2 text-muted hover:text-fg'
                 }`}
               >
                 {w === '24h' ? '近 24 小时' : '近 7 天'}

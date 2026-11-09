@@ -38,7 +38,7 @@ export default function Replays() {
               type="button"
               onClick={() => setSelectedId(c.id)}
               className={`flex w-full flex-col gap-1 border-b border-border/60 px-4 py-2.5 text-left text-xs last:border-b-0 ${
-                current === c.id ? 'bg-[#f0a830]/8' : 'hover:bg-panel2'
+                current === c.id ? 'bg-accent/10' : 'hover:bg-panel2'
               }`}
             >
               <div className="flex w-full items-center gap-2">
@@ -80,7 +80,7 @@ function ReplayTimeline({ detail }: { detail: NonNullable<import('../types').Con
               <div
                 className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-xs leading-relaxed ${
                   m.role === 'user'
-                    ? 'rounded-br-sm bg-[#f0a830]/15 text-fg'
+                    ? 'rounded-br-sm bg-accent/15 text-fg'
                     : 'rounded-bl-sm border border-border bg-panel2 text-fg'
                 }`}
               >

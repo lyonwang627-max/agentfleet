@@ -37,8 +37,8 @@ export function Section({
   return (
     <section className={`min-w-0 ${className}`}>
       {(title || right) && (
-        <header className="mb-2 flex h-7 items-center justify-between border-b border-border pb-1.5">
-          <h2 className="text-[13px] font-medium text-fg">{title}</h2>
+        <header className="mb-2.5 flex h-7 items-center justify-between px-0.5">
+          <h2 className="text-[13px] font-semibold text-fg">{title}</h2>
           {right}
         </header>
       )}
@@ -62,14 +62,14 @@ export function Panel({
   bodyClass?: string;
 }) {
   return (
-    <div className={`elev-1 rounded-lg bg-panel ${className}`}>
+    <div className={`rounded-xl bg-panel ${className}`}>
       {(title || right) && (
-        <div className="flex h-10 items-center justify-between border-b border-border px-4">
-          <div className="text-[13px] font-medium text-fg">{title}</div>
+        <div className="flex h-11 items-center justify-between px-5 text-fg">
+          <div className="text-[13px] font-semibold">{title}</div>
           {right}
         </div>
       )}
-      <div className={`p-4 ${bodyClass}`}>{children}</div>
+      <div className={`px-5 pb-5 ${bodyClass || 'pt-0'}`}>{children}</div>
     </div>
   );
 }
@@ -101,14 +101,14 @@ export function StatusBadge({ status }: { status: string }) {
 // step 类型徽章：保持轻量文字标签
 export const KIND_STYLE: Record<string, string> = {
   llm: 'text-violet-300',
-  tool: 'text-[#6aa9f8]',
-  handoff: 'text-[#f0a830]',
+  tool: 'text-info',
+  handoff: 'text-accent',
   gate: 'text-[#e3d05a]',
   done: 'text-ok',
   error: 'text-bad',
 };
 export const KIND_BG: Record<string, string> = {
-  llm: 'bg-violet-400', tool: 'bg-[#6aa9f8]', handoff: 'bg-[#f0a830]', gate: 'bg-[#e3d05a]',
+  llm: 'bg-violet-400', tool: 'bg-info', handoff: 'bg-[#f0a830]', gate: 'bg-[#e3d05a]',
 };
 const KIND_LABEL: Record<string, string> = {
   llm: 'LLM', tool: '工具', handoff: '交接', gate: '门禁',
@@ -123,16 +123,16 @@ export function KindBadge({ kind }: { kind: string }) {
 }
 
 export function PriorityBadge({ p }: { p: number }) {
-  const tone = p >= 7 ? 'text-bad' : p >= 4 ? 'text-[#f0a830]' : 'text-muted';
+  const tone = p >= 7 ? 'text-bad' : p >= 4 ? 'text-accent' : 'text-muted';
   return <span className={`shrink-0 font-mono text-[11px] tabular-nums ${tone}`}>P{p}</span>;
 }
 
 // ---------- 统计卡（保留卡片：统计确实需要分组；去渐变） ----------
 export function StatCard({ label, value, hint, accent }: { label: string; value: ReactNode; hint?: string; accent?: boolean }) {
   return (
-    <div className="elev-1 rounded-lg bg-panel px-3.5 py-3">
+    <div className="rounded-xl bg-panel px-4 py-4">
       <div className="text-[11px] text-muted">{label}</div>
-      <div className={`mt-1 font-mono text-xl font-medium tabular-nums ${accent ? 'text-[#f0a830]' : 'text-fg'}`}>{value}</div>
+      <div className={`mt-1.5 font-mono text-2xl font-medium tracking-tight tabular-nums ${accent ? 'text-accent' : 'text-fg'}`}>{value}</div>
       {hint && <div className="mt-0.5 text-[11px] text-muted">{hint}</div>}
     </div>
   );
@@ -146,7 +146,7 @@ export function JsonBlock({ value, label, maxShow = 1400 }: { value: unknown; la
     <div>
       {label && <div className="mb-1 text-[11px] text-muted">{label}</div>}
       <pre
-        className={`overflow-auto rounded bg-bg p-2 font-mono text-xs leading-relaxed text-muted ${
+        className={`overflow-auto rounded-lg bg-bg/60 p-3 font-mono text-xs leading-relaxed text-muted ${
           long ? 'max-h-40' : 'max-h-96'
         }`}
       >
@@ -210,8 +210,8 @@ export function Btn({
   type?: 'button' | 'submit';
 }) {
   const styles: Record<string, string> = {
-    default: 'border-border bg-panel2 text-fg hover:bg-[#1f2d47]',
-    primary: 'border-accent-dim bg-[#f0a830]/15 text-[#f5b95a] hover:bg-[#f0a830]/25 hover:border-[#f0a830]',
+    default: 'border-border bg-transparent text-fg hover:bg-panel2',
+    primary: 'border-accent-dim bg-accent/15 text-accent-dim hover:bg-accent/25 hover:border-accent',
     danger: 'border-bad/40 bg-bad/10 text-bad hover:bg-bad/20',
     ghost: 'border-transparent bg-transparent text-muted hover:text-fg',
   };
@@ -229,6 +229,6 @@ export function Btn({
 
 export function ErrorText({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded border border-bad/40 bg-bad/10 px-3 py-2 text-xs text-bad">{children}</div>
+    <div className="rounded-lg bg-bad/12 px-3.5 py-2.5 text-xs text-bad">{children}</div>
   );
 }

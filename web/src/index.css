@@ -1,29 +1,26 @@
 @import "tailwindcss";
 
 /* ============================================================
-   agentfleet 设计系统 v2 —— mission control
-   母题：任务控制中心。运维的母语是信号灯，不是营销页。
-   原则（源自设计评审，反 SaaS-card kit）：
-   1. 列表优先于卡片——内容是数据行，不是待封装的礼物
-   2. 阴影做层次，边框只做分隔——边框不再装饰
-   3. 密度是特性——工程师界面，一屏看到更多状态
-   4. boldness 只花一处：信号灯系统（琥珀脉冲）
+   agentfleet 设计系统 v3 —— Apple HIG：清晰 / 顺从 / 留白
+   - Clarity：文字层级清楚，状态色用 SF 语义色
+   - Deference：UI 退后——中性底、极淡边框、内容为王
+   - 白与留白代替对比与装饰；毛玻璃承层次
    ============================================================ */
 
 @theme {
-  /* 深空蓝中性梯（单一 ramp，每步有职责） */
-  --color-bg: #0b1220;          /* 页面底：最深 */
-  --color-panel: #111a2c;       /* 组件面：一级抬升 */
-  --color-panel2: #182438;      /* 交互面：hover/输入 */
-  --color-border: #22314b;      /* 分隔线：只做结构 */
-  --color-fg: #e8eef8;          /* 正文 */
-  --color-muted: #8ba0bf;       /* 次要文字 */
-  --color-accent: #f0a830;      /* 信号琥珀：唯一 bold 色 */
-  --color-accent-dim: #b97f1f;  /* 琥珀暗阶：边框/hover 用 */
-  --color-ok: #3ecf8e;          /* 信号绿：done/健康 */
-  --color-warn: #f0a830;        /* 信号琥珀：running/告警（与 accent 同源）*/
-  --color-bad: #f0716a;         /* 信号红：failed/危险 */
-  --color-info: #6aa9f8;        /* 信号蓝：info 类事件 */
+  /* macOS 深色模式中性梯（无色相偏移，安静） */
+  --color-bg: #1e1e20;           /* 窗口底 */
+  --color-panel: #28282a;        /* 分组面（iOS inset list） */
+  --color-panel2: #323234;       /* 交互面：hover/输入 */
+  --color-border: #3a3a3d;       /* 极淡分隔（视觉上 rgba 白 8%） */
+  --color-fg: #f5f5f7;           /* Apple 白 */
+  --color-muted: #98989d;        /* SF secondary */
+  --color-accent: #0a84ff;       /* 系统蓝：唯一交互色 */
+  --color-accent-dim: #409cff;   /* 蓝亮阶（深色模式 hover） */
+  --color-ok: #30d158;           /* SF green */
+  --color-warn: #ff9f0a;         /* SF orange */
+  --color-bad: #ff453a;          /* SF red */
+  --color-info: #64d2ff;         /* SF cyan */
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 
@@ -36,87 +33,92 @@ body,
 body {
   background-color: var(--color-bg);
   color: var(--color-fg);
-  font-family: ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, ui-sans-serif, system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
   -webkit-font-smoothing: antialiased;
-  font-feature-settings: "tnum"; /* 全局表格数字 */
+  font-feature-settings: "tnum";
+  letter-spacing: -0.01em; /* SF 的微负字距 */
 }
 
-/* ---------- 层次：阴影替代装饰性边框（better-ui） ---------- */
+/* ---------- 层次：留白优先，阴影极轻（Apple 用层级不用投影装饰） ---------- */
 .elev-1 {
-  box-shadow:
-    0 0 0 1px oklch(1 0 0 / 0.04),
-    0 1px 2px oklch(0 0 0 / 0.4);
+  box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.08);
 }
 .elev-2 {
   box-shadow:
-    0 0 0 1px oklch(1 0 0 / 0.05),
-    0 4px 16px oklch(0 0 0 / 0.45);
+    0 0 0 0.5px rgba(255, 255, 255, 0.1),
+    0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
-/* ---------- 信号灯系统：全站唯一的 boldness ---------- */
+/* 毛玻璃（侧栏/顶栏） */
+.glass {
+  background: rgba(30, 30, 32, 0.72);
+  backdrop-filter: saturate(1.4) blur(20px);
+  -webkit-backdrop-filter: saturate(1.4) blur(20px);
+}
+
+/* ---------- 状态点：SF 语义色，柔和呼吸（无光环扩散） ---------- */
 @keyframes signal-pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 oklch(0.78 0.15 78 / 0.45); }
-  50% { opacity: 0.75; box-shadow: 0 0 0 5px oklch(0.78 0.15 78 / 0); }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }
 .signal {
   display: inline-block;
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 999px;
 }
-.signal-run { background: var(--color-warn); animation: signal-pulse 1.8s ease-in-out infinite; }
+.signal-run { background: var(--color-warn); animation: signal-pulse 2.2s ease-in-out infinite; }
 .signal-ok { background: var(--color-ok); }
 .signal-bad { background: var(--color-bad); }
 .signal-idle { background: var(--color-muted); }
 
-/* ---------- 行交互（高频反馈 ≤150ms，better-ui） ---------- */
+/* ---------- 行交互（轻、快） ---------- */
 .row-hover {
-  transition: background-color 120ms cubic-bezier(0.2, 0, 0, 1);
+  transition: background-color 120ms ease-out;
 }
 .row-hover:hover {
-  background-color: oklch(0.45 0.06 250 / 0.16);
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
-/* 按下缩放（better-ui：0.96 / 150ms / ease-out） */
 .press {
-  transition: transform 150ms ease-out;
+  transition: transform 150ms ease-out, opacity 150ms ease-out;
 }
 .press:active:not(:disabled) {
-  transform: scale(0.96);
+  transform: scale(0.97);
+  opacity: 0.85;
 }
 
-/* ---------- 等宽数据 ---------- */
+/* ---------- 数字 ---------- */
 .tabular-nums,
 [class*="font-mono"] {
   font-variant-numeric: tabular-nums;
 }
 
-/* 页面淡入（唯一入场动画；其余交互即时） */
 @keyframes page-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 main {
-  animation: page-in 0.2s ease-out;
+  animation: page-in 0.18s ease-out;
 }
 
 ::selection {
-  background: oklch(0.78 0.15 78 / 0.3);
+  background: rgba(10, 132, 255, 0.35);
 }
 
 :focus-visible {
-  outline: 2px solid oklch(0.78 0.15 78 / 0.6);
+  outline: 2px solid rgba(10, 132, 255, 0.65);
   outline-offset: 1px;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #26385a transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
 }
-*::-webkit-scrollbar { width: 7px; height: 7px; }
-*::-webkit-scrollbar-thumb { background: #26385a; border-radius: 4px; }
-*::-webkit-scrollbar-thumb:hover { background: #33486e; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.14); border-radius: 4px; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.22); }
 
 @media (prefers-reduced-motion: reduce) {
   .signal-run,

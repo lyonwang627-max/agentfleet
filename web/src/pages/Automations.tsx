@@ -131,11 +131,11 @@ export default function Automations() {
                 <span className="font-mono text-muted">#{a.id}</span>
                 <span className={`h-1.5 w-1.5 rounded-full ${a.enabled ? 'bg-ok' : 'bg-slate-500'}`} aria-hidden />
                 <span className="font-medium text-fg">{a.name}</span>
-                <span className="rounded border border-border px-1.5 py-px font-mono text-[11px] text-[#f0a830]">{a.cron_expr}</span>
+                <span className="rounded border border-border px-1.5 py-px font-mono text-[11px] text-accent">{a.cron_expr}</span>
                 <span className="text-muted">→ {a.agent_name ?? `agent#${a.agent_id}`} · {a.title}</span>
                 <span className="ml-auto flex items-center gap-3 font-mono text-[11px] tabular-nums">
                   <span className="text-muted">上次 {a.last_run ? fmtTime(a.last_run) : '—'}</span>
-                  <span className="text-[#f0a830]">下次 {a.next_run ? fmtTime(a.next_run) : '—'}</span>
+                  <span className="text-accent">下次 {a.next_run ? fmtTime(a.next_run) : '—'}</span>
                 </span>
                 <span className="flex w-full items-center justify-end gap-2">
                   <Btn onClick={() => void toggle(a)}>{a.enabled ? '停用' : '启用'}</Btn>

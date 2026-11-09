@@ -66,7 +66,7 @@ export default function Overview() {
             <div key={a.id} className="rounded-lg border border-border bg-panel p-4 transition-colors hover:border-border/50">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <Link to={`/agents/${a.id}`} className="truncate text-sm font-semibold text-fg hover:text-[#f0a830]">
+                  <Link to={`/agents/${a.id}`} className="truncate text-sm font-semibold text-fg hover:text-accent">
                     {a.name}
                   </Link>
                   <div className="truncate text-xs text-muted">{a.role || '—'}</div>
@@ -88,10 +88,10 @@ export default function Overview() {
               </div>
               <div className="mt-3 flex items-end justify-between">
                 <div className="flex gap-4 text-xs">
-                  <span className="text-[#f0a830]">
+                  <span className="text-accent">
                     运行 <span className="font-mono text-sm tabular-nums">{a.running ?? 0}</span>
                   </span>
-                  <span className="text-[#f0a830]">
+                  <span className="text-accent">
                     排队 <span className="font-mono text-sm tabular-nums">{a.queued ?? 0}</span>
                   </span>
                 </div>
@@ -123,7 +123,7 @@ function MiniStat({ label, value, sub, accent }: { label: string; value: string 
   return (
     <div className="rounded-lg border border-border bg-panel px-4 py-3">
       <div className="text-xs text-muted">{label}</div>
-      <div className={`mt-0.5 text-xl font-semibold tabular-nums ${accent ? 'text-[#f0a830]' : 'text-fg'}`}>{value}</div>
+      <div className={`mt-0.5 text-xl font-semibold tabular-nums ${accent ? 'text-accent' : 'text-fg'}`}>{value}</div>
       {sub && <div className="text-[11px] text-muted">{sub}</div>}
     </div>
   );

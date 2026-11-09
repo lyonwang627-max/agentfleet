@@ -21,25 +21,25 @@ export default function Layout() {
   return (
     <div className="flex h-full min-h-screen">
       {/* 侧边栏 */}
-      <aside className="flex w-44 shrink-0 flex-col border-r border-border bg-panel/80 backdrop-blur">
-        <div className="border-b border-border px-4 py-4">
-          <div className="font-mono text-[13px] font-semibold tracking-tight text-fg">
-            agent<span className="text-[#f0a830]">fleet</span>
+      <aside className="glass flex w-52 shrink-0 flex-col border-r border-white/6">
+        <div className="px-5 pb-2 pt-6">
+          <div className="text-[15px] font-semibold tracking-tight text-fg">
+            agent<span className="text-accent">fleet</span>
           </div>
-          <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">
+          <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted">
             <i className={`signal ${down ? 'signal-bad' : 'signal-ok'}`} aria-hidden />
             任务控制台
           </div>
         </div>
-        <nav className="flex flex-col gap-0.5 p-2">
+        <nav className="flex flex-col gap-0.5 px-3 pt-2">
           {NAV.map((n) => (
             <NavLink
               key={n.to}
               to={n.to}
               end={n.to === '/'}
               className={({ isActive }) =>
-                `rounded px-3 py-2 text-sm transition-colors ${
-                  isActive ? 'bg-[#f0a830]/10 font-medium text-[#f0a830]' : 'text-muted hover:bg-panel2 hover:text-fg'
+                `rounded-lg px-3 py-[7px] text-[13px] transition-colors ${
+                  isActive ? 'bg-accent font-medium text-white' : 'text-muted hover:bg-white/5 hover:text-fg'
                 }`
               }
             >
@@ -47,15 +47,15 @@ export default function Layout() {
             </NavLink>
           ))}
         </nav>
-        <div className="mt-auto p-3 font-mono text-[10px] text-muted">
-          :8090 · v1
+        <div className="mt-auto px-5 pb-4 text-[11px] text-muted">
+          v1 · localhost
         </div>
       </aside>
 
       {/* 主区 */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* 顶栏健康状态 */}
-        <header className="flex items-center gap-3 border-b border-border bg-panel/70 px-5 py-2.5 backdrop-blur">
+        <header className="glass flex items-center gap-3 border-b border-white/6 px-6 py-3">
           <span
             className={`signal ${down ? 'signal-bad' : 'signal-ok'}`}
             aria-hidden
@@ -73,7 +73,7 @@ export default function Layout() {
                   className={`rounded border px-1 py-px font-mono ${
                     h.llm.mode === 'ollama'
                       ? 'border-violet-500/40 bg-violet-500/10 text-violet-300'
-                      : 'border-accent-dim/50 bg-[#f0a830]/10 text-[#f0a830]'
+                      : 'border-accent-dim/50 bg-accent/10 text-accent'
                   }`}
                 >
                   {h.llm.mode}
@@ -88,7 +88,7 @@ export default function Layout() {
 
         {/* 后端不可达横幅（优雅降级，不白屏） */}
         {down && (
-          <div className="border-b border-accent-dim/50 bg-[#f0a830]/10 px-5 py-2 text-xs text-[#f0a830]">
+          <div className="border-b border-accent-dim/50 bg-accent/10 px-5 py-2 text-xs text-accent">
             后端未启动：<span className="font-mono">make run</span>（监听 http://localhost:8090 ）。页面已降级，显示骨架屏；后端恢复后自动重试。
           </div>
         )}
