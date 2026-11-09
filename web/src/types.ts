@@ -66,6 +66,20 @@ export interface TaskDep {
   title: string;
   status: TaskStatus;
 }
+export interface TaskDagNode {
+  id: number;
+  title: string;
+  status: TaskStatus;
+}
+export interface TaskDagEdge {
+  from: number;
+  to: number;
+}
+export interface TaskDag {
+  nodes: TaskDagNode[];
+  edges: TaskDagEdge[];
+  cycle: boolean;
+}
 export interface TaskDetail extends TaskSummary {
   prompt: string;
   result: string | Record<string, unknown> | null;

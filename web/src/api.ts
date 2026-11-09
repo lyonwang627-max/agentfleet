@@ -1,5 +1,6 @@
 import type { Project, TaskComment,
   AgentDetail,
+  TaskDag,
   AgentPatch,
   AgentSummary,
   AgentVersion,
@@ -98,6 +99,7 @@ export const api = {
   listTasks: (opts?: { status?: TaskStatus; agent_id?: number; dlq?: boolean; page?: number; page_size?: number }) =>
     request<Page<TaskSummary>>(`/tasks${qs({ ...opts })}`),
   getTask: (id: number) => request<TaskDetail>(`/tasks/${id}`),
+  getTaskDag: (id: number) => request<TaskDag>(`/tasks/${id}/dag`),
   createTask: (body: TaskCreate) => post<TaskCreated>('/tasks', body),
   taskAction: (id: number, action: 'retry' | 'cancel' | 'approve' | 'replay') =>
     post<Record<string, unknown>>(`/tasks/${id}/${action}`),

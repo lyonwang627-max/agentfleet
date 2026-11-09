@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { MessageSquare, Megaphone, Send } from 'lucide-react';
 import { api } from '../api';
+import DepGraph from '../components/DepGraph';
 import { useApi, useEventSource, useThrottledReload } from '../hooks';
 import type { RunStep, RunTrace, RunSummary, TaskComment } from '../types';
 import {
@@ -40,44 +41,22 @@ export default function TaskDetail() {
   );
   useEventSource(() => void throttled());
 
-  const viewTrace = async (runId: number) => {
-    if (openRunId === runId) {
-      setOpenRunId(null);
-      setTrace(null);
-      return;
-    }
-    setOpenRunId(runId);
-    setTraceLoading(true);
-    setTraceErr(null);
-    try {
-      setTrace(await api.getRun(runId));
-    } catch (e) {
-      setTraceErr(e instanceof Error ? e.message : String(e));
-    } finally {
-      setTraceLoading(false);
-    }
-  };
-
-  if (task.loading) return <SkeletonBlock rows={6} />;
-  if (task.error) return <ErrorText>{task.error}</ErrorText>;
-  const t = task.data;
-  if (!t) return null;
-
-  // 评论线程 + Steer（Multica 对标）
+  // 评论线程 + Steer（Multica 对标）——必须在早退 return 之前：
+  // hooks 条目数不能随 loading 状态变化（React 钩子规则）
   const loadComments = async () => {
     try {
-      const res = await api.listTaskComments(t.id);
+      const res = await api.listTaskComments(taskId);
       setComments(res.items ?? []);
     } catch { /* 降级静默 */ }
   };
-  useEffect(() => { void loadComments(); }, [t.id]);
+  useEffect(() => { void loadComments(); }, [taskId]);
 
   const postComment = async () => {
     const text = commentInput.trim();
     if (!text || posting) return;
     setPosting(true);
     try {
-      await api.postTaskComment(t.id, text);
+      await api.postTaskComment(taskId, text);
       setCommentInput('');
       await loadComments();
     } finally { setPosting(false); }
@@ -87,11 +66,16 @@ export default function TaskDetail() {
     const text = steerInput.trim();
     if (!text) return;
     try {
-      await api.steerTask(t.id, text);
+      await api.steerTask(taskId, text);
       setSteerInput('');
       await loadComments();
     } catch { /* 非 running 会失败——按钮只在 running 显示 */ }
   };
+
+  if (task.loading) return <SkeletonBlock rows={6} />;
+  if (task.error) return <ErrorText>{task.error}</ErrorText>;
+  const t = task.data;
+  if (!t) return null;
 
   return (
     <div className="space-y-4">
@@ -196,6 +180,9 @@ export default function TaskDetail() {
           </div>
         )}
       </Panel>
+
+      {/* 依赖图（I20）：有依赖才渲染 */}
+      <DepGraph taskId={t.id} />
 
       {/* Runs 列表 */}
       <Panel title={`执行记录（Runs ${runs.data?.length ?? 0}）`} bodyClass="p-0">
