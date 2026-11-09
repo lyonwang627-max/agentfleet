@@ -31,8 +31,10 @@ func TestChatStreamChunksAndMeta(t *testing.T) {
 	s.chatStream(w, r)
 
 	resp := w.Body.String()
-	if !strings.Contains(resp, "(mock) 流式测试消息") {
-		t.Fatalf("正文缺增量内容: %s", resp[:min(len(resp), 200)])
+	// I6 起 user prompt 是含历史的有界时间线，mock 回显正文=时间线全文；
+	// 断言当前消息确实进入了模型上下文并回显
+	if !strings.Contains(resp, "流式测试消息") {
+		t.Fatalf("正文缺当前消息回显: %s", resp[:min(len(resp), 200)])
 	}
 	idx := strings.Index(resp, "@@META@@")
 	if idx < 0 {

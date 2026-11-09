@@ -164,22 +164,11 @@ func (s *Server) wakeRoomAgents(ctx context.Context, convID int64, names []strin
 	return replies, nil
 }
 
-// buildRoomPrompt：全量时间线 + 被唤醒语境 + 群聊行为约束。
+// buildRoomPrompt：有界时间线（I6 压缩）+ 被唤醒语境 + 群聊行为约束。
 func (s *Server) buildRoomPrompt(ctx context.Context, convID int64, agent *model.Agent, wokenBy string) string {
 	msgs, _ := s.Store.ListMessages(ctx, convID)
-	var tl strings.Builder
-	for _, m := range msgs {
-		if m.Role == "user" {
-			tl.WriteString("[用户] ")
-		} else {
-			tl.WriteString("[" + m.AgentName + "] ")
-		}
-		c := m.Content
-		if len([]rune(c)) > 300 {
-			c = string([]rune(c)[:300]) + "…"
-		}
-		tl.WriteString(c + "\n")
-	}
+	// I6：时间线上限——超阈值时较早消息折叠为单行摘要（此前全量无界增长）
+	tl, _ := chatHistoryTranscript(msgs, roomKeepRecent)
 	return fmt.Sprintf(`你在一次群聊协作中被 @（%s）。会话时间线：
 
 %s
@@ -187,7 +176,7 @@ func (s *Server) buildRoomPrompt(ctx context.Context, convID int64, agent *model
 规则：
 - 基于时间线上下文直接回应 @你 的内容；可用 @其他成员名 请他们接力（只在确有必要时）。
 - 回答保持简洁（3 句内优先），不要复述别人的发言。
-- 你只输出你要说的话本身，不要任何前缀。`, wokenBy, tl.String())
+- 你只输出你要说的话本身，不要任何前缀。`, wokenBy, tl)
 }
 
 func headRoom(s string, n int) string {

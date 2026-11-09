@@ -7,9 +7,8 @@
 
 ## 池
 
-- [ ] **I1 任务取消传播到在途 run** `proposed` `M`
-  动机：现在 cancel 只改任务状态，已认领的 run 会继续跑完（浪费模型算力，用户在 /tasks 看到取消后仍变 done 的错乱）。
-  验收：cancel 后在途 run 的 ctx 被取消，任务终态为 canceled 且不再被 runner 结果覆盖；集成测试覆盖。
+- [x] **I1 任务取消传播到在途 run** `done`（2026-11-08，commit a15f77c + 323a212 状态补登 2026-11-10）
+  实现：ExecRequest.CancelCheck（调度器注入 DB 二次确认）+ llm/mock runner 步边界协作退出 + ErrCanceled 专门分支（不重试不告警）；runner 单元级 + 调度器级 e2e（canceled 终态 200ms 翻转窗口确认）。方案源自 celery-revoke 调研。
 - [x] **I2 Prometheus /metrics 端点** `done`（2026-11-07）
   实现：GET /metrics 手写 exposition（零 client 依赖）——tasks_by_status/tasks_total/agents_enabled/tokens_total{purpose,model}/rate_limit_rejected_total/eval_runs_total/uptime_seconds，HELP+TYPE 头按指标名去重；单测锁死关键行。压测对照可用。
 - [x] **I3 Agent 克隆** `done`（2026-11-07，后端）
@@ -18,9 +17,8 @@
 - [x] **I4 评测数据集导入导出** `done`（2026-11-07）
   实现：GET /eval-datasets/{id}/export（attachment JSON）+ POST /eval-datasets/import（空 cases 400）；roundtrip 内容保真单测（points/threshold 全保真）。
 - [x] **I5 OpenAPI 规范固化** `done`（2026-11-07 落在 offer-agent——FastAPI 自动生成 OpenAPI 可导出固化+CI 漂移校验；agentfleet 为 Go 标准库 mux 无自动 OpenAPI，契约=手写 api-contract.md 天然固化，无需此机制）
-- [ ] **I6 chat 多轮上下文压缩** `proposed` `M`
-  动机：试聊台长会话会把全部历史塞给模型；复用 F11 Spill 思想——超阈值压缩旧轮次为一行摘要。
-  验收：>20 轮的会话仍能正常续聊且 prompt 长度有界；单测覆盖压缩触发。
+- [x] **I6 chat 多轮上下文压缩** `done`（2026-11-10）
+  实现：chatHistoryTranscript 纯函数（阈值 20 条/保留 12 条全文；较早消息确定性折叠为 40 rune 单行摘要，非模型摘要——同 F11 Spill 原则）；**三处接线**：sync/stream chat 补上多轮历史上下文（此前每轮只发当前消息，模型无记忆——比动机描述的「全量塞给模型」更根本的缺陷）+ 群聊 buildRoomPrompt 从全量无界改为有界时间线（roomKeepRecent=16）。单测 6 组：未压缩不误伤/压缩结构与折叠数/长度有界（60000→<6000 rune）/空输入/sync+stream 多轮记忆实弹（mock 回显）/room 压缩。验收达成：>20 轮仍可续聊且 prompt 有界。
 - [ ] **I7 事件订阅出站 Webhook** `proposed` `M`
   动机：FDE 集成叙事——任务 done/failed 时回调客户系统 URL（带签名重试），对接企业现有告警/工单。
   验收：workspace 级 webhook 配置 + HMAC 签名 + 失败重试退避；契约新增。

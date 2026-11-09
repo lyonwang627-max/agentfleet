@@ -46,8 +46,16 @@ func (s *Server) chatStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Conversation-Id", fmt.Sprintf("%d", convID))
 	w.Header().Set("Cache-Control", "no-cache")
 
+	// I6 多轮上下文：历史（含刚入库的当前消息）压成有界时间线——
+	// 此前流式端点同样每轮只发当前消息，试聊台多轮记忆缺失
+	msgs, _ := s.Store.ListMessages(ctx, convID)
+	transcript, _ := chatHistoryTranscript(msgs, chatKeepRecent)
+	if transcript == "" {
+		transcript = in.Message
+	}
+
 	var full []rune
-	tokens, streamErr := s.LLM.StreamChat(ctx, agent.SystemPrompt, in.Message, 900, func(chunk string) {
+	tokens, streamErr := s.LLM.StreamChat(ctx, agent.SystemPrompt, transcript, 900, func(chunk string) {
 		full = append(full, []rune(chunk)...)
 		fmt.Fprint(w, chunk)
 		fl.Flush()
@@ -59,7 +67,7 @@ func (s *Server) chatStream(w http.ResponseWriter, r *http.Request) {
 	}
 	_, _ = s.Store.AppendMessage(ctx, &model.Message{ConversationID: convID, Role: "agent", Content: reply})
 	_ = s.Store.AppendUsage(ctx, &model.UsageEvent{AgentID: agent.ID, AgentName: agent.Name,
-		Model: agent.Model, Purpose: "chat", PromptTokens: len2(in.Message), CompletionTokens: tokens, Requests: 1})
+		Model: agent.Model, Purpose: "chat", PromptTokens: len2(transcript), CompletionTokens: tokens, Requests: 1})
 
 	meta, _ := json.Marshal(map[string]any{
 		"conversation_id": convID, "tokens": tokens, "error": errStr(streamErr)})

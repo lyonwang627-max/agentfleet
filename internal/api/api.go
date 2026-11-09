@@ -700,16 +700,23 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
 	}
 	_, _ = s.Store.AppendMessage(ctx, &model.Message{ConversationID: convID, Role: "user", Content: in.Message})
 
-	reply, tokens, err := s.LLM.Chat(ctx, agent.SystemPrompt, in.Message, 900)
+	// I6 多轮上下文：历史（含刚入库的当前消息）压成有界时间线——
+	// 此前每轮只发当前消息，模型对之前的对话毫无记忆
+	msgs, _ := s.Store.ListMessages(ctx, convID)
+	transcript, _ := chatHistoryTranscript(msgs, chatKeepRecent)
+	if transcript == "" {
+		transcript = in.Message
+	}
+	reply, tokens, err := s.LLM.Chat(ctx, agent.SystemPrompt, transcript, 900)
 	if err != nil {
 		writeErr(w, http.StatusBadGateway, err)
 		return
 	}
 	_, _ = s.Store.AppendMessage(ctx, &model.Message{ConversationID: convID, Role: "agent", Content: reply})
 
-	// chat 也计用量（网关计量统一入口）
+	// chat 也计用量（网关计量统一入口；prompt 侧按有界时间线计）
 	_ = s.Store.AppendUsage(ctx, &model.UsageEvent{AgentID: agent.ID, AgentName: agent.Name,
-		Model: agent.Model, Purpose: "chat", PromptTokens: len2(in.Message), CompletionTokens: tokens, Requests: 1})
+		Model: agent.Model, Purpose: "chat", PromptTokens: len2(transcript), CompletionTokens: tokens, Requests: 1})
 	writeJSON(w, http.StatusOK, map[string]any{"conversation_id": convID, "reply": reply, "run_id": 0})
 }
 
