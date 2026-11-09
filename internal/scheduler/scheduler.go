@@ -231,6 +231,8 @@ func (s *Scheduler) gate(agentID int64, n int) chan struct{} {
 }
 
 func (s *Scheduler) execute(ctx context.Context, task model.Task) {
+	originalAgent := task.AgentID // I30：handoff 前的 agent（squad 场景=初始 leader）
+	setOriginalAgent(task.ID, originalAgent)
 	agent, err := s.store.GetAgent(ctx, task.AgentID)
 	if err != nil || !agent.Enabled {
 		s.failTask(ctx, &task, fmt.Sprintf("agent 不可用: %v", err))
@@ -318,6 +320,15 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 		Input: map[string]any{"tier": string(tier), "model": routedModel, "retry": task.RetryCount},
 		Note:  "F18-b 任务级路由"})
 
+	// I30 小队模式：任务分给 squad 时，leader 的 system prompt 追加小队 briefing
+	// （协议 + Roster + 指令）——leader 用 handoff_to 转派，成员完成后事件 re-trigger。
+	if task.SquadID > 0 {
+		if squad, err := s.store.GetSquad(ctx, task.SquadID); err == nil {
+			agent.SystemPrompt += "\n\n" + buildSquadBriefing(ctx, s.store, squad)
+			log.Printf("[scheduler] task#%d 小队模式：leader=%s（squad#%d %s）", task.ID, agent.Name, squad.ID, squad.Name)
+		}
+	}
+
 	// I1 取消传播：CancelCheck 注入（DB 重取任务状态——认领与取消的竞态由二次确认兜底）
 	cancelCheck := func() bool {
 		fresh, err := s.store.GetTask(context.Background(), task.ID)
@@ -383,6 +394,25 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 			FinishedAt: &fin})
 		s.emit(ctx, "task.update", map[string]any{"task_id": task.ID, "status": string(model.TaskDone), "run_id": runID})
 		log.Printf("[scheduler] task#%d done", task.ID)
+
+		// I30 小队闭环：成员（handoff 过来的）完成 → 自动 re-trigger leader 评估下一步。
+		// 实现轻量版：squad 任务的 handoff 链在成员 done 后，为 leader 建后续评估任务
+		// （带 handoff 上下文，leader 重新决策：继续转派 / 上报 / 收尾）。
+		if task.SquadID > 0 && task.AgentID != originalAgentID(task) {
+			if squad, err := s.store.GetSquad(ctx, task.SquadID); err == nil && squad.LeaderID != task.AgentID {
+				followUp := &model.Task{
+					Title: fmt.Sprintf("[小队跟进] %s（成员已完成）", task.Title),
+					Prompt: fmt.Sprintf("小队成员已完成子任务「%s」，产出：%s\n\n请评估：是否继续转派下一步、上报人工、还是收尾？",
+						task.Title, headStr(res.Reply, 300)),
+					AgentID: squad.LeaderID, Priority: task.Priority, SquadID: task.SquadID,
+				}
+				if nid, err := s.store.CreateTask(ctx, followUp); err == nil {
+					s.emit(ctx, "task.update", map[string]any{"task_id": nid, "status": "queued", "squad_followup": task.ID})
+					log.Printf("[scheduler] 小队跟进：task#%d（成员完成）→ leader 评估任务 task#%d", task.ID, nid)
+					s.Wake()
+				}
+			}
+		}
 	}
 }
 

@@ -40,6 +40,7 @@ type Task struct {
 	Status       TaskStatus `json:"status"`
 	DependsOn    []int64    `json:"depends_on"`
 	WorkspaceID  int64      `json:"workspace_id,omitempty"` // 绑定执行环境（0=不绑定）
+	SquadID      int64      `json:"squad_id,omitempty"`    // 分给小队（I30：执行时唤醒 leader）
 	SkillIDs     []int64    `json:"skill_ids,omitempty"`    // 引用的经验（创建时注入 prompt）
 	RiskLevel    string     `json:"risk_level,omitempty"`   // I29: low|medium|high（审批分级）
 	HandoffCount int        `json:"-"`
@@ -260,6 +261,26 @@ type APIKey struct {
 	Scopes      string     `json:"scopes"`
 	LastUsedAt  *time.Time `json:"last_used_at"`
 	CreatedAt   time.Time  `json:"created_at"`
+}
+
+// Squad 小队（I30，对标 Multica squads）：leader（必为 agent）+ 混编成员。
+// 任务分给 squad 只唤醒 leader；leader 读 Roster 动态决策转派。
+type Squad struct {
+	ID           int64     `json:"id"`
+	Name         string    `json:"name"`
+	Description  string    `json:"description"`
+	LeaderID     int64     `json:"leader_id"` // 必为 agent
+	Instructions string    `json:"instructions"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+// SquadMember 成员（agent 或人——人暂作占位记录不参与执行）。
+type SquadMember struct {
+	ID         int64     `json:"id"`
+	SquadID    int64     `json:"squad_id"`
+	MemberType string    `json:"member_type"` // agent | human
+	MemberID   int64     `json:"member_id"`
+	Role       string    `json:"role"`
 }
 
 // SSE 事件

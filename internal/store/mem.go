@@ -29,6 +29,8 @@ type MemStore struct {
 	workspaces    map[int64]*model.Workspace
 	skills        map[int64]*model.Skill
 	apiKeys       map[int64]*model.APIKey
+	squads        map[int64]*model.Squad
+	squadMembers  map[int64]*model.SquadMember
 	events        []model.Event
 	nextID        int64
 	lastEventSeq  int64
@@ -46,6 +48,8 @@ func NewMemStore() *MemStore {
 		artifacts:     map[int64]*model.Artifact{},
 		workspaces:    map[int64]*model.Workspace{},
 		skills:        map[int64]*model.Skill{},
+		squads:        map[int64]*model.Squad{},
+		squadMembers:  map[int64]*model.SquadMember{},
 	}
 }
 

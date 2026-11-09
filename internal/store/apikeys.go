@@ -11,7 +11,8 @@ import (
 // ---- MemStore: api keys ----
 
 func (m *MemStore) CreateAPIKey(_ context.Context, name, keyHash, keyPrefix string) (int64, error) {
-	m.mu.Lock(); defer m.mu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.nextID++
 	id := m.nextID
 	m.apiKeys[id] = &model.APIKey{ID: id, Name: name, KeyHash: keyHash, KeyPrefix: keyPrefix,
@@ -20,7 +21,8 @@ func (m *MemStore) CreateAPIKey(_ context.Context, name, keyHash, keyPrefix stri
 }
 
 func (m *MemStore) ListAPIKeys(_ context.Context) ([]model.APIKey, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	out := make([]model.APIKey, 0, len(m.apiKeys))
 	for _, k := range m.apiKeys {
 		out = append(out, *k)
@@ -29,7 +31,8 @@ func (m *MemStore) ListAPIKeys(_ context.Context) ([]model.APIKey, error) {
 }
 
 func (m *MemStore) FindAPIKeyByHash(_ context.Context, keyHash string) (*model.APIKey, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	for _, k := range m.apiKeys {
 		if k.KeyHash == keyHash {
 			cp := *k
@@ -40,7 +43,8 @@ func (m *MemStore) FindAPIKeyByHash(_ context.Context, keyHash string) (*model.A
 }
 
 func (m *MemStore) DeleteAPIKey(_ context.Context, id int64) error {
-	m.mu.Lock(); defer m.mu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if _, ok := m.apiKeys[id]; !ok {
 		return fmt.Errorf("api key %d: %w", id, ErrNotFound)
 	}
@@ -49,7 +53,8 @@ func (m *MemStore) DeleteAPIKey(_ context.Context, id int64) error {
 }
 
 func (m *MemStore) TouchAPIKey(_ context.Context, id int64) error {
-	m.mu.Lock(); defer m.mu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if k, ok := m.apiKeys[id]; ok {
 		now := time.Now()
 		k.LastUsedAt = &now
@@ -113,7 +118,8 @@ func (p *PostgresStore) TouchAPIKey(ctx context.Context, id int64) error {
 }
 
 func (m *MemStore) HasAnyAPIKey(_ context.Context) (bool, error) {
-	m.mu.RLock(); defer m.mu.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return len(m.apiKeys) > 0, nil
 }
 

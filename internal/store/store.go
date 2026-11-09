@@ -96,6 +96,16 @@ type Store interface {
 	DeleteSkill(ctx context.Context, id int64) error
 	IncrSkillUsage(ctx context.Context, id int64) error
 
+	// squads（I30 小队）
+	CreateSquad(ctx context.Context, sq *model.Squad) (int64, error)
+	GetSquad(ctx context.Context, id int64) (*model.Squad, error)
+	ListSquads(ctx context.Context) ([]model.Squad, error)
+	UpdateSquad(ctx context.Context, id int64, patch SquadPatch) error
+	DeleteSquad(ctx context.Context, id int64) error
+	AddSquadMember(ctx context.Context, m *model.SquadMember) error
+	RemoveSquadMember(ctx context.Context, id int64) error
+	ListSquadMembers(ctx context.Context, squadID int64) ([]model.SquadMember, error)
+
 	// api keys（I19 认证）
 	CreateAPIKey(ctx context.Context, name, keyHash, keyPrefix string) (int64, error)
 	ListAPIKeys(ctx context.Context) ([]model.APIKey, error)
@@ -110,6 +120,13 @@ type Store interface {
 
 	Close() error
 	Ping(ctx context.Context) error
+}
+
+type SquadPatch struct {
+	Name         *string
+	Description  *string
+	LeaderID     *int64
+	Instructions *string
 }
 
 type WorkspacePatch struct {

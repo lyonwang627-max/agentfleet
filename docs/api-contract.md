@@ -44,6 +44,13 @@ run 执行报告：头部元数据（任务/agent/状态/token/耗时）+ 步骤
 ### GET /auth/keys → `{"items":[{id,name,key_prefix,scopes,last_used_at,created_at}]}`；DELETE /auth/keys/{id} → 撤销
 豁免：/metrics、/api/v1/health、/auth/keys*；认证后限流键从 IP 升级为 key 名
 
+### 小队 Squads（v1.5 新增，I30——对标 Multica squads）
+### POST /squads body `{"name","description","leader_id","instructions","member_ids":[agentID…]}` → `{"id"}`
+leader 必须是存在的 agent；分给小队的任务只唤醒 leader（briefing=运行协议+花名册+小队指令注入 system prompt），leader 用 handoff_to 转派成员；成员完成自动生成 leader 跟进评估任务（事件驱动闭环）。
+### GET /squads → `{"items":[{…Squad, leader_name, members:[名字]}]}`；GET /squads/{id}；DELETE /squads/{id}
+### POST /squads/{id}/members body `{"agent_id"}`；DELETE /squads/members/{id}
+### POST /tasks 加 `squad_id`（agent_id 缺省取 leader，非 leader 拒绝 400）
+
 ### GET /tasks/{id}/consistency（v1.4 新增，I13 状态漂移检测）→ `{"task_id","actual_status","replayed_status","events_seen","consistent","hint"?}`
 从 events 表重放 task.update 事件派生应有状态并与实际比对——双写漂移即报警（调试端点）
 

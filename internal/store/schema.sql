@@ -187,6 +187,24 @@ CREATE TABLE IF NOT EXISTS api_keys (
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS squads (
+  id           BIGSERIAL PRIMARY KEY,
+  name         TEXT NOT NULL,
+  description  TEXT NOT NULL DEFAULT '',
+  leader_id    BIGINT NOT NULL REFERENCES agents(id),
+  instructions TEXT NOT NULL DEFAULT '',
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS squad_members (
+  id          BIGSERIAL PRIMARY KEY,
+  squad_id    BIGINT NOT NULL REFERENCES squads(id),
+  member_type TEXT NOT NULL DEFAULT 'agent',
+  member_id   BIGINT NOT NULL,
+  role        TEXT NOT NULL DEFAULT '',
+  UNIQUE (squad_id, member_type, member_id)
+);
+
 CREATE TABLE IF NOT EXISTS events (
   seq        BIGSERIAL PRIMARY KEY,
   kind       TEXT NOT NULL,

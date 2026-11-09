@@ -83,6 +83,9 @@
 - [x] **I29 审批风险分级** `done`（2026-11-07）
   实现：Task/Result 加 RiskLevel（low/medium/high）；mock 按关键词定级（对外发布/删除/资金→high）；调度器 review 门带 risk 标注落 gate step 与事件；**high 任务 approve 无意见 400**（强制留痕）；precheck risk=high 写回 task.RiskLevel（F16 联动）。单测：high 无意见 400/带意见 200/medium 不强制。顺手修：Server.publish nil 守卫（测试直调 handler 不再 panic）+ 全部子文件 Hub 调用统一。
 
+- [x] **I30 小队模式** `done`（2026-11-09，对标 Multica squads 源码调研定稿）
+  实现：squad/squad_members 表与 CRUD（leader 必为 agent、成员混编、UNIQUE 幂等）+ leader briefing（运行协议：只协调不动手/转派/无动作记录/派完即停 + 花名册含技能 + 小队指令）注入 system prompt + 任务创建接受 squad_id（缺省 leader/非 leader 400）+ 成员完成自动生成 leader 跟进评估任务（事件驱动闭环）。端到端测试：建队→briefing 四要素→leader handoff→成员完成→跟进任务生成。
+
 ## 已完成（沉淀记录）
 
 - ~~任务级模型路由~~（F18-b，ADR-0002）

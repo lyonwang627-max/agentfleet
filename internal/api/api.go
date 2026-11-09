@@ -366,6 +366,7 @@ type taskIn struct {
 	DependsOn   []int64 `json:"depends_on"`
 	WorkspaceID int64   `json:"workspace_id"`
 	SkillIDs    []int64 `json:"skill_ids"`
+	SquadID     int64   `json:"squad_id"` // 分给小队（I30）：AgentID 需为该队 leader
 }
 
 func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
@@ -381,9 +382,23 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	if in.Priority < 1 || in.Priority > 9 {
 		in.Priority = 5
 	}
+	// I30：分给小队的任务，AgentID 校验为该队 leader（只有 leader 被唤醒）
+	if in.SquadID > 0 {
+		sq, err := s.Store.GetSquad(r.Context(), in.SquadID)
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, errors.New("squad 不存在"))
+			return
+		}
+		if in.AgentID == 0 {
+			in.AgentID = sq.LeaderID // 缺省取 leader
+		} else if in.AgentID != sq.LeaderID {
+			writeErr(w, http.StatusBadRequest, errors.New("小队任务的 agent_id 必须是该队 leader"))
+			return
+		}
+	}
 	t := &model.Task{Title: in.Title, Prompt: in.Prompt, AgentID: in.AgentID,
 		Priority: in.Priority, DependsOn: in.DependsOn,
-		WorkspaceID: in.WorkspaceID, SkillIDs: in.SkillIDs}
+		WorkspaceID: in.WorkspaceID, SkillIDs: in.SkillIDs, SquadID: in.SquadID}
 	id, err := s.Store.CreateTask(r.Context(), t)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err)

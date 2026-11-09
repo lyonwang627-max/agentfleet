@@ -289,3 +289,9 @@
 ## 2026-11-09 前端补全四连（手动切片）
 
 - **I18-b/I3-b/I23-b/I22-b 一轮拉通**：任务看板加「看板/死信队列」双视图（DLQ 列表+重放按钮）、舰队卡片克隆按钮、run 面板导出报告链接、事件流 kind 筛选下拉。后端四端点此前已就绪，本次全部接通 UI。实弹：DLQ 36 条 / clone→intake-clone / export.md 报告完整（token/时间/步骤表）/ query 过滤正常。前端构建零报错。commit 94191cd
+
+## 2026-11-09 I30 小队模式（对标 Multica squads）
+
+- **源码调研驱动**：克隆 multica 仓库读 squad.go/squad_briefing.go——五核心决策（leader 只协调不动手协议/@mention 结构化分派/Roster 技能注入/每次触发强制 activity 记录/停等唤醒模型），agentfleet 取其三（协议/Roster/事件闭环）不抄其二（mention://协议——我们复用 handoff 通道；originator 门控——单用户平台无需求）。
+- **实现四件**：①squads/squad_members 表 + CRUD（leader FK agent、成员混编、幂等）②leader briefing 组装（squadOperatingProtocol 中文版五职责 + 花名册含成员技能 + 小队指令段）③任务创建 squad_id 接线（缺省 leader、非 leader 400）④**成员完成自动 re-trigger leader**（跟进评估任务带上下文 + Wake 即时派发；originalAgents 内存表跟踪 handoff 前初始 leader）。seed 加「告警响应小队」示例。端到端测试全链路 1.82s。
+- 教训：mem store 新增 map 字段必须同步 NewMemStore 初始化（第三次踩 nil map）。

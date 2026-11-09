@@ -54,8 +54,6 @@ func Run(ctx context.Context, st store.Store, runner string, model_ string) erro
 	if err != nil {
 		return err
 	}
-	_ = reviewer
-	_ = fixer // fixer 由任务 1 通过 handoff 指令按名交接，无需变量引用
 
 	// 执行环境示例（对标 worktree）：告警修复任务绑定 release-hotfix 环境
 	wsID, err := st.CreateWorkspace(ctx, &model.Workspace{
@@ -74,6 +72,17 @@ func Run(ctx context.Context, st store.Store, runner string, model_ string) erro
 	})
 	if err != nil {
 		return err
+	}
+
+	// 示例小队（I30，对标 Multica squads）：intake 为 leader，fixer/reviewer 为成员
+	squadID, err := st.CreateSquad(ctx, &model.Squad{
+		Name: "告警响应小队", Description: "P2 告警的接收-修复-复核闭环",
+		LeaderID: intake, Instructions: "定位类工作自己做；修复交给 fixer；复核交给 reviewer；发布必须走审批门。"})
+	if err != nil {
+		return err
+	}
+	for _, mid := range []int64{fixer, reviewer} {
+		_ = st.AddSquadMember(ctx, &model.SquadMember{SquadID: squadID, MemberType: "agent", MemberID: mid})
 	}
 
 	// 任务链 1：告警处置全链路——绑定工作区 + 引用 SOP 经验
