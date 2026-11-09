@@ -392,3 +392,8 @@
 - 高风险工具（I29 同源关键词）在 callTool 执行前拦截：ToolGateError 哨兵中止 runToolLoop（语义扩展：callTool 可中止循环）→ Execute 映射 NeedsApproval/high——**不是失败，任务进 review 门**；gate 步 tool-approval-gate 带工具/参数快照落 trace。
 - 放行契约：approve 审批意见必须提及工具名（防一次审批放行全部工具）；F3 审批记录注入 task prompt → 重跑时闸自然放行，参数修正经意见注入由模型消费（与 F3 审批闭环同机制，零新基建）。
 - 单测 4 组：高风险拦截/低风险回归/批准后放行（观察回灌）/判定表。9 包 -race 全绿。第 2 轮：mock 剧本路径 + reject 留痕。
+
+## 2026-11-10 A 切片：evals HTTP 全生命周期直测（handler 0%→覆盖）
+
+- createEval/listEvals/getEval/listDatasets 此前 0%：一条链直测——缺参 400 / 发起 201 running / 轮询终态 done（mock 引擎确定性满分）/ 报告形状（cases/score_avg）/ 两列表端点 / 404。Eval 引擎异步 Start 的 HTTP 编排面锁定。
+- 9 包 -race 全绿。
