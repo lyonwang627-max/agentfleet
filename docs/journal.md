@@ -285,3 +285,7 @@
 ## 2026-11-08 自驱迭代切片 26（A 测试扩充）
 
 - **I1 端到端断言补齐（调度器级）**：TestCancelPropagationEndToEnd——cooperativeRunner 进入步边界等待区后 cancel → runner 经 CancelCheck 协作退出 → 任务终态 canceled 且 200ms 窗口内无翻转（确认 failTask 不介入）→ run 带 canceled 标注。上轮只有 runner 单元级，全链路语义现在锁死。验证：go 9 包全绿
+
+## 2026-11-09 前端补全四连（手动切片）
+
+- **I18-b/I3-b/I23-b/I22-b 一轮拉通**：任务看板加「看板/死信队列」双视图（DLQ 列表+重放按钮）、舰队卡片克隆按钮、run 面板导出报告链接、事件流 kind 筛选下拉。后端四端点此前已就绪，本次全部接通 UI。实弹：DLQ 36 条 / clone→intake-clone / export.md 报告完整（token/时间/步骤表）/ query 过滤正常。前端构建零报错。commit 94191cd
