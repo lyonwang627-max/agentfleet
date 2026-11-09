@@ -329,3 +329,9 @@
 - chatHistoryTranscript 纯函数：阈值 20/保留 12，较早消息确定性折叠 40 rune 单行（非模型摘要，F11 Spill 同原则）；三处接线（sync/stream/room，PromptTokens 按有界时间线计量）。单测 6 组含 60000→<6000 rune 有界证明与 mock 回显多轮记忆。
 - 真模型实弹（qwen3.5，conv#86）：第 1 轮埋暗号 → 第 2 轮准确召回「gamma55」——多轮记忆端到端 ✓。
 - 顺手补登 I1 状态 done（a15f77c/323a212 此前漏登记）。适配 TestChatStreamChunksAndMeta 断言（prompt 形态演进为时间线）。
+
+## 2026-11-10 B 调研：AutoGen 群聊编排（docs/research/autogen-group-chat.md）
+
+- 三种团队形态（RoundRobin 固定轮转 / Selector LLM 选人 / Swarm handoff）+ selector_prompt 三占位符（participants/roles/history）+ 双钩子（selector_func 全接管可回退、candidate_func 候选集收窄）+ Termination 体系（五种条件、|/& 组合、自动 reset、stop_reason 可观测）。
+- **对 agentfleet 五点借鉴**：候选集收窄→I32 入池（@all 智能选人，I30 花名册数据已就位）；Termination 组合+stop_reason（防爆炸从硬编码常量升级为可观测终止原因）；woken 去重与 allow_repeated_speaker 同构确认；Steer↔ExternalTermination 同族确认；description 即选人依据验证花名册路线。
+- 明确不抄：LLM selector 替代显式 @（派发可审计性）、Swarm 形态（handoff 状态机已覆盖）、组件序列化框架。
