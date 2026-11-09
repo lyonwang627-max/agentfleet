@@ -39,13 +39,17 @@ export default function AgentDetail() {
 
   useEffect(() => {
     if (a) {
+      // I14：有未发布草稿时表单以草稿值为准（编辑所见即草稿，发布后才落线上）
+      const d = (a.draft_config ?? {}) as Record<string, unknown>;
+      const str = (k: string, fb: string) => (typeof d[k] === 'string' ? (d[k] as string) : fb);
+      const num = (k: string, fb: number) => (typeof d[k] === 'number' ? (d[k] as number) : fb);
       setForm({
-        name: a.name,
-        role: a.role,
-        system_prompt: a.system_prompt ?? '',
-        model: a.model,
-        tools: (a.tools ?? []).join(','),
-        max_concurrency: a.max_concurrency,
+        name: str('name', a.name),
+        role: str('role', a.role),
+        system_prompt: str('system_prompt', a.system_prompt ?? ''),
+        model: str('model', a.model),
+        tools: Array.isArray(d.tools) ? (d.tools as string[]).join(',') : (a.tools ?? []).join(','),
+        max_concurrency: num('max_concurrency', a.max_concurrency),
       });
     }
   }, [a]);
@@ -103,7 +107,7 @@ export default function AgentDetail() {
       </div>
 
       {/* 版本管理（F2）：发布/历史/回滚 */}
-      <AgentVersions agentId={agentId} />
+      <AgentVersions agentId={agentId} dirty={a.has_unpublished_changes} onPublished={() => void agent.reload()} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,520px)_minmax(0,1fr)]">
         {/* 配置表单 */}
@@ -120,10 +124,18 @@ export default function AgentDetail() {
               >
                 {a.enabled ? '已启用' : '已停用'}
               </span>
-              {saved && <span className="text-ok">已保存</span>}
+              {a.has_unpublished_changes && (
+                <span className="rounded border border-warn/40 bg-warn/10 px-1.5 py-0.5 text-[11px] text-warn">
+                  未发布变更
+                </span>
+              )}
+              {saved && <span className="text-ok">已存草稿</span>}
             </span>
           }
         >
+          <div className="mb-2.5 text-[11px] text-muted">
+            编辑进入草稿（在途 run 不受影响）；点「版本历史 → 发布」落线生效
+          </div>
           <div className="space-y-2.5">
             <LabeledInput label="名称" value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} inputCls={inputCls} />
             <LabeledInput label="角色" value={form.role} onChange={(v) => setForm((f) => ({ ...f, role: v }))} inputCls={inputCls} />
@@ -250,8 +262,8 @@ function ModelSelect({ value, onChange, inputCls }: { value: string; onChange: (
   );
 }
 
-// AgentVersions 版本链：发布=快照当前配置；回滚=旧快照覆盖+前进新版本（链只前进，可追溯）。
-function AgentVersions({ agentId }: { agentId: number }) {
+// AgentVersions 版本链（I14）：编辑进草稿、发布=草稿落线+版本快照；回滚=旧快照覆盖+清草稿（链只前进，可追溯）。
+function AgentVersions({ agentId, dirty, onPublished }: { agentId: number; dirty?: boolean; onPublished?: () => void }) {
   const versions = useApi(() => api.listAgentVersions(agentId), [agentId]);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -286,12 +298,18 @@ function AgentVersions({ agentId }: { agentId: number }) {
             placeholder="发布备注（可选）"
             className="w-40 rounded border border-border bg-bg px-2 py-1 text-xs text-fg outline-none focus:border-accent-dim"
           />
+          {dirty && (
+            <span className="rounded border border-warn/40 bg-warn/10 px-1.5 py-0.5 text-[11px] text-warn">
+              有草稿待发布
+            </span>
+          )}
           <Btn variant="primary" disabled={busy} onClick={() => void act(async () => {
             const r = await api.publishAgent(agentId, note.trim());
             setNote('');
-            return `已发布 v${r.version}`;
+            onPublished?.();
+            return `已发布 v${r.version}${dirty ? '（草稿已落线）' : '（快照）'}`;
           })}>
-            发布当前配置
+            {dirty ? '发布草稿' : '发布当前配置'}
           </Btn>
         </span>
       }
@@ -301,7 +319,7 @@ function AgentVersions({ agentId }: { agentId: number }) {
       {versions.error && <div className="p-4"><ErrorText>{versions.error}</ErrorText></div>}
       {!versions.loading && !versions.error && items.length === 0 && (
         <div className="px-4 py-6 text-center text-xs text-muted">
-          还没有发布过版本——修改配置后点「发布当前配置」建立 v1
+          还没有发布过版本——编辑配置进草稿后点「发布」落线并建立 v1
         </div>
       )}
       {items.map((v) => (

@@ -374,3 +374,10 @@
 - 三种 HITL 模式（Approve/Review&Edit/工具内 interrupt）——工具内 interrupt 是粒度最细形态。
 - **对 agentfleet**：粒度下沉缺口→I33 工具步级审批入池（risk 分级下沉到工具调用，approve 带参数修正）；I11 验收补强（恢复=重放→副作用幂等，与 Temporal 双源互证）；Steer↔resume 值同构确认。
 - 明确不抄：动态图框架/thread_id 持久化（DB 即 checkpointer）/response_schema 校验。
+
+## 2026-11-10 C 切片：I14 draft/publish 第 2/2 轮（前端收口）
+
+- AgentDetail：配置表单以草稿值为准（draft_config 驱动初始化——编辑所见即草稿）+「未发布变更」琥珀徽章 + 「编辑进草稿」提示语 + 保存反馈改「已存草稿」。
+- 版本面板：dirty 驱动「有草稿待发布」徽章 + 按钮文案「发布当前配置」↔「发布草稿」切换 + 发布后联动刷新 dirty。
+- 真机闭环（fleetd 重启 + 实弹）：PATCH 草稿 → live 不变（curl 双查证）→ 页面草稿态三件套呈现 → 点发布 → v1 落线（版本链 config=草稿值）→ dirty 清零 → 徽章消失按钮复位。
+- 前端构建零报错（tsc 直连校验）。I14 整体 done。

@@ -37,6 +37,9 @@ export interface AgentDetail extends AgentSummary {
   system_prompt: string;
   tools: string[];
   stats: AgentStats;
+  // I14 草稿/发布双态
+  draft_config?: Record<string, unknown> | null;
+  has_unpublished_changes?: boolean;
 }
 export interface AgentPatch {
   name?: string;
