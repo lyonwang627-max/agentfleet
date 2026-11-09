@@ -352,3 +352,10 @@
 - index.html 首帧前内联初始化（localStorage af-theme，防闪烁）；Layout 顶栏 Sun/Moon 切换按钮；violet 徽章亮暗自适应。
 - **回归自纠**：build 抓到 1d5bef4 钩子修复时误删的 viewTrace（当时 tsc 退出码被管道掩蔽：`tsc | head; $?` 读的是 head 的退出码——校验编译必须 `tsc; $?` 直连）已恢复。
 - 双主题浏览器验收：暗色零回归、亮色白底浅面板发丝线正确、localStorage 刷新持久 ✓。
+
+## 2026-11-10 A 切片：gateway native（Ollama 原生通道）直测（68.2%→84.8%）
+
+- 诊断：跨包归因掩蔽（Chat/ChatJSON 在 runner/api 层已被 mock 路径驱动），真缺口是 **native() 生产主通道全项目零测试**（stream/think/format 契约、HTTP 错误路径从未锁定）。
+- httptest 假 Ollama 端点 6 组：成功解析（content/eval_count）+ 请求契约（stream:false/think:false/num_predict 透传/model）/ChatJSON forceJSON→format:"json"/HTTP 500/非法响应体/连接拒绝/Healthy+mock Chat 形态。
+- mcp RunDemoServer 0% 排除：re-exec 子进程覆盖率假象，TestClientHandshakeListCall 已端到端驱动。
+- 9 包 -race 全绿。
