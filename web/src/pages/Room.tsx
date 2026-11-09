@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import { useApi } from '../hooks';
 import type { AgentSummary } from '../types';
@@ -11,6 +11,7 @@ interface RoomMsg {
 }
 
 // 群聊会话（I31）：共享上下文，@任意 agent 唤醒其回帖；agent 互 @ 链式接力。
+// 输入框内键入 @ 弹出成员补全浮层（↑↓ 选择 / Tab 或 Enter 补全 / Esc 关闭）。
 export default function Room() {
   const agents = useApi(() => api.listAgents(), []);
   const [conversationId, setConversationId] = useState<number | null>(null);
@@ -20,19 +21,108 @@ export default function Room() {
   const [err, setErr] = useState<string | null>(null);
   const [lastWoken, setLastWoken] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // ---- @ 补全状态 ----
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null); // null=关闭；''=刚键入@
+  const [mentionIdx, setMentionIdx] = useState(0);
 
   const items = agents.data?.items ?? [];
-  const enabled = items.filter((a) => a.enabled);
+  const enabled = useMemo(() => items.filter((a) => a.enabled), [items]);
+
+  // 候选：按已输入前缀过滤；始终含 all
+  const mentionCandidates = useMemo(() => {
+    if (mentionQuery === null) return [];
+    const q = mentionQuery.toLowerCase();
+    const agentNames = enabled
+      .filter((a) => a.name.toLowerCase().includes(q))
+      .map((a) => a.name);
+    const extra = ['all'].filter((n) => n.includes(q));
+    return [...agentNames, ...extra];
+  }, [mentionQuery, enabled]);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, pending]);
 
+  useEffect(() => setMentionIdx(0), [mentionQuery]);
+
+  // 从输入框解析「正在输入的 @ 前缀」：光标左侧最近的未闭合 @token
+  const detectMention = (value: string, caret: number) => {
+    const before = value.slice(0, caret);
+    const at = before.lastIndexOf('@');
+    if (at === -1) {
+      setMentionQuery(null);
+      return;
+    }
+    const token = before.slice(at + 1);
+    // token 里出现空白/另一个 @ 即视为已闭合
+    if (/[\s@]/.test(token)) {
+      setMentionQuery(null);
+      return;
+    }
+    setMentionQuery(token);
+  };
+
+  const applyMention = (name: string) => {
+    if (mentionQuery === null || !inputRef.current) return;
+    const caret = inputRef.current.selectionStart ?? input.length;
+    const before = input.slice(0, caret);
+    const at = before.lastIndexOf('@');
+    if (at === -1) return;
+    const next = input.slice(0, at) + '@' + name + ' ' + input.slice(caret);
+    setInput(next);
+    setMentionQuery(null);
+    // 光标移到补全之后
+    requestAnimationFrame(() => {
+      const pos = at + name.length + 2;
+      inputRef.current?.focus();
+      inputRef.current?.setSelectionRange(pos, pos);
+    });
+  };
+
+  const onInputChange = (v: string) => {
+    setInput(v);
+    const caret = inputRef.current?.selectionStart ?? v.length;
+    detectMention(v, caret);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // 补全浮层打开时接管按键
+    if (mentionQuery !== null && mentionCandidates.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionIdx((i) => (i + 1) % mentionCandidates.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionIdx((i) => (i - 1 + mentionCandidates.length) % mentionCandidates.length);
+        return;
+      }
+      if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing)) {
+        e.preventDefault();
+        applyMention(mentionCandidates[mentionIdx]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setMentionQuery(null);
+        return;
+      }
+    }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      void send();
+    }
+  };
+
   const send = async () => {
     const text = input.trim();
     if (!text || pending) return;
     setInput('');
+    setMentionQuery(null);
     setErr(null);
     setMessages((m) => [...m, { role: 'user', text }]);
     setPending(true);
@@ -66,6 +156,7 @@ export default function Room() {
 
   const insertMention = (name: string) => {
     setInput((v) => (v ? `${v} @${name} ` : `@${name} `));
+    inputRef.current?.focus();
   };
 
   return (
@@ -97,7 +188,7 @@ export default function Room() {
             ))}
             <button
               type="button"
-              onClick={() => setInput((v) => `${v} @all `)}
+              onClick={() => insertMention('all')}
               className="press rounded-full border border-accent/40 px-2.5 py-0.5 text-[11px] text-accent"
             >
               @all
@@ -110,6 +201,7 @@ export default function Room() {
           {messages.length === 0 && !pending && (
             <div className="py-14 text-center text-xs text-muted">
               在一条共享时间线上 @ 任意成员，他们会以自己的人格回帖——成员之间也能互 @ 接力。
+              键入 @ 可弹出成员补全。
             </div>
           )}
           {messages.map((m, i) => (
@@ -139,20 +231,45 @@ export default function Room() {
           )}
         </div>
 
-        {/* 输入 */}
+        {/* 输入（含 @ 补全浮层） */}
         <div className="space-y-2 border-t border-white/6 p-3">
           {err && <ErrorText>{err}</ErrorText>}
-          <div className="flex gap-2">
+          <div className="relative flex gap-2">
+            {mentionQuery !== null && mentionCandidates.length > 0 && (
+              <div className="elev-2 absolute bottom-full left-0 mb-2 w-56 overflow-hidden rounded-xl bg-panel py-1">
+                {mentionCandidates.slice(0, 6).map((name, i) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onMouseEnter={() => setMentionIdx(i)}
+                    onMouseDown={(e) => {
+                      e.preventDefault(); // 不让 input 失焦
+                      applyMention(name);
+                    }}
+                    className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${
+                      i === mentionIdx ? 'bg-accent text-white' : 'text-fg hover:bg-white/5'
+                    }`}
+                  >
+                    <span className={i === mentionIdx ? 'text-white/70' : 'text-muted'}>@</span>
+                    {name}
+                    {name === 'all' && <span className="ml-auto text-[10px] opacity-60">全员</span>}
+                  </button>
+                ))}
+                <div className="border-t border-white/6 px-3 py-1 text-[10px] text-muted">
+                  ↑↓ 选择 · Tab/Enter 补全 · Esc 关闭
+                </div>
+              </div>
+            )}
             <input
+              ref={inputRef}
               className="flex-1 rounded-lg border border-border bg-transparent px-3 py-2 text-xs text-fg outline-none placeholder:text-muted focus:border-accent"
-              placeholder="@fixer 评估这个方案，@reviewer 复核（支持中文名 / @all）"
+              placeholder="键入 @ 唤醒成员（支持中文名 / @all）"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  void send();
-                }
+              onChange={(e) => onInputChange(e.target.value)}
+              onKeyDown={onKeyDown}
+              onBlur={() => {
+                // 延迟关闭让 mousedown 先触发
+                setTimeout(() => setMentionQuery(null), 150);
               }}
               disabled={pending}
             />
