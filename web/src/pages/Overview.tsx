@@ -22,6 +22,17 @@ export default function Overview() {
     }
   };
 
+  // 克隆派生变体（I3-b）：同配置新 agent，名称自动去重
+  const clone = async (a: AgentSummary) => {
+    setBusyId(a.id);
+    try {
+      await api.cloneAgent(a.id);
+      await agents.reload();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const items = agents.data?.items ?? [];
   const runningTotal = items.reduce((s, a) => s + (a.running ?? 0), 0);
   const queuedTotal = items.reduce((s, a) => s + (a.queued ?? 0), 0);
@@ -84,13 +95,18 @@ export default function Overview() {
                     排队 <span className="font-mono text-sm tabular-nums">{a.queued ?? 0}</span>
                   </span>
                 </div>
-                <Btn
-                  variant={a.enabled ? 'danger' : 'primary'}
-                  disabled={busyId === a.id || down}
-                  onClick={() => void toggle(a)}
-                >
-                  {busyId === a.id ? '处理中…' : a.enabled ? '停用' : '启用'}
-                </Btn>
+                <div className="flex items-center gap-2">
+                  <Btn disabled={busyId === a.id || down} onClick={() => void clone(a)}>
+                    克隆
+                  </Btn>
+                  <Btn
+                    variant={a.enabled ? 'danger' : 'primary'}
+                    disabled={busyId === a.id || down}
+                    onClick={() => void toggle(a)}
+                  >
+                    {busyId === a.id ? '处理中…' : a.enabled ? '停用' : '启用'}
+                  </Btn>
+                </div>
               </div>
             </div>
           ))}
@@ -118,6 +134,10 @@ const MAX_EVENTS = 50;
 function EventFeed() {
   const [events, setEvents] = useState<{ ev: FleetEvent; at: number }[]>([]);
   const [connected, setConnected] = useState(false);
+  const [kindFilter, setKindFilter] = useState<string>('all');
+
+  // 已出现的 kind（动态生成筛选项）
+  const kinds = Array.from(new Set(events.map((e) => e.ev.kind))).slice(0, 8);
 
   useEffect(() => {
     const es = new EventSource('/api/v1/events');
@@ -135,6 +155,8 @@ function EventFeed() {
     return () => es.close();
   }, []);
 
+  const shown = kindFilter === 'all' ? events : events.filter((e) => e.ev.kind === kindFilter);
+
   return (
     <Panel
       title={
@@ -144,15 +166,31 @@ function EventFeed() {
           <span className="text-[11px] font-normal text-muted">SSE {connected ? '已连接' : '未连接'}</span>
         </span>
       }
-      right={<span className="text-[11px] text-muted">最新 {events.length}/{MAX_EVENTS}</span>}
+      right={
+        <span className="flex items-center gap-1.5">
+          <select
+            value={kindFilter}
+            onChange={(e) => setKindFilter(e.target.value)}
+            className="rounded border border-border bg-bg px-1.5 py-0.5 text-[11px] text-fg outline-none focus:border-sky-600/60"
+          >
+            <option value="all">全部</option>
+            {kinds.map((k) => (
+              <option key={k} value={k}>{k}</option>
+            ))}
+          </select>
+          <span className="text-[11px] text-muted">{shown.length}/{MAX_EVENTS}</span>
+        </span>
+      }
       bodyClass="p-0"
       className="self-start"
     >
       <div className="max-h-[calc(100vh-160px)] overflow-y-auto">
-        {events.length === 0 && (
-          <div className="px-4 py-8 text-center text-xs text-muted">等待事件…（任务 / Run 状态变化会推送到这里）</div>
+        {shown.length === 0 && (
+          <div className="px-4 py-8 text-center text-xs text-muted">
+            {kindFilter === 'all' ? '等待事件…（任务 / Run 状态变化会推送到这里）' : `暂无 ${kindFilter} 事件`}
+          </div>
         )}
-        {events.map((e, i) => (
+        {shown.map((e, i) => (
           <div key={`${e.at}-${i}`} className="border-b border-border/60 px-3 py-2 last:border-b-0">
             <div className="flex items-center gap-2">
               <KindBadge kind={e.ev.kind} />

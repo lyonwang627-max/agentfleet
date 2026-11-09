@@ -186,9 +186,15 @@ function RunRow({ r, open, onToggle }: { r: RunSummary; open: boolean; onToggle:
       <span className="text-muted">
         {fmtTime(r.started_at)} → {fmtTime(r.finished_at)}
       </span>
-      <Btn variant={open ? 'default' : 'primary'} className="ml-auto" onClick={onToggle}>
+      <Btn variant={open ? 'default' : 'primary'} onClick={onToggle}>
         {open ? '收起 Trace' : '查看 Trace'}
       </Btn>
+      <a
+        href={`/api/v1/runs/${r.id}/export.md`}
+        className="rounded border border-border bg-panel2 px-2.5 py-1 text-xs font-medium text-fg transition-colors hover:border-slate-500"
+      >
+        导出报告
+      </a>
     </div>
   );
 }

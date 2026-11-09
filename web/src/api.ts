@@ -73,7 +73,7 @@ function post<T>(path: string, body?: unknown): Promise<T> {
   return request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) });
 }
 
-function qs(params: Record<string, string | number | undefined>): string {
+function qs(params: Record<string, string | number | boolean | undefined>): string {
   const pairs = Object.entries(params)
     .filter(([, v]) => v !== undefined && v !== '')
     .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`);
@@ -90,15 +90,16 @@ export const api = {
   getAgent: (id: number) => request<AgentDetail>(`/agents/${id}`),
   patchAgent: (id: number, body: AgentPatch) =>
     request<{ id: number }>(`/agents/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  cloneAgent: (id: number) => post<{ id: number; name: string; cloned_from: number }>(`/agents/${id}/clone`),
   setAgentEnabled: (id: number, enabled: boolean) =>
     post<{ id: number; enabled: boolean }>(`/agents/${id}/${enabled ? 'enable' : 'disable'}`),
 
   // Tasks
-  listTasks: (opts?: { status?: TaskStatus; agent_id?: number; page?: number; page_size?: number }) =>
+  listTasks: (opts?: { status?: TaskStatus; agent_id?: number; dlq?: boolean; page?: number; page_size?: number }) =>
     request<Page<TaskSummary>>(`/tasks${qs({ ...opts })}`),
   getTask: (id: number) => request<TaskDetail>(`/tasks/${id}`),
   createTask: (body: TaskCreate) => post<TaskCreated>('/tasks', body),
-  taskAction: (id: number, action: 'retry' | 'cancel' | 'approve') =>
+  taskAction: (id: number, action: 'retry' | 'cancel' | 'approve' | 'replay') =>
     post<Record<string, unknown>>(`/tasks/${id}/${action}`),
 
   // Runs

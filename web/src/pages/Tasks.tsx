@@ -18,11 +18,12 @@ export default function Tasks() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<number | null>(null);
+  const [view, setView] = useState<'board' | 'dlq'>('board');
   const agents = useApi(() => api.listAgents(), []);
 
   const load = useCallback(async () => {
     try {
-      const page = await api.listTasks({ page_size: 200 });
+      const page = await api.listTasks({ page_size: 200, dlq: view === 'dlq' });
       setTasks(page.items);
       setError(null);
     } catch (e) {
@@ -30,7 +31,7 @@ export default function Tasks() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [view]);
 
   useEffect(() => {
     void load();
@@ -40,7 +41,7 @@ export default function Tasks() {
   const throttled = useThrottledReload(load);
   useEventSource(() => throttled());
 
-  const act = async (t: TaskSummary, action: 'retry' | 'cancel' | 'approve') => {
+  const act = async (t: TaskSummary, action: 'retry' | 'cancel' | 'approve' | 'replay') => {
     setActingId(t.id);
     try {
       await api.taskAction(t.id, action);
@@ -62,12 +63,43 @@ export default function Tasks() {
 
   return (
     <div className="flex min-h-full flex-col gap-4">
-      <NewTaskForm agents={agents.data?.items ?? []} onCreated={() => void load()} />
+      <div className="flex items-center justify-between">
+        <NewTaskForm agents={agents.data?.items ?? []} onCreated={() => void load()} />
+        <div className="flex overflow-hidden rounded border border-border">
+          <button type="button" onClick={() => setView('board')}
+            className={`px-3 py-1 text-xs transition-colors ${view === 'board' ? 'bg-sky-600/25 font-medium text-sky-300' : 'bg-panel2 text-muted hover:text-fg'}`}>
+            看板
+          </button>
+          <button type="button" onClick={() => setView('dlq')}
+            className={`px-3 py-1 text-xs transition-colors ${view === 'dlq' ? 'bg-rose-600/25 font-medium text-rose-300' : 'bg-panel2 text-muted hover:text-fg'}`}>
+            死信队列
+          </button>
+        </div>
+      </div>
 
       {error && <ErrorText>{error}（将随 SSE 事件自动重试刷新）</ErrorText>}
 
       {loading ? (
         <SkeletonBlock rows={5} />
+      ) : view === 'dlq' ? (
+        <Panel title={`死信队列（${tasks.length}）——重试耗尽的任务`} bodyClass="p-0">
+          {tasks.length === 0 && (
+            <div className="px-4 py-10 text-center text-xs text-muted">无死信任务——没有重试耗尽的失败任务</div>
+          )}
+          {tasks.map((t) => (
+            <div key={t.id} className="flex flex-wrap items-center gap-3 border-b border-border/60 px-4 py-2.5 text-xs last:border-b-0">
+              <span className="font-mono text-muted">#{t.id}</span>
+              <Link to={`/tasks/${t.id}`} className="max-w-72 truncate font-medium text-fg hover:text-sky-300">{t.title}</Link>
+              <StatusBadge status={t.status} />
+              <span className="text-muted">agent {t.agent_name}</span>
+              <span className="ml-auto font-mono text-[10px] text-muted">{fmtTime(t.created_at)}</span>
+              <Btn variant="primary" disabled={actingId === t.id}
+                onClick={() => void act(t, 'replay')}>
+                重放（清零重试预算）
+              </Btn>
+            </div>
+          ))}
+        </Panel>
       ) : (
         <>
           <div className="text-xs text-muted">
