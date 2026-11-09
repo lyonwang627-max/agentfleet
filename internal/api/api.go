@@ -65,6 +65,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/v1/tasks", s.createTask)
 	mux.HandleFunc("GET /api/v1/tasks/{id}", s.getTask)
 	mux.HandleFunc("GET /api/v1/tasks/{id}/consistency", s.taskConsistency) // 状态漂移检测（I13）
+	mux.HandleFunc("GET /api/v1/tasks/{id}/dag", s.taskDAG)                 // 依赖子图 + 环标记（I20）
 	mux.HandleFunc("POST /api/v1/tasks/{id}/retry", s.taskAction)
 	mux.HandleFunc("POST /api/v1/tasks/{id}/cancel", s.taskAction)
 	mux.HandleFunc("POST /api/v1/tasks/{id}/approve", s.taskAction)
@@ -392,6 +393,24 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.Priority < 1 || in.Priority > 9 {
 		in.Priority = 5
+	}
+	// I20：依赖存在性校验——缺失依赖会让任务永远 blocked（调度器等 deps 全 done），
+	// 静默卡死比报错更难排查，创建即拒绝。deps 去重保序。
+	if len(in.DependsOn) > 0 {
+		seenDep := map[int64]bool{}
+		uniq := in.DependsOn[:0]
+		for _, dep := range in.DependsOn {
+			if seenDep[dep] {
+				continue
+			}
+			seenDep[dep] = true
+			if _, err := s.Store.GetTask(r.Context(), dep); err != nil {
+				writeErr(w, http.StatusBadRequest, fmt.Errorf("依赖任务 %d 不存在", dep))
+				return
+			}
+			uniq = append(uniq, dep)
+		}
+		in.DependsOn = uniq
 	}
 	// I30：分给小队的任务，AgentID 校验为该队 leader（只有 leader 被唤醒）
 	if in.SquadID > 0 {

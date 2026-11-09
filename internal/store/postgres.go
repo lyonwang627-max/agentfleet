@@ -295,6 +295,9 @@ func (p *PostgresStore) UpdateTask(ctx context.Context, id int64, patch TaskPatc
 	if patch.SkillIDs != nil {
 		add("skill_ids", jsonb(*patch.SkillIDs))
 	}
+	if patch.DependsOn != nil {
+		add("depends_on", jsonb(*patch.DependsOn))
+	}
 	if patch.HandoffCount != nil {
 		add("handoff_count", *patch.HandoffCount)
 	}

@@ -254,6 +254,9 @@ func (m *MemStore) UpdateTask(_ context.Context, id int64, p TaskPatch) error {
 	if p.SkillIDs != nil {
 		t.SkillIDs = *p.SkillIDs
 	}
+	if p.DependsOn != nil {
+		t.DependsOn = *p.DependsOn
+	}
 	if p.HandoffCount != nil {
 		t.HandoffCount = *p.HandoffCount
 	}
