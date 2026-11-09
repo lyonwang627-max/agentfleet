@@ -359,3 +359,11 @@
 - httptest 假 Ollama 端点 6 组：成功解析（content/eval_count）+ 请求契约（stream:false/think:false/num_predict 透传/model）/ChatJSON forceJSON→format:"json"/HTTP 500/非法响应体/连接拒绝/Healthy+mock Chat 形态。
 - mcp RunDemoServer 0% 排除：re-exec 子进程覆盖率假象，TestClientHandshakeListCall 已端到端驱动。
 - 9 包 -race 全绿。
+
+## 2026-11-10 C 切片：I14 draft/publish 分离第一轮（后端，M 之 1/2）
+
+- **动机兑现**：PATCH 此前直接改线上配置（编辑即上线，影响在途 run）。新语义：PATCH 只进草稿（UpdateAgentDraft——首次从 live 快照初始化后合并），POST /agents/{id}/publish 落线（草稿→live→版本快照，F2 链语义保留：无草稿=纯快照），rollback 覆盖 live 后清草稿回干净态。
+- store 三方法 additive（mem/pg 双实现：draft_config JSONB 列 + agentCols/scanAgent 扩展）；model.Agent.DraftConfig additive。
+- getAgent 响应带 draft_config + has_unpublished_changes（前端徽章留第 2 轮）。
+- 单测 4 组：PATCH 不落线/publish 落线+版本/无草稿纯快照/rollback 清草稿。9 包 -race 全绿。
+- 教训复现：直调 handler 需 SetPathValue（第三次踩，已固化为测试注释惯例）。

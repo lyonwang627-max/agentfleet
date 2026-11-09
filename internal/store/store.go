@@ -21,6 +21,9 @@ type Store interface {
 	GetAgentByName(ctx context.Context, name string) (*model.Agent, error)
 	ListAgents(ctx context.Context, f AgentFilter) ([]model.Agent, error)
 	UpdateAgent(ctx context.Context, id int64, patch AgentPatch) error
+	UpdateAgentDraft(ctx context.Context, id int64, patch AgentPatch) error
+	PublishAgentDraft(ctx context.Context, id int64) error
+	ClearAgentDraft(ctx context.Context, id int64) error
 	// AgentTokensSince 某 agent 自某时刻起的 token 用量合计（预算熔断判定用）
 	AgentTokensSince(ctx context.Context, agentID int64, since time.Time) (int64, error)
 
@@ -145,6 +148,7 @@ type WorkspacePatch struct {
 	Status *string
 }
 
+// I14 草稿/发布双态：PATCH 只进草稿（编辑不影响在途 run），publish 落线 + 版本快照。
 type AgentPatch struct {
 	Name           *string
 	Role           *string

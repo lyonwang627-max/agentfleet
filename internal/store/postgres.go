@@ -55,17 +55,18 @@ func (p *PostgresStore) CreateAgent(ctx context.Context, a *model.Agent) (int64,
 	return a.ID, err
 }
 
-const agentCols = `id, name, role, system_prompt, model, tools, runner, max_concurrency, token_budget_24h, enabled, created_at, updated_at`
+const agentCols = `id, name, role, system_prompt, model, tools, runner, max_concurrency, token_budget_24h, enabled, created_at, updated_at, draft_config`
 
 func scanAgent(row pgx.Row) (*model.Agent, error) {
 	a := &model.Agent{}
-	var tools []byte
+	var tools, draft []byte
 	if err := row.Scan(&a.ID, &a.Name, &a.Role, &a.SystemPrompt, &a.Model, &tools, &a.Runner,
-		&a.MaxConcurrency, &a.TokenBudget24h, &a.Enabled, &a.CreatedAt, &a.UpdatedAt); err != nil {
+		&a.MaxConcurrency, &a.TokenBudget24h, &a.Enabled, &a.CreatedAt, &a.UpdatedAt, &draft); err != nil {
 		return nil, err
 	}
 	a.Tools = []string{}
 	unjsonb(tools, &a.Tools)
+	unjsonb(draft, &a.DraftConfig)
 	return a, nil
 }
 

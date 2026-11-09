@@ -107,6 +107,11 @@ func (m *MemStore) UpdateAgent(_ context.Context, id int64, p AgentPatch) error 
 	if !ok {
 		return fmt.Errorf("agent %d: %w", id, ErrNotFound)
 	}
+	return m.applyAgentPatch(a, p)
+}
+
+// applyAgentPatch 无锁应用（调用方须持 m.mu；PublishAgentDraft 落线复用）。
+func (m *MemStore) applyAgentPatch(a *model.Agent, p AgentPatch) error {
 	if p.Name != nil {
 		a.Name = *p.Name
 	}

@@ -12,7 +12,8 @@ type Agent struct {
 	Tools          []string  `json:"tools"`
 	Runner         string    `json:"runner"` // llm | mock
 	MaxConcurrency int       `json:"max_concurrency"`
-	TokenBudget24h int       `json:"token_budget_24h"` // 24h token 预算；0=不限
+	TokenBudget24h int       `json:"token_budget_24h"`
+	DraftConfig    map[string]any `json:"draft_config,omitempty"` // I14 未发布草稿（nil=与线上一致） // 24h token 预算；0=不限
 	Enabled        bool      `json:"enabled"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`

@@ -284,9 +284,16 @@ func (s *Server) getAgent(w http.ResponseWriter, r *http.Request) {
 	out := s.agentSummary(r.Context(), a)
 	out["system_prompt"] = a.SystemPrompt
 	out["tools"] = a.Tools
+	out["draft_config"] = a.DraftConfig // I14：nil=与线上一致
+	out["has_unpublished_changes"] = agentDirty(a)
 	runs := s.recentRuns(r.Context(), a.ID, 20)
 	out["recent_runs"] = runs
 	writeJSON(w, http.StatusOK, out)
+}
+
+// agentDirty 草稿与线上是否有差异（I14）。
+func agentDirty(a *model.Agent) bool {
+	return a.DraftConfig != nil
 }
 
 func (s *Server) recentRuns(ctx contextCtx, agentID int64, limit int) []map[string]any {
@@ -346,12 +353,14 @@ func (s *Server) patchAgent(w http.ResponseWriter, r *http.Request) {
 		}
 		patch.Tools = &tools
 	}
-	if err := s.Store.UpdateAgent(r.Context(), id, patch); err != nil {
+	// I14 草稿/发布双态：PATCH 只进草稿——编辑不再直接改线上配置（在途 run 不受影响），
+	// POST /agents/{id}/publish 显式落线（落线时经 F2 版本链快照可回溯）
+	if err := s.Store.UpdateAgentDraft(r.Context(), id, patch); err != nil {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
 	}
-	s.publish(r.Context(), "agent.update", map[string]any{"agent_id": id, "action": "updated"})
-	writeJSON(w, http.StatusOK, map[string]any{"id": id})
+	s.publish(r.Context(), "agent.update", map[string]any{"agent_id": id, "action": "draft_updated"})
+	writeJSON(w, http.StatusOK, map[string]any{"id": id, "has_unpublished_changes": true})
 }
 
 func (s *Server) setAgent(enabled bool) http.HandlerFunc {

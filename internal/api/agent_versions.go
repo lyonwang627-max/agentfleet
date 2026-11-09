@@ -32,6 +32,18 @@ func (s *Server) publishAgent(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.NewDecoder(r.Body).Decode(&in) // note 可选
 
+	// I14：有草稿先落线（draft → live），再对落线后的 live 做版本快照；无草稿=纯版本快照（F2 语义保留）
+	if a.DraftConfig != nil {
+		if err := s.Store.PublishAgentDraft(r.Context(), id); err != nil {
+			writeErr(w, http.StatusInternalServerError, err)
+			return
+		}
+		a, err = s.Store.GetAgent(r.Context(), id)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err)
+			return
+		}
+	}
 	v := &model.AgentVersion{AgentID: id, Config: snapshotConfig(a), Note: in.Note}
 	_, version, err := s.Store.SaveAgentVersion(r.Context(), v)
 	if err != nil {
@@ -90,6 +102,11 @@ func (s *Server) rollbackAgent(w http.ResponseWriter, r *http.Request) {
 		patch.Tools = &tools
 	}
 	if err := s.Store.UpdateAgent(r.Context(), id, patch); err != nil {
+		writeErr(w, http.StatusInternalServerError, err)
+		return
+	}
+	// I14：回退覆盖 live 后清空草稿——回退即生效且回到干净态（草稿差异不再悬挂）
+	if err := s.Store.ClearAgentDraft(r.Context(), id); err != nil {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
 	}

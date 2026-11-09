@@ -40,9 +40,10 @@
 - [x] **I13 任务状态漂移检测器** `done`（2026-11-07，源自 openhands-event-stream 调研）
   实现：GET /tasks/{id}/consistency——replayTaskStatus 纯函数折叠 task.update 事件（终态屏蔽后续/审批回退合法路径）派生应有状态 vs tasks.status；人为制造漂移检出 ✓ 正常零误报 ✓。测试技巧：直调 handler 时需 r.SetPathValue 注入路径参数（绕过 mux 匹配，PathValue 才有值）
 
-- [ ] **I14 draft/published 分离** `proposed` `M`（源自 dify-draft-publish 调研，见 docs/research/）
+- [ ] **I14 draft/published 分离** `in-progress`（1/2 后端完成 2026-11-10，源自 dify-draft-publish 调研，见 docs/research/）
   动机：现在 PATCH /agents/{id} 直接改运行时配置（编辑即上线，影响在途 run）；Dify 的 draft/published 分离让编辑不破坏生产。
   验收：agents.draft_config 列 + PATCH 只改 draft + POST /publish 快照生效 + draft hash 驱动「未发布变更」徽章 + rollback 先落 draft 可二次编辑（比现在多一档保守度）。
+  第 1 轮（后端）：agents.draft_config JSONB（additive）+ store 三方法（UpdateAgentDraft 草稿合并/首次从 live 快照初始化、PublishAgentDraft 落线+清草稿、ClearAgentDraft）mem/pg 双实现 + PATCH 只进草稿（在途 run 免疫）+ publish=落线后版本快照（无草稿=纯快照，F2 语义保留）+ getAgent 带 draft_config/has_unpublished_changes + rollback 覆盖 live 后清草稿。单测 4 组：PATCH 不落线/publish 落线+版本链/无草稿纯快照/rollback 清草稿。剩余（第 2 轮）：前端「未发布变更」徽章 + 草稿编辑/发布 UX；rollback 只落 draft 的更保守语义评估。
 
 - [x] **I15 eino 回调桥接** `done`（2026-11-07）
   实现：TraceHandler（callbacks.Handler + TimingChecker，五时点签名含 StreamReader[CallbackOutput] 流副本必须 Close 的契约）→ fleetd run_steps；ctx 双通道（InitCallbacks 注入 + TraceSinkKey 传 sink）；Generate 触发 OnStart/OnEnd/OnError 切面；EinoRunner 自动挂 sink。单测：三时点断言 + Generate 全链路（-tags eino）。
