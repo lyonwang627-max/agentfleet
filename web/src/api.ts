@@ -1,4 +1,4 @@
-import type {
+import type { Project, TaskComment,
   AgentDetail,
   AgentPatch,
   AgentSummary,
@@ -138,6 +138,19 @@ export const api = {
   rollbackAgent: (id: number, version: number) =>
     post<{ agent_id: number; rolled_back_from: number; new_version: number }>(
       `/agents/${id}/versions/${version}/rollback`),
+
+  // Multica 对标（v1.5）
+  listProjects: () => request<Page<Project>>('/projects'),
+  createProject: (body: { name: string; description?: string; repos?: string[] }) =>
+    post<{ id: number }>('/projects', body),
+  deleteProject: (id: number) =>
+    request<{ id: number }>(`/projects/${id}`, { method: 'DELETE' }),
+  listTaskComments: (taskId: number) =>
+    request<Page<TaskComment>>(`/tasks/${taskId}/comments`),
+  postTaskComment: (taskId: number, content: string) =>
+    post<{ id: number; replies?: { agent_name: string; content: string }[] }>(`/tasks/${taskId}/comments`, { content }),
+  steerTask: (taskId: number, message: string) =>
+    post<{ id: number; steered: boolean }>(`/tasks/${taskId}/steer`, { message }),
 
   // 会话回放（v1.4，F6）
   listConversations: () => request<Page<ConversationSummary>>('/conversations'),

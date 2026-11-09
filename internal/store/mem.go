@@ -31,6 +31,8 @@ type MemStore struct {
 	apiKeys       map[int64]*model.APIKey
 	squads        map[int64]*model.Squad
 	squadMembers  map[int64]*model.SquadMember
+	projects      map[int64]*model.Project
+	taskComments  map[int64]*model.TaskComment
 	events        []model.Event
 	nextID        int64
 	lastEventSeq  int64
@@ -50,6 +52,8 @@ func NewMemStore() *MemStore {
 		skills:        map[int64]*model.Skill{},
 		squads:        map[int64]*model.Squad{},
 		squadMembers:  map[int64]*model.SquadMember{},
+		projects:      map[int64]*model.Project{},
+		taskComments:  map[int64]*model.TaskComment{},
 	}
 }
 

@@ -97,6 +97,14 @@ type Store interface {
 	DeleteSkill(ctx context.Context, id int64) error
 	IncrSkillUsage(ctx context.Context, id int64) error
 
+	// projects + labels + comments（Multica 对标）
+	CreateProject(ctx context.Context, pr *model.Project) (int64, error)
+	GetProject(ctx context.Context, id int64) (*model.Project, error)
+	ListProjects(ctx context.Context) ([]model.Project, error)
+	DeleteProject(ctx context.Context, id int64) error
+	AddTaskComment(ctx context.Context, c *model.TaskComment) (int64, error)
+	ListTaskComments(ctx context.Context, taskID int64) ([]model.TaskComment, error)
+
 	// squads（I30 小队）
 	CreateSquad(ctx context.Context, sq *model.Squad) (int64, error)
 	GetSquad(ctx context.Context, id int64) (*model.Squad, error)
@@ -150,6 +158,9 @@ type AgentPatch struct {
 }
 
 type TaskPatch struct {
+	ProjectID *int64
+	Labels    *[]string
+	SteerNote *string
 	Title        *string
 	Prompt       *string
 	AgentID      *int64

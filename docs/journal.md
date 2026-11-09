@@ -304,3 +304,9 @@
 
 - **/room 群聊页**：@ 快捷条（点击插入 mention/@all）、共享时间线气泡（各 agent 名字着色区分）、唤醒数徽章。构建零报错。
 - **真模型实弹（14.4s）惊艳**：用户只 @intake → intake 读时间线定位后**主动 @fixer 链式唤醒** → fixer 回帖确认修复动作并尝试 @ops（超单轮上限被防爆炸截断）——agent 间自主协作真实发生。修一次路由注册丢失（python tab 替换在 api.go 失灵，Edit 补上——同 App.tsx 教训）。
+
+## 2026-11-09 Multica 核心功能全量移植（M 系列）
+
+- **后端（9 包全绿）**：①Projects（项目分组 + repos 上下文 + 任务计数）②Labels（任务标签 + label/project_id 过滤）③TaskComments 评论线程（人评论 / @agent 唤醒其以任务+线程上下文回帖，单评论≤2 唤醒）④Steer 运行中插话（steer_note 原子取清 + runner 决策边界注入 + 评论留痕 + 仅 running 可插 409）。
+- **前端**：lucide-react 图标全量接入（10 项导航带图标）；/projects 项目页（建/删/repos 徽章/任务数/查看项目任务）；任务详情新增评论线程（头像区分人/agent）+ running 时 Steer 插话条。
+- **真模型实弹**：项目创建 ✓ / label 过滤 ✓ / 评论 @reviewer → 「评分 95 分，优秀」以任务上下文回帖 ✓（线程 2 条）。

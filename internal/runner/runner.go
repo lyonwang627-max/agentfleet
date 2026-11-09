@@ -33,6 +33,9 @@ type ExecRequest struct {
 	// CancelCheck 取消检查（I1，调度器注入）：返回 true = 任务已被取消，
 	// runner 应在下一个安全边界（工具步/循环轮次开始）退出并返回 ErrCanceled。
 	CancelCheck func() bool
+	// SteerDrain 运行中插话（Multica Steer 对标）：返回一次性插话文本并清空，
+	// runner 在决策边界注入当前轮。空串=无插话。
+	SteerDrain func() string
 }
 
 // ErrCanceled 协作式取消信号（I1）：调度器收到后不重试不告警，任务保持 canceled。

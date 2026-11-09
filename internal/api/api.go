@@ -124,7 +124,15 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/v1/evals", s.createEval)
 	mux.HandleFunc("GET /api/v1/evals/{id}", s.getEval)
 	mux.HandleFunc("GET /api/v1/evals/compare", s.compareEvals)                        // 路由 A/B（F18-c）
-	mux.HandleFunc("GET /api/v1/routing/stats", s.routingStats)                        // 升级率（F18-c）
+	mux.HandleFunc("GET /api/v1/routing/stats", s.routingStats)
+
+	// Multica 对标：Projects / TaskComments / Steer
+	mux.HandleFunc("POST /api/v1/projects", s.createProject)
+	mux.HandleFunc("GET /api/v1/projects", s.listProjects)
+	mux.HandleFunc("DELETE /api/v1/projects/{id}", s.deleteProject)
+	mux.HandleFunc("GET /api/v1/tasks/{id}/comments", s.listTaskComments)
+	mux.HandleFunc("POST /api/v1/tasks/{id}/comments", s.postTaskComment)
+	mux.HandleFunc("POST /api/v1/tasks/{id}/steer", s.steerTask)                        // 升级率（F18-c）
 	mux.HandleFunc("POST /api/v1/evals/{id}/prescription", s.prescribe)                // RSI 处方生成（F17-a）
 	mux.HandleFunc("POST /api/v1/agents/{id}/apply-prescription", s.applyPrescription) // 处方一键应用（F17-b）
 
@@ -368,6 +376,8 @@ type taskIn struct {
 	WorkspaceID int64   `json:"workspace_id"`
 	SkillIDs    []int64 `json:"skill_ids"`
 	SquadID     int64   `json:"squad_id"` // 分给小队（I30）：AgentID 需为该队 leader
+	ProjectID   int64   `json:"project_id"`
+	Labels      []string `json:"labels"`
 }
 
 func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
@@ -399,7 +409,8 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	}
 	t := &model.Task{Title: in.Title, Prompt: in.Prompt, AgentID: in.AgentID,
 		Priority: in.Priority, DependsOn: in.DependsOn,
-		WorkspaceID: in.WorkspaceID, SkillIDs: in.SkillIDs, SquadID: in.SquadID}
+		WorkspaceID: in.WorkspaceID, SkillIDs: in.SkillIDs, SquadID: in.SquadID,
+		ProjectID: in.ProjectID, Labels: in.Labels}
 	id, err := s.Store.CreateTask(r.Context(), t)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err)
@@ -413,6 +424,8 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
+	label := r.URL.Query().Get("label")
+	projectID := int64(queryInt(r, "project_id", 0))
 	var status *model.TaskStatus
 	if r.URL.Query().Get("dlq") == "true" {
 		// I18 死信语义：failed = 重试已耗尽的任务（failTask 保证 failed 必然 retry_count>=max_retries）
@@ -427,6 +440,21 @@ func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
+	}
+	// label / project 过滤（内存过滤，规模内足够）
+	if label != "" || projectID > 0 {
+		filtered := items[:0]
+		for _, t := range items {
+			if label != "" && !hasLabelLocal(t.Labels, label) {
+				continue
+			}
+			if projectID > 0 && t.ProjectID != projectID {
+				continue
+			}
+			filtered = append(filtered, t)
+		}
+		items = filtered
+		total = len(items)
 	}
 	// 附加 blocked_by（依赖中未完成者）
 	type row struct {

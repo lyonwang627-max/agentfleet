@@ -1,9 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { MessageSquare, Megaphone, Send } from 'lucide-react';
 import { api } from '../api';
 import { useApi, useEventSource, useThrottledReload } from '../hooks';
-import type { RunStep, RunTrace, RunSummary } from '../types';
+import type { RunStep, RunTrace, RunSummary, TaskComment } from '../types';
 import {
   Btn,
   ErrorText,
@@ -23,6 +24,10 @@ export default function TaskDetail() {
   const task = useApi(() => api.getTask(taskId), [taskId], Number.isInteger(taskId) && taskId > 0);
   const runs = useApi(() => api.listTaskRuns(taskId), [taskId], Number.isInteger(taskId) && taskId > 0);
   const [openRunId, setOpenRunId] = useState<number | null>(null);
+  const [comments, setComments] = useState<TaskComment[]>([]);
+  const [commentInput, setCommentInput] = useState('');
+  const [steerInput, setSteerInput] = useState('');
+  const [posting, setPosting] = useState(false);
   const [trace, setTrace] = useState<RunTrace | null>(null);
   const [traceLoading, setTraceLoading] = useState(false);
   const [traceErr, setTraceErr] = useState<string | null>(null);
@@ -58,9 +63,64 @@ export default function TaskDetail() {
   const t = task.data;
   if (!t) return null;
 
+  // 评论线程 + Steer（Multica 对标）
+  const loadComments = async () => {
+    try {
+      const res = await api.listTaskComments(t.id);
+      setComments(res.items ?? []);
+    } catch { /* 降级静默 */ }
+  };
+  useEffect(() => { void loadComments(); }, [t.id]);
+
+  const postComment = async () => {
+    const text = commentInput.trim();
+    if (!text || posting) return;
+    setPosting(true);
+    try {
+      await api.postTaskComment(t.id, text);
+      setCommentInput('');
+      await loadComments();
+    } finally { setPosting(false); }
+  };
+
+  const doSteer = async () => {
+    const text = steerInput.trim();
+    if (!text) return;
+    try {
+      await api.steerTask(t.id, text);
+      setSteerInput('');
+      await loadComments();
+    } catch { /* 非 running 会失败——按钮只在 running 显示 */ }
+  };
+
   return (
     <div className="space-y-4">
       <TaskArtifacts taskId={t.id} />
+      <CommentThread
+        comments={comments}
+        input={commentInput}
+        setInput={setCommentInput}
+        onPost={() => void postComment()}
+        posting={posting}
+      />
+      {t.status === 'running' && (
+        <div className="rounded-xl bg-panel px-5 py-3">
+          <div className="mb-2 flex items-center gap-2 text-[13px] font-semibold text-fg">
+            <Megaphone size={14} className="text-warn" /> 插话（Steer）
+            <span className="text-[11px] font-normal text-muted">注入当前 run 的下一个决策边界</span>
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={steerInput}
+              onChange={(e) => setSteerInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && void doSteer()}
+              placeholder="补充约束 / 纠偏 / 新信息…"
+              className="flex-1 rounded-lg border border-border bg-transparent px-3 py-2 text-xs text-fg outline-none placeholder:text-muted focus:border-warn"
+            />
+            <Btn onClick={() => void doSteer()}>注入</Btn>
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-2 text-xs text-muted">
         <Link to="/tasks" className="hover:text-accent">
           任务看板
@@ -353,5 +413,63 @@ function TaskArtifacts({ taskId }: { taskId: number }) {
         </div>
       ))}
     </Panel>
+  );
+}
+
+// CommentThread 任务评论线程（Multica 对标）：人评论 / agent 回帖（@ 唤醒）。
+function CommentThread({
+  comments, input, setInput, onPost, posting,
+}: {
+  comments: TaskComment[];
+  input: string;
+  setInput: (v: string) => void;
+  onPost: () => void;
+  posting: boolean;
+}) {
+  return (
+    <div className="rounded-xl bg-panel px-5 py-4">
+      <div className="mb-3 flex items-center gap-2 text-[13px] font-semibold text-fg">
+        <MessageSquare size={14} className="text-accent" /> 评论
+        <span className="text-[11px] font-normal text-muted">@成员 可唤醒其以任务上下文回帖</span>
+      </div>
+      <div className="max-h-72 space-y-2.5 overflow-y-auto">
+        {comments.length === 0 && (
+          <div className="py-4 text-center text-xs text-muted">暂无评论</div>
+        )}
+        {comments.map((c) => (
+          <div key={c.id} className="flex gap-2.5">
+            <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${
+              c.author_type === 'agent' ? 'bg-accent/20 text-accent' : 'bg-white/8 text-muted'
+            }`}>
+              {c.author_type === 'agent' ? c.author_name.slice(0, 1) : '你'}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-2">
+                <span className="text-[11px] font-medium text-fg">
+                  {c.author_type === 'agent' ? `@${c.author_name}` : '你'}
+                </span>
+                <span className="font-mono text-[10px] text-muted">{fmtTime(c.created_at)}</span>
+              </div>
+              <div className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-fg/90">
+                {c.content}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex gap-2">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && onPost()}
+          placeholder="@fixer 这个方案怎么看？"
+          className="flex-1 rounded-lg border border-border bg-transparent px-3 py-2 text-xs text-fg outline-none placeholder:text-muted focus:border-accent"
+          disabled={posting}
+        />
+        <Btn variant="primary" disabled={posting || !input.trim()} onClick={onPost}>
+          <Send size={12} /> 发送
+        </Btn>
+      </div>
+    </div>
   );
 }

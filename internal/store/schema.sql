@@ -38,6 +38,9 @@ ALTER TABLE tasks ADD COLUMN IF NOT EXISTS skill_ids JSONB NOT NULL DEFAULT '[]'
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS risk_level TEXT NOT NULL DEFAULT '';
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL DEFAULT 'single';
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS agent_name TEXT NOT NULL DEFAULT '';
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS project_id BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS labels JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS steer_note TEXT NOT NULL DEFAULT '';
 
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status, priority DESC, id);
 
@@ -206,6 +209,24 @@ CREATE TABLE IF NOT EXISTS squad_members (
   role        TEXT NOT NULL DEFAULT '',
   UNIQUE (squad_id, member_type, member_id)
 );
+
+CREATE TABLE IF NOT EXISTS projects (
+  id          BIGSERIAL PRIMARY KEY,
+  name        TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  repos       JSONB NOT NULL DEFAULT '[]',
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS task_comments (
+  id          BIGSERIAL PRIMARY KEY,
+  task_id     BIGINT NOT NULL,
+  author_type TEXT NOT NULL DEFAULT 'member',
+  author_name TEXT NOT NULL DEFAULT '',
+  content     TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_task_comments ON task_comments(task_id);
 
 CREATE TABLE IF NOT EXISTS events (
   seq        BIGSERIAL PRIMARY KEY,

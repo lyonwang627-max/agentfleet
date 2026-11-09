@@ -233,6 +233,23 @@ export interface ModelInfo {
   available: boolean;
 }
 
+// ---------- Multica 对标（v1.5） ----------
+export interface Project {
+  id: number;
+  name: string;
+  description: string;
+  repos: string[];
+  created_at: string;
+}
+export interface TaskComment {
+  id: number;
+  task_id: number;
+  author_type: string;
+  author_name: string;
+  content: string;
+  created_at: string;
+}
+
 // ---------- Agent 版本管理（v1.2，F2） ----------
 export interface AgentVersion {
   id: number;

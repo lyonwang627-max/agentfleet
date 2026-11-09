@@ -41,7 +41,10 @@ type Task struct {
 	DependsOn    []int64    `json:"depends_on"`
 	WorkspaceID  int64      `json:"workspace_id,omitempty"` // 绑定执行环境（0=不绑定）
 	SquadID      int64      `json:"squad_id,omitempty"`     // 分给小队（I30：执行时唤醒 leader）
-	SkillIDs     []int64    `json:"skill_ids,omitempty"`    // 引用的经验（创建时注入 prompt）
+	ProjectID    int64      `json:"project_id,omitempty"`  // 所属项目（Multica 对标）
+	Labels       []string   `json:"labels,omitempty"`      // 标签（Multica 对标）
+	SteerNote    string     `json:"-"`                     // 运行中插话（Steer，注入后清空）
+	SkillIDs     []int64    `json:"skill_ids,omitempty"`   // 引用的经验（创建时注入 prompt）
 	RiskLevel    string     `json:"risk_level,omitempty"`   // I29: low|medium|high（审批分级）
 	HandoffCount int        `json:"-"`
 	MaxHandoffs  int        `json:"-"`
@@ -263,6 +266,25 @@ type APIKey struct {
 	Scopes     string     `json:"scopes"`
 	LastUsedAt *time.Time `json:"last_used_at"`
 	CreatedAt  time.Time  `json:"created_at"`
+}
+
+// Project 项目（Multica 对标）：任务的分组容器，挂 repo 与文档上下文。
+type Project struct {
+	ID          int64     `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Repos       []string  `json:"repos"` // 关联仓库（上下文）
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+// TaskComment 任务评论线程（Multica 对标）：人/agent 在任务下讨论，@agent 唤醒。
+type TaskComment struct {
+	ID         int64     `json:"id"`
+	TaskID     int64     `json:"task_id"`
+	AuthorType string    `json:"author_type"` // member | agent
+	AuthorName string    `json:"author_name"`
+	Content    string    `json:"content"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 // Squad 小队（I30，对标 Multica squads）：leader（必为 agent）+ 混编成员。

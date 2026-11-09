@@ -1,17 +1,19 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import { LayoutDashboard, KanbanSquare, Timer, Wrench, MessagesSquare, Users, FlaskConical, Gauge, FolderKanban, History } from 'lucide-react';
 import { useHealth } from '../hooks';
 import { fmtDuration } from '../ui';
 
 const NAV = [
-  { to: '/', label: '舰队总览' },
-  { to: '/tasks', label: '任务看板' },
-  { to: '/automations', label: '自动化规则' },
-  { to: '/studio', label: '工作台' },
-  { to: '/chat', label: '试聊台' },
-  { to: '/room', label: '群聊会话' },
-  { to: '/replays', label: '会话回放' },
-  { to: '/evals', label: '评测中心' },
-  { to: '/usage', label: '用量看板' },
+  { to: '/', label: '舰队总览', icon: LayoutDashboard },
+  { to: '/tasks', label: '任务看板', icon: KanbanSquare },
+  { to: '/projects', label: '项目', icon: FolderKanban },
+  { to: '/automations', label: '自动化', icon: Timer },
+  { to: '/studio', label: '工作台', icon: Wrench },
+  { to: '/chat', label: '试聊台', icon: MessagesSquare },
+  { to: '/room', label: '群聊会话', icon: Users },
+  { to: '/replays', label: '会话回放', icon: History },
+  { to: '/evals', label: '评测中心', icon: FlaskConical },
+  { to: '/usage', label: '用量看板', icon: Gauge },
 ];
 
 export default function Layout() {
@@ -39,11 +41,12 @@ export default function Layout() {
               to={n.to}
               end={n.to === '/'}
               className={({ isActive }) =>
-                `rounded-lg px-3 py-[7px] text-[13px] transition-colors ${
+                `flex items-center gap-2.5 rounded-lg px-3 py-[7px] text-[13px] transition-colors ${
                   isActive ? 'bg-accent font-medium text-white' : 'text-muted hover:bg-white/5 hover:text-fg'
                 }`
               }
             >
+              <n.icon size={15} strokeWidth={2} className="shrink-0" />
               {n.label}
             </NavLink>
           ))}

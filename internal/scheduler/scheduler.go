@@ -334,8 +334,20 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 		fresh, err := s.store.GetTask(context.Background(), task.ID)
 		return err != nil || fresh.Status != model.TaskRunning
 	}
+	// Multica Steer 对标：取出一次性插话并清空（原子读改）
+	steerDrain := func() string {
+		fresh, err := s.store.GetTask(context.Background(), task.ID)
+		if err != nil || fresh.SteerNote == "" {
+			return ""
+		}
+		note := fresh.SteerNote
+		empty := ""
+		_ = s.store.UpdateTask(context.Background(), task.ID, store.TaskPatch{SteerNote: &empty})
+		return note
+	}
 	res, execErr := rn.Execute(ctx, runner.ExecRequest{Agent: *agent, Task: execTask, Recorder: recorder,
-		Workspace: ws, Skills: skills, ModelOverride: routedModel, CancelCheck: cancelCheck})
+		Workspace: ws, Skills: skills, ModelOverride: routedModel,
+		CancelCheck: cancelCheck, SteerDrain: steerDrain})
 
 	// 结构化产物落库（artifacts：报告/补丁/执行记录）
 	for _, d := range res.Artifacts {
