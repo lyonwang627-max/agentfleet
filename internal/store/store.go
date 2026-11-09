@@ -18,6 +18,7 @@ type Store interface {
 	// agents
 	CreateAgent(ctx context.Context, a *model.Agent) (int64, error)
 	GetAgent(ctx context.Context, id int64) (*model.Agent, error)
+	GetAgentByName(ctx context.Context, name string) (*model.Agent, error)
 	ListAgents(ctx context.Context, f AgentFilter) ([]model.Agent, error)
 	UpdateAgent(ctx context.Context, id int64, patch AgentPatch) error
 	// AgentTokensSince 某 agent 自某时刻起的 token 用量合计（预算熔断判定用）

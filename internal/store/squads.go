@@ -234,3 +234,25 @@ func (p *PostgresStore) ListSquadMembers(ctx context.Context, squadID int64) ([]
 	}
 	return out, rows.Err()
 }
+
+// GetAgentByName 按名取 agent（群聊 @ 解析用）。
+func (m *MemStore) GetAgentByName(_ context.Context, name string) (*model.Agent, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	for _, a := range m.agents {
+		if a.Name == name {
+			cp := *a
+			return &cp, nil
+		}
+	}
+	return nil, fmt.Errorf("agent %q: %w", name, ErrNotFound)
+}
+
+// GetAgentByName PG。
+func (p *PostgresStore) GetAgentByName(ctx context.Context, name string) (*model.Agent, error) {
+	a, err := scanAgent(p.pool.QueryRow(ctx, `SELECT `+agentCols+` FROM agents WHERE name=$1 LIMIT 1`, name))
+	if err == pgx.ErrNoRows {
+		return nil, fmt.Errorf("agent %q: %w", name, ErrNotFound)
+	}
+	return a, err
+}

@@ -14,10 +14,10 @@ import (
 
 func (s *Server) createSquad(w http.ResponseWriter, r *http.Request) {
 	var in struct {
-		Name         string `json:"name"`
-		Description  string `json:"description"`
-		LeaderID     int64  `json:"leader_id"`
-		Instructions string `json:"instructions"`
+		Name         string  `json:"name"`
+		Description  string  `json:"description"`
+		LeaderID     int64   `json:"leader_id"`
+		Instructions string  `json:"instructions"`
 		MemberIDs    []int64 `json:"member_ids"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil || strings.TrimSpace(in.Name) == "" || in.LeaderID <= 0 {
@@ -125,4 +125,3 @@ func (s *Server) removeSquadMember(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"id": pathID(r), "removed": true})
 }
-

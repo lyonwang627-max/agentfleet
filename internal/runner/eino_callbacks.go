@@ -23,7 +23,7 @@ type TraceHandler struct {
 }
 
 var (
-	_ callbacks.Handler      = (*TraceHandler)(nil)
+	_ callbacks.Handler       = (*TraceHandler)(nil)
 	_ callbacks.TimingChecker = (*TraceHandler)(nil)
 )
 

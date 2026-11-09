@@ -49,8 +49,8 @@ type Result struct {
 
 // RiskLevels 审批风险三级（I29）与策略的映射。
 var RiskLevels = map[string]string{
-	"low":    "直接执行",          // 不进审批门
-	"medium": "人工审批",          // review 门，approve 即放行
+	"low":    "直接执行",       // 不进审批门
+	"medium": "人工审批",       // review 门，approve 即放行
 	"high":   "人工审批（需附说明）", // review 门，approve 必须带审批意见
 }
 

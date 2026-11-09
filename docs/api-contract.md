@@ -44,6 +44,12 @@ run 执行报告：头部元数据（任务/agent/状态/token/耗时）+ 步骤
 ### GET /auth/keys → `{"items":[{id,name,key_prefix,scopes,last_used_at,created_at}]}`；DELETE /auth/keys/{id} → 撤销
 豁免：/metrics、/api/v1/health、/auth/keys*；认证后限流键从 IP 升级为 key 名
 
+### POST /chat/room（v1.5 新增，I31 群聊会话——共享上下文 + @ 唤醒）
+body `{"conversation_id":null,"message":"@fixer 评估方案，@reviewer 复核"}` → `{"conversation_id","replies":[{agent_name,content}],"woken":n}`
+- 共享消息流：所有参与者读同一条时间线；被 @ 的 agent 以自己人格回帖入库（message 带 agent_name）
+- @all 唤醒全部启用 agent；agent 回帖中 @ 他人会链式唤醒（深度 ≤2、单轮 ≤4，防爆炸）
+- GET /conversations/{id} 可回放完整群聊时间线
+
 ### 小队 Squads（v1.5 新增，I30——对标 Multica squads）
 ### POST /squads body `{"name","description","leader_id","instructions","member_ids":[agentID…]}` → `{"id"}`
 leader 必须是存在的 agent；分给小队的任务只唤醒 leader（briefing=运行协议+花名册+小队指令注入 system prompt），leader 用 handoff_to 转派成员；成员完成自动生成 leader 跟进评估任务（事件驱动闭环）。

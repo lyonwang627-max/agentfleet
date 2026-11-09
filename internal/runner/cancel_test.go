@@ -46,8 +46,8 @@ func TestCancelCheckPropagates(t *testing.T) {
 		done <- err
 	}()
 
-	<-r.step1Done     // 等 step1 完成（进入步边界等待区）
-	canceled = true   // 模拟 cancel 端点触发
+	<-r.step1Done   // 等 step1 完成（进入步边界等待区）
+	canceled = true // 模拟 cancel 端点触发
 
 	select {
 	case err := <-done:

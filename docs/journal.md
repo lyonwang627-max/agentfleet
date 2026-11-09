@@ -295,3 +295,7 @@
 - **源码调研驱动**：克隆 multica 仓库读 squad.go/squad_briefing.go——五核心决策（leader 只协调不动手协议/@mention 结构化分派/Roster 技能注入/每次触发强制 activity 记录/停等唤醒模型），agentfleet 取其三（协议/Roster/事件闭环）不抄其二（mention://协议——我们复用 handoff 通道；originator 门控——单用户平台无需求）。
 - **实现四件**：①squads/squad_members 表 + CRUD（leader FK agent、成员混编、幂等）②leader briefing 组装（squadOperatingProtocol 中文版五职责 + 花名册含成员技能 + 小队指令段）③任务创建 squad_id 接线（缺省 leader、非 leader 400）④**成员完成自动 re-trigger leader**（跟进评估任务带上下文 + Wake 即时派发；originalAgents 内存表跟踪 handoff 前初始 leader）。seed 加「告警响应小队」示例。端到端测试全链路 1.82s。
 - 教训：mem store 新增 map 字段必须同步 NewMemStore 初始化（第三次踩 nil map）。
+
+## 2026-11-09 I31 群聊会话（共享上下文 + @ 唤醒）
+
+- **对标 Multica 群聊内核的轻量实现**：POST /chat/room——一条共享消息流，@agent 名即唤醒（中文名正则含 CJK），该 agent 读全量时间线以自己人格回帖（message.agent_name 记录发言人）；@all 全员唤醒；**agent 回帖互 @ 链式触发**（深度≤2、单轮≤4 防爆炸）。conversations.mode=room / messages.agent_name 两列 additive。测试：@解析/全链路（双 @ 双回帖/续聊共享时间线/链式为设计行为）。Chat 页前端接入留下轮。9 包全绿
