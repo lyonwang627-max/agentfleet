@@ -135,7 +135,7 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 	catalog := ToolCatalog()
 	toolSection := ""
 	if catalog != "" {
-		toolSection = "\n\n# 可用工具（按需选择，tool 字段填引用；不需要则 tool 留空）\n" + catalog
+		toolSection = "\n\n# 可用工具（只能选择下列清单中的工具引用；清单为空或无合适工具则 tool 必须留空，禁止编造未列出的工具或服务器名）\n" + catalog
 	}
 	user := fmt.Sprintf("# 任务\n%s\n\n# 详细说明\n%s\n%s\n\n只输出一个 JSON 对象。", req.Task.Title, req.Task.Prompt, toolSection)
 
@@ -170,6 +170,17 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 		return d, nil
 	}
 	callTool := func(ref string, args map[string]any) (string, error) {
+		// I28 第 2 轮：幻觉工具名——不进闸不执行，转引导观察回灌下一轮（模型从清单重选）
+		// （toolKnownFn seam：生产=ToolKnown 真判定，测试注入模拟已注册工具）
+		if !toolKnownFn(ref) {
+			guide := ToolCatalog()
+			if guide != "" {
+				guide = "可用工具：\n" + guide
+			} else {
+				guide = "当前没有任何可用工具，请直接基于已有信息给出最终回答（tool 留空）。"
+			}
+			return fmt.Sprintf("错误：工具 %s 不存在。%s\n请重新决策：从清单中选择或给出最终回答。", ref, guide), nil
+		}
 		// I33 工具级审批：高风险工具在执行前拦截（审批记录提及该工具名才放行）
 		if highRiskTool(ref) && !toolApproved(req.Task.Prompt, ref) {
 			emit(model.StepGate, "tool-approval-gate", map[string]any{"tool": ref, "args": args},
@@ -187,9 +198,15 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 		if turnStep != nil {
 			parentSeq = turnStep.Seq
 		}
+		// I28 第 2 轮：幻觉工具（引导观察）与真实执行的 output 标记区分
+		hallucination := strings.HasPrefix(observation, "错误：工具")
+		out := map[string]any{"result_head": head(observation, 200),
+			"turn": turn, "transport": "stdio", "protocol": "mcp"}
+		if hallucination {
+			out["hallucination"] = true
+		}
 		st := &model.RunStep{Kind: model.StepTool, ParentSeq: parentSeq, Name: d.Tool,
-			Input: d.ToolArgs, Output: map[string]any{"result_head": head(observation, 200),
-				"turn": turn, "transport": "stdio", "protocol": "mcp"}, LatencyMS: 60}
+			Input: d.ToolArgs, Output: out, LatencyMS: 60}
 		if req.Recorder != nil {
 			_ = req.Recorder(ctx, st)
 		}

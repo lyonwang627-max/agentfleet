@@ -41,3 +41,49 @@ func TestDecideInjectsCatalog(t *testing.T) {
 		t.Fatal("无 server 不应注入工具段")
 	}
 }
+
+// 幻觉工具引导（I28 第 2 轮）：不存在的工具不执行不进闸，转引导观察回灌下一轮。
+func TestHallucinatedToolGuides(t *testing.T) {
+	var seenUsers []string
+	llm := newTestLLM([]string{
+		`{"tool":"mcp:ghost/nope","tool_args":{},"reply":""}`,
+		`{"reply":"基于已有信息收尾"}`,
+	}, &seenUsers)
+	st := store.NewMemStore()
+	ctx := context.Background()
+	rid, _ := st.CreateRun(ctx, &model.Run{TaskID: 1, AgentID: 1})
+	res, err := NewLLM(llm).Execute(ctx, ExecRequest{
+		Agent: model.Agent{Name: "t", Model: "mock"}, Task: model.Task{Title: "任务", Prompt: "做事"},
+		Recorder: func(_ context.Context, s *model.RunStep) error {
+			_, err := st.AppendStep(ctx, rid, s)
+			return err
+		}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Reply != "基于已有信息收尾" {
+		t.Fatalf("应引导后收尾: %q", res.Reply)
+	}
+	// 第二轮 user 含引导文本
+	if len(seenUsers) < 2 || !strings.Contains(seenUsers[1], "不存在") || !strings.Contains(seenUsers[1], "请重新决策") {
+		t.Fatalf("引导观察未回灌: %q", seenUsers[1])
+	}
+	// tool 步落 hallucination 标记
+	steps, _ := st.ListSteps(ctx, rid)
+	hallu := false
+	for _, s := range steps {
+		if s.Kind == model.StepTool && s.Output["hallucination"] == true {
+			hallu = true
+		}
+	}
+	if !hallu {
+		t.Fatal("幻觉 tool 步未标记")
+	}
+	// ToolKnown 判定：未注册 server 快速 false
+	if ToolKnown("mcp:ghost/nope") {
+		t.Fatal("未注册 server 应 false")
+	}
+	if ToolKnown("not-a-ref") {
+		t.Fatal("非法引用应 false")
+	}
+}

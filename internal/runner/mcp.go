@@ -40,6 +40,58 @@ func CallMCPTool(ref string, args map[string]any) (string, error) {
 	return c.CallTool(ctx, tool, args)
 }
 
+// toolKnown 缓存：ListTools 有网络成本，60s TTL 内复用判定结果。
+var (
+	toolKnownMu  sync.Mutex
+	toolKnownC   map[string]bool
+	toolKnownAt  time.Time
+	toolKnownTTL = 60 * time.Second
+)
+
+// toolKnownFn seam：测试可注入模拟「已注册工具」判定（生产恒为 ToolKnown）。
+var toolKnownFn = ToolKnown
+
+// ToolKnown 工具引用是否真实存在（I28 第 2 轮：幻觉工具名引导的基础判定）。
+// server 未注册直接 false；已注册则 ListTools 校验工具名（结果进缓存）。
+func ToolKnown(ref string) bool {
+	server, _, ok := strings.Cut(strings.TrimPrefix(ref, "mcp:"), "/")
+	if !ok || server == "" {
+		return false
+	}
+	toolKnownMu.Lock()
+	if time.Since(toolKnownAt) > toolKnownTTL {
+		toolKnownC = map[string]bool{}
+		toolKnownAt = time.Now()
+	}
+	if v, hit := toolKnownC[ref]; hit {
+		toolKnownMu.Unlock()
+		return v
+	}
+	toolKnownMu.Unlock()
+
+	known := false
+	mcpMu.RLock()
+	c := mcpServers[server]
+	mcpMu.RUnlock()
+	if c != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		tools, err := c.ListTools(ctx)
+		cancel()
+		if err == nil {
+			for _, t := range tools {
+				if t.Name == strings.SplitN(strings.TrimPrefix(ref, "mcp:"), "/", 2)[1] {
+					known = true
+					break
+				}
+			}
+		}
+	}
+	toolKnownMu.Lock()
+	toolKnownC[ref] = known
+	toolKnownMu.Unlock()
+	return known
+}
+
 // ToolCatalog 步骤级路由（I28）的工具能力清单：decide 提示注入「有什么工具可选」，
 // LLM 按能力描述选工具（supervisor 思想下沉到 run 内部——eino ADK 调研结论）。
 // 无 server 注册时返回空（decide 提示退回原有形态）。

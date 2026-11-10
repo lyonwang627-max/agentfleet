@@ -22,6 +22,10 @@ func gateReq(llm *gateway.LLM, prompt string, steps *[]*model.RunStep) ExecReque
 
 func TestToolGateHighRiskBlocks(t *testing.T) {
 	// 第 1 轮 decide 请求高风险工具 → 闸拦截 → NeedsApproval（不是失败）
+	// 注入 seam：模拟 ghost server 已注册且含 publish_report（闸在幻觉判定之后，需工具真实存在）
+	orig := toolKnownFn
+	toolKnownFn = func(ref string) bool { return ref == "mcp:ghost/publish_report" }
+	defer func() { toolKnownFn = orig }()
 	llm := newTestLLM([]string{`{"tool":"mcp:ghost/publish_report","tool_args":{"title":"周报"},"reply":""}`}, nil)
 	var steps []*model.RunStep
 	res, err := NewLLM(llm).Execute(context.Background(), gateReq(llm, "对外发布周报", &steps))
@@ -71,6 +75,9 @@ func TestToolGateLowRiskPasses(t *testing.T) {
 
 func TestToolGateApprovedSecondPass(t *testing.T) {
 	// F3 审批记录注入后重跑：意见提及工具名 → 闸放行 → 工具真实执行
+	orig := toolKnownFn
+	toolKnownFn = func(ref string) bool { return ref == "mcp:ghost/publish_report" }
+	defer func() { toolKnownFn = orig }()
 	var seenApprovalUsers []string
 	llm := newTestLLM([]string{`{"tool":"mcp:ghost/publish_report","tool_args":{"title":"合规标题"},"reply":""}`}, &seenApprovalUsers)
 	var steps []*model.RunStep

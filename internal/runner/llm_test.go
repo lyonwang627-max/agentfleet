@@ -112,7 +112,7 @@ func TestLLMExecuteToolLoopObservation(t *testing.T) {
 		t.Fatalf("应 2 轮 decide: %d", len(seenUsers))
 	}
 	if !strings.Contains(seenUsers[1], "已执行工具 mcp:ghost/nope") ||
-		!strings.Contains(seenUsers[1], "工具执行失败") {
+		!strings.Contains(seenUsers[1], "不存在") {
 		t.Fatalf("第 2 轮未回灌观察: %q", seenUsers[1])
 	}
 	// decide 步:steps=2、observations=1、token 合计 128
