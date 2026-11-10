@@ -408,3 +408,10 @@
 
 - getRun（run trace 形状：steps 内嵌 + **AppendStep 累计 run.TotalTokens 语义锁**）/listArtifacts（列表不带 content）/getArtifact（详情带 content）/models（动态发现含 mock）/mcp/servers 形状 + 404 路径——观测面 handler 0% 补齐。
 - 9 包 -race 全绿。
+
+## 2026-11-10 C 切片：I17 trace 层级化第 1/2 轮（数据层）
+
+- 两列 additive：run_steps.parent_seq（循环观察步挂当轮 decide 下）+ runs.parent_run_id（handoff 链跨 run 成链）；schema/mem/pg 双实现（pg 三处 scan 扩展）。
+- LLM runner 发射改造：emit 返回落库步（AppendStep 回填 Seq 可读）；工具循环每轮先落 decide-turn-N 步、tool 观察步挂其下——层级语义对齐 Dify（观察步是决策步的子 span）；汇总 decide 步保持顶层。
+- handoff 链：同任务第 2+ 次 run 指向前一 run（ListRuns 首条）。
+- 单测 2 组：嵌套（decide-turn-1 顶层→tool 挂其下→汇总顶层）/平铺（无循环全顶层）。9 包 -race 全绿。前端瀑布图缩进留第 2 轮。

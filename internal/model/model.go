@@ -72,6 +72,7 @@ const (
 
 type RunStep struct {
 	Seq       int64          `json:"seq"`
+	ParentSeq int64          `json:"parent_seq,omitempty"` // I17：父步 seq（循环观察步挂 decide 步下；0=顶层）
 	Kind      StepKind       `json:"kind"`
 	Name      string         `json:"name"`
 	Input     map[string]any `json:"input,omitempty"`
@@ -94,6 +95,7 @@ type Run struct {
 	ID           int64      `json:"id"`
 	TaskID       int64      `json:"task_id"`
 	AgentID      int64      `json:"agent_id"`
+	ParentRunID  int64      `json:"parent_run_id,omitempty"` // I17：handoff 链父 run（0=链头）
 	Conversation int64      `json:"conversation_id,omitempty"`
 	Status       RunStatus  `json:"status"`
 	TotalTokens  int        `json:"total_tokens"`

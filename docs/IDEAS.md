@@ -54,10 +54,11 @@
   「在 workspace 中执行」抽成接口（Mock/Local/Docker 三实现），workspace 加 provisioning/ready/degraded 状态机与健康检查。
   验收：接口定义 + 三实现迁移 + 现有测试全绿；DockerRuntime 复用 docker-compose 基建。接真 coding-agent runner 的前置。
 
-- [ ] **I17 trace 层级化** `proposed` `M`（源自 dify-nested-tracing 调研，见 docs/research/）
+- [ ] **I17 trace 层级化** `in-progress`（1/2 数据层完成 2026-11-10，源自 dify-nested-tracing 调研，见 docs/research/）
   动机：run_steps 是平铺列表，handoff 链与多轮循环的嵌套关系只藏在 note 文本；借鉴 Dify 1.19.0 嵌套追踪——
   run_steps 加 parent_seq（循环观察步挂 decide 步下）+ 新 run 携 parent_run_id（handoff 链成树），瀑布图缩进渲染 + 跨 run 跳转。
   验收：handoff 后新 run 首步带 parent_run_id；瀑布图缩进展示嵌套；与 I15/F12 共用层级数据。
+  第 1 轮（数据层）：run_steps.parent_seq + runs.parent_run_id 两列 additive（schema/mem/pg 双实现，pg AppendStep/ListSteps/GetRun/ListRuns scan 扩展）；LLM runner 发射改造——emit 返回落库步（AppendStep 回填 Seq），工具循环每轮先落 decide-turn-N 步、tool 观察步挂其下（parent_seq），汇总 decide 顶层；handoff 链：同任务第 2+ 次 run.ParentRunID 指向前一 run。单测 2 组（嵌套/平铺）。剩余（第 2 轮）：前端瀑布图缩进渲染 + 跨 run 跳转。
 
 - [x] **I18 死信队列与手动重放** `done`（2026-11-07 后端）
   实现：GET /tasks?dlq=true（failed=重试耗尽语义的独立列表）+ POST /tasks/{id}/replay（清零重试预算重排队——与 retry 的区别是「人工判定值得从头再跑」而非「再试一次」）。单测：死信列表过滤/重放清零/非 failed 409 与 404。剩余：前端死信区展示。

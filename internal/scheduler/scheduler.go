@@ -293,6 +293,12 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 	execTask.Prompt = renderTemplate(execPrompt, &task, ws, agent.Name)
 
 	run := &model.Run{TaskID: task.ID, AgentID: agent.ID}
+	// I17 handoff 链：同任务第 2+ 次 run 指向前一 run（瀑布图跨 run 成链）
+	if task.HandoffCount > 0 {
+		if prev, _ := s.store.ListRuns(ctx, task.ID); len(prev) > 0 {
+			run.ParentRunID = prev[0].ID
+		}
+	}
 	runID, err := s.store.CreateRun(ctx, run)
 	if err != nil {
 		s.failTask(ctx, &task, "创建 run 失败: "+err.Error())

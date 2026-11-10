@@ -115,12 +115,15 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 	if req.ModelOverride != "" {
 		execLLM = r.LLM.WithModel(req.ModelOverride)
 	}
-	emit := func(kind model.StepKind, name string, in, out map[string]any, latencyMS int64, tokens int) {
+	// emit 返回落库后的步（含 AppendStep 回填的 Seq——I17 层级挂接用）；Recorder 为 nil 时返回 nil
+	emit := func(kind model.StepKind, name string, in, out map[string]any, latencyMS int64, tokens int) *model.RunStep {
 		if req.Recorder == nil {
-			return
+			return nil
 		}
-		_ = req.Recorder(ctx, &model.RunStep{Kind: kind, Name: name, Input: in, Output: out,
-			LatencyMS: latencyMS, Tokens: tokens})
+		st := &model.RunStep{Kind: kind, Name: name, Input: in, Output: out,
+			LatencyMS: latencyMS, Tokens: tokens}
+		_ = req.Recorder(ctx, st)
+		return st
 	}
 
 	system := buildSystemPrompt(req.Agent) + `
@@ -170,8 +173,20 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 		return CallMCPTool(ref, args)
 	}
 	onToolTurn := func(turn int, d decision, observation string) {
-		emit(model.StepTool, d.Tool, d.ToolArgs, map[string]any{"result_head": head(observation, 200),
-			"turn": turn, "transport": "stdio", "protocol": "mcp"}, 60, 0)
+		// I17 层级：每轮决策先落 decide-turn-N 步，工具观察步挂其下（parent_seq）
+		turnStep := emit(model.StepLLM, "decide-turn-"+itoa(turn),
+			map[string]any{"model": req.Agent.Model, "turn": turn},
+			map[string]any{"tool_requested": d.Tool}, 0, 0)
+		parentSeq := int64(0)
+		if turnStep != nil {
+			parentSeq = turnStep.Seq
+		}
+		st := &model.RunStep{Kind: model.StepTool, ParentSeq: parentSeq, Name: d.Tool,
+			Input: d.ToolArgs, Output: map[string]any{"result_head": head(observation, 200),
+				"turn": turn, "transport": "stdio", "protocol": "mcp"}, LatencyMS: 60}
+		if req.Recorder != nil {
+			_ = req.Recorder(ctx, st)
+		}
 	}
 
 	start := timeNow()
