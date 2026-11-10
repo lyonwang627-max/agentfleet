@@ -438,3 +438,8 @@
 - ToolKnown（未注册引用判定，60s TTL 缓存 + toolKnownFn seam）+ callTool 幻觉拦截：不存在的工具不进闸不执行（审批不存在的工具无意义——语义排序：幻觉判定先于风险闸），转引导观察回灌（可用清单+重新决策指令），tool 步 output.hallucination 标记；落步统一 onToolTurn（修一个自引入的时序 bug：callTool 内 emit 与 onToolTurn 重复乱序）。
 - 强约束文案注入清单段。**对照实验（qwen3.5 同任务）**：改造前幻觉 system/clock 失败 → 改造后正确选 demo/now 返回真实时间——提示工程修正闭环。
 - 修复两个旧 fixture 断言（语义演进）；单测新增幻觉引导组；9 包 -race 全绿。I28 整体 done。
+
+## 2026-11-11 A 切片：mcp client 错误路径直测（59.8%→63.1%）
+
+- TestMain 扩展错误模式假 server（re-exec 同款零依赖，三 mode：err_list/empty/tool_err/err_exit）——4 组：JSON-RPC error 上抛（-32601）/空 content 空串无错/isError 转错误（磁盘已满）/连接中断（broken pipe 语义合理纳入）。
+- 9 包 -race 全绿。
