@@ -484,3 +484,10 @@
 
 - DockerRuntime（root_path 约定存容器名，docker inspect 校验 running）+ EnsureReady 接线：execute 绑定 workspace 时探测 degraded → failTask 拒绝执行不烧算力（错误带探测原因；预算内重试保留——环境可能恢复）+ /studio 状态徽章三色。
 - 单测新增 3 组（Docker/拒绝/ready 对照）；9 包 -race 全绿。I16 整体 done——I34 ClaudeCodeRunner 前置就绪。
+
+## 2026-11-11 A 切片：三大智能端点 HTTP 回归锁（F16/F17/F18-c）+ 修 prescribe panic
+
+- precheck（409/503/假 Ollama 200 + ai-precheck gate 步）/compareEvals（400/404/improvement+delta）/prescribe（503/200 + 处方写回 report.BasedOnEval）——三大智能端点此前仅手工实弹，0% 补齐。
+- gateway.NewWithBaseURL 导出构造器（依赖注入用例，additive）。
+- **抓到真 panic**：prescribe 的 passes.String()[:400] 按字节截断——通过 case 短文本时越界 panic（且字节截断切中文 rune）；改 clip rune 安全截断。真模型长报告时不会触发（通过 case 多），短报告一调就炸——测试价值实证。
+- 9 包 -race 全绿。

@@ -50,7 +50,7 @@ func (s *Server) prescribe(w http.ResponseWriter, r *http.Request) {
 			"针对失败模式逐条对症。只输出 JSON："+
 			`{"diagnosis": "失败模式两句话诊断", "system_prompt_addition": "建议追加的提示词段落（80-200字）", "rationale": "为什么这样改（两句话）"}`,
 		"# 评测结果（score_avg="+strconv.Itoa(int(e.Report.ScoreAvg))+" pass_rate="+strconv.Itoa(int(e.Report.PassRate))+"）\n"+
-			"## 失败/低分 case\n"+failures.String()+"\n## 通过 case（对照）\n"+passes.String()[:400], 700)
+			"## 失败/低分 case\n"+clip(failures.String(), 1500)+"\n## 通过 case（对照）\n"+clip(passes.String(), 400), 700)
 	if err != nil {
 		writeErr(w, http.StatusBadGateway, err)
 		return

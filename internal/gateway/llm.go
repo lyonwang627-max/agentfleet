@@ -38,6 +38,13 @@ func New(model string) *LLM {
 	return c
 }
 
+// NewWithBaseURL 以指定端点构造 ollama 模式客户端（测试/依赖注入用例；跳过 Resolve 探测）。
+func NewWithBaseURL(model, baseURL string) *LLM {
+	c := &LLM{Model: model, BaseURL: baseURL, Mode: "ollama", client: &http.Client{Timeout: 300 * time.Second}}
+	c.Pricing = LoadPricing(DefaultPricing)
+	return c
+}
+
 func (l *LLM) Resolve() {
 	for _, base := range []string{"http://127.0.0.1:11434"} {
 		req, _ := http.NewRequest(http.MethodGet, base+"/api/tags", nil)
