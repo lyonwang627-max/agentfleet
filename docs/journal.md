@@ -491,3 +491,9 @@
 - gateway.NewWithBaseURL 导出构造器（依赖注入用例，additive）。
 - **抓到真 panic**：prescribe 的 passes.String()[:400] 按字节截断——通过 case 短文本时越界 panic（且字节截断切中文 rune）；改 clip rune 安全截断。真模型长报告时不会触发（通过 case 多），短报告一调就炸——测试价值实证。
 - 9 包 -race 全绿。
+
+## 2026-11-11 C 切片：I34 ClaudeCodeRunner 第 1/2 轮（协议层）
+
+- ClaudeCodeRunner.Execute：exec `claude --bare -p --output-format stream-json --verbose`（Workspace.RootPath 作 cwd——I16 落点）+ ccEvent 逐行容错解析：init→cc-init 门步 / assistant text→llm 步 / tool_use→tool 步 / result 末行=权威 Reply；Note 带 session_id + total_cost_usd。
+- 取消语义对齐调研教训：cmd.Cancel 走 SIGINT（SIGTERM=143 丢 turn）+ 10min 超时 + ErrCanceled 传播（I1 对齐）。
+- 测试：fake 脚本（t.TempDir 可执行文件替代真 claude 二进制）端到端 + 非零退出 cc-failed + 事件抽取锁 3 组；9 包 -race 全绿。第 2 轮：注册 fleetd + session 续跑 + permission 映射 + cost 接 F10。
