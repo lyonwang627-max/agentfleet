@@ -497,3 +497,8 @@
 - ClaudeCodeRunner.Execute：exec `claude --bare -p --output-format stream-json --verbose`（Workspace.RootPath 作 cwd——I16 落点）+ ccEvent 逐行容错解析：init→cc-init 门步 / assistant text→llm 步 / tool_use→tool 步 / result 末行=权威 Reply；Note 带 session_id + total_cost_usd。
 - 取消语义对齐调研教训：cmd.Cancel 走 SIGINT（SIGTERM=143 丢 turn）+ 10min 超时 + ErrCanceled 传播（I1 对齐）。
 - 测试：fake 脚本（t.TempDir 可执行文件替代真 claude 二进制）端到端 + 非零退出 cc-failed + 事件抽取锁 3 组；9 包 -race 全绿。第 2 轮：注册 fleetd + session 续跑 + permission 映射 + cost 接 F10。
+
+## 2026-11-11 A 切片：深度功能面 handler 回归锁（F17-b/F18-c/I30）
+
+- applyPrescription（无处方 409 / prompt 追加 addendum + 版本链发布——自进化闭环另一半）/routingStats（10 任务 2 重试 → escalation_rate_pct 20 healthy）/squads CRUD（建队 leader 校验/列表/详情/成员增删/删除）——0% 补齐。
+- 9 包 -race 全绿。
