@@ -507,3 +507,9 @@
 
 - runs.session_id additive + store.SetRunSession（mem/pg）+ Result.SessionID/CostUSD 透传落库；重试 ResumeSession 携带（版本变化与重放同 gate 拒绝——调度器 e2e 两场景）；risk→permission-mode 映射（high→dontAsk / 其余 acceptEdits）；fleetd --claude-bin 注册（空=不注册不影响演示）。
 - 参数构造纯逻辑锁 + e2e 2 场景；9 包 -race 全绿。**I34 整体 done：平台驱动外部 coding-agent 进程四面齐（协议/续跑/权限/成本）**。
+
+## 2026-11-11 B 调研：LiteLLM Router（docs/research/litellm-router-gateway.md）
+
+- 路由策略谱系（simple-shuffle 加权/usage-based 官方自认不适合生产/latency-based buffer 防单点/least-busy/cost-based）+ cooldown 机制（allowed_fails 计数、429 立即冷却、部署级粒度、到期回轮换）+ fallback 层级（order 逐层/错误类型分路径/重试责任单一所有者——SDK max_retries 钉 0 防叠乘）+ 会话粘滞。
+- **对 agentfleet**：I35 gateway 模型级冷却入池（补「运行中模型持续故障反复撞」缺口）；重试责任单一所有者反证现架构正确；cost-based 哨兵价 vs 我们恒 0 的权衡记录。
+- 明确不抄：Redis 跨实例/usage-based 路由/Routing Groups 语法糖。

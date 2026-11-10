@@ -119,6 +119,13 @@
   端到端 + 非零退出 cc-failed + 事件抽取锁。剩余（第 2 轮）：runner 注册进 fleetd（runner=claude-code 槽位）
   + session_id 持久化续跑选项 + permission-mode 映射 I29 + cost 接 F10。
 
+- [ ] **I35 gateway 模型级冷却** `proposed` `S`（源自 litellm-router 调研，见 docs/research/）
+  动机：gateway 现在启动时 Resolve 一次探测，「运行中模型持续 429/超时」会反复撞——
+  LiteLLM cooldown 机制：连续 allowed_fails 次失败 → 冷却 cooldown_time 秒 →
+  TierToModel 选模型时过滤冷却中模型（同档无备选回退 agent 自带，只慢不错）。
+  验收：模型失败计数/冷却/到期回轮换（gateway 内存态单测）；TierToModel 过滤冷却模型；
+  冷却期事件留痕（gateway.model_cooldown）。
+
 ## 已完成（沉淀记录）
 
 - ~~任务级模型路由~~（F18-b，ADR-0002）
