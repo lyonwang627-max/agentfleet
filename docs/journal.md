@@ -403,3 +403,8 @@
 - mock 剧本工具路径同闸：高风险剧本工具（MCP:server/tool）执行前拦截进 review 门；审批记录提及工具名后放行真实调用。
 - cancel-on-review = 审批拒绝语义：gate-reject 步留痕（与 approved-by-human 对称），非 review 取消不产生留痕。
 - 单测 3+1 组；9 包 -race 全绿。**I33 整体 done：审批粒度双层化（任务级 I29 门 + 工具级本项）**。
+
+## 2026-11-10 A 切片：runs/artifacts/models/mcp-servers 观测端点直测
+
+- getRun（run trace 形状：steps 内嵌 + **AppendStep 累计 run.TotalTokens 语义锁**）/listArtifacts（列表不带 content）/getArtifact（详情带 content）/models（动态发现含 mock）/mcp/servers 形状 + 404 路径——观测面 handler 0% 补齐。
+- 9 包 -race 全绿。
