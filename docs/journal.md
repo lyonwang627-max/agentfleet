@@ -473,3 +473,9 @@
 - internal/runtime 包：Runtime 接口（Probe→provisioning/ready/degraded 三态，与归档语义正交）+ Mock 恒就绪 + Local（目录存在 + git 分支匹配，3s 超时）；workspaces.runtime_status/runtime_note additive 双列。
 - 创建即探测落库 + GET /workspaces/{id}/health 实时探测端点——workspace 从元数据绑定升级为可校验执行环境。
 - 单测 4 组；修一处静默替换未命中（mem UpdateWorkspace 实际在 assets_mem.go——python 替换前先 grep 实现位置，教训再验证）。9 包 -race 全绿。第 2 轮：Docker 实现 + 前端徽章 + EnsureReady 接线。
+
+## 2026-11-11 A 切片：Multica 系列 + 会话回放 HTTP 回归锁 + 抓到 Steer 真 bug
+
+- Projects 生命周期（缺 name 400/创建/列表计数/删除）/Comments（@agent 唤醒回帖+线程）/Steer（非 running 409+running 落库+评论留痕）/conversations 列表+详情全量消息——此前仅手工实弹，handler 0% 补齐。
+- **抓到两个真缺陷**：①mem UpdateTask 无 SteerNote 分支——Steer 功能在 --mem 模式（演示/测试主路径）写不进，决策边界永远拿不到插话（手工实弹只验了 200 没验注入）已修；②ListTaskComments map 遍历无序——线程时序漂移，加 ID 升序。
+- 9 包 -race 全绿。

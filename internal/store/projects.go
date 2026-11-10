@@ -70,6 +70,12 @@ func (m *MemStore) ListTaskComments(_ context.Context, taskID int64) ([]model.Ta
 			out = append(out, *c)
 		}
 	}
+	// 按 ID 升序（线程时序；此前 map 遍历无序——前端线程顺序漂移）
+	for i := 1; i < len(out); i++ {
+		for j := i; j > 0 && out[j].ID < out[j-1].ID; j-- {
+			out[j], out[j-1] = out[j-1], out[j]
+		}
+	}
 	return out, nil
 }
 
