@@ -421,3 +421,9 @@
 - TraceView 按 parent_seq 建树（深度优先展开 + 孤儿步容错顶层追加）：子步 ml-6 缩进 + info 左色条 + ↳ 前缀 + 提示语「缩进行为子步骤」；types.ts additive（parent_seq/parent_run_id）。
 - Runs 列表 handoff 链徽标 ↳ #父run，点击直接展开父 run trace（跨 run 跳转）。
 - 真模型实弹（qwen3.5 + LLM runner agent）：run#95 层级 decide-turn-1(seq2)→tool(parent:2)→decide(seq4) 顶层；浏览器截图验收缩进渲染。I17 整体 done。
+
+## 2026-11-10 C 切片：I28 步骤级 LLM 路由第 1/2 轮（工具能力清单）
+
+- ToolCatalog：动态发现已注册 MCP 工具（name+描述 60 rune 摘要），无 server 空清单降级；decide user 注入「可用工具」段——LLM 按能力描述选工具（eino ADK supervisor 思想下沉）。与 I33 闸天然兼容（清单是提示，闸在执行时拦）。
+- **实弹发现（qwen3.5）**：清单注入后模型仍幻觉编造 server 名（mcp:system/clock 非 mcp:demo/now）——未注册报错已天然转观察回灌下一轮，但小模型遵循度有限；第 2 轮：强约束提示 + 幻觉引导重试。
+- 单测 2 组；9 包 -race 全绿。

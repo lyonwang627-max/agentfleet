@@ -40,6 +40,42 @@ func CallMCPTool(ref string, args map[string]any) (string, error) {
 	return c.CallTool(ctx, tool, args)
 }
 
+// ToolCatalog 步骤级路由（I28）的工具能力清单：decide 提示注入「有什么工具可选」，
+// LLM 按能力描述选工具（supervisor 思想下沉到 run 内部——eino ADK 调研结论）。
+// 无 server 注册时返回空（decide 提示退回原有形态）。
+func ToolCatalog() string {
+	mcpMu.RLock()
+	servers := make(map[string]*mcp.Client, len(mcpServers))
+	for k, v := range mcpServers {
+		servers[k] = v
+	}
+	mcpMu.RUnlock()
+	if len(servers) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	for name, c := range servers {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		tools, err := c.ListTools(ctx)
+		cancel()
+		if err != nil {
+			continue
+		}
+		for _, t := range tools {
+			desc := t.Description
+			if r := []rune(desc); len(r) > 60 {
+				desc = string(r[:60]) + "…"
+			}
+			b.WriteString("- mcp:" + name + "/" + t.Name)
+			if desc != "" {
+				b.WriteString("：" + desc)
+			}
+			b.WriteString("\n")
+		}
+	}
+	return b.String()
+}
+
 // ListMCPServers 网关观测用：已注册 server 及其动态发现的工具列表。
 func ListMCPServers() []map[string]any {
 	mcpMu.RLock()

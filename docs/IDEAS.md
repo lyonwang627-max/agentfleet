@@ -79,9 +79,10 @@
 - [x] **I24 并发闸占用超时告警** `done`（2026-11-07）
   实现：闸获取 select 加超时分支——超时任务延迟重排队（非 failed，拥塞不是错误）+ agent.gate_timeout 事件。**架构认知（测试确立）**：ClaimNextTask 已在认领时强制并发检查，闸超时只覆盖「认领与执行之间的竞态窗口」——卡死占闸的主场景由看门狗（运行中任务）与依赖级联（queued 任务）治理。单测：手动占闸 + 直调 execute 精确命中竞态窗口。
 
-- [ ] **I28 步骤级 LLM 路由** `proposed` `M`（源自 eino-adk-supervisor 调研，见 docs/research/）
+- [ ] **I28 步骤级 LLM 路由** `in-progress`（1/2 能力清单完成 2026-11-10，源自 eino-adk-supervisor 调研，见 docs/research/）
   动机：F11 多轮循环的工具选择是固定 JSON 协议；借鉴 eino ADK supervisor——decide 阶段基于「能力描述」由 LLM 选择委派对象（工具/子能力），supervisor 模式下沉到 run 内部。
   验收：工具池带描述元数据；decide 提示含能力清单；与现有 handoff/审批语义兼容。
+  第 1 轮：ToolCatalog（动态发现 name+描述 60 rune 摘要，无 server 返回空降级）+ decide user 注入「可用工具」段（LLM 按能力描述选工具，supervisor 下沉）。单测 2 组（空清单/无注入）。**实弹发现（qwen3.5）**：清单注入后模型仍幻觉编造 server 名（请求 mcp:system/clock 而非 mcp:demo/now）——小模型对清单的遵循度有限，第 2 轮须加「禁止选清单外工具」强约束 + 幻觉工具名时 decide 重试引导（错误观察回灌已天然支持：CallMCPTool 未注册报错会转观察回下一轮）。
 
 - [x] **I29 审批风险分级** `done`（2026-11-07）
   实现：Task/Result 加 RiskLevel（low/medium/high）；mock 按关键词定级（对外发布/删除/资金→high）；调度器 review 门带 risk 标注落 gate step 与事件；**high 任务 approve 无意见 400**（强制留痕）；precheck risk=high 写回 task.RiskLevel（F16 联动）。单测：high 无意见 400/带意见 200/medium 不强制。顺手修：Server.publish nil 守卫（测试直调 handler 不再 panic）+ 全部子文件 Hub 调用统一。

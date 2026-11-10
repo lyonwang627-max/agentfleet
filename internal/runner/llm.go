@@ -131,7 +131,13 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 工具协作协议：若需要外部信息或动作，可先输出 {"tool": "mcp:<server>/<tool>", "tool_args": {...}, "reply": ""} 请求调用工具；` +
 		"系统会执行并把观察结果回给你（最多 " + itoa(maxToolSteps) + " 轮）。拿到足够信息后输出最终决策（tool 留空）。"
 
-	user := fmt.Sprintf("# 任务\n%s\n\n# 详细说明\n%s\n\n只输出一个 JSON 对象。", req.Task.Title, req.Task.Prompt)
+	// I28 工具能力清单：decide 提示注入「可选工具+描述」，LLM 按能力选工具（非盲选协议）
+	catalog := ToolCatalog()
+	toolSection := ""
+	if catalog != "" {
+		toolSection = "\n\n# 可用工具（按需选择，tool 字段填引用；不需要则 tool 留空）\n" + catalog
+	}
+	user := fmt.Sprintf("# 任务\n%s\n\n# 详细说明\n%s\n%s\n\n只输出一个 JSON 对象。", req.Task.Title, req.Task.Prompt, toolSection)
 
 	// I1 取消传播：每轮决策前检查（工具步边界=runToolLoop 的每次 decide 入口）
 	cancelCheck := req.CancelCheck
