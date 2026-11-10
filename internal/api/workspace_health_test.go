@@ -109,3 +109,24 @@ func TestMockRuntimeAlwaysReady(t *testing.T) {
 		t.Fatalf("mock 应恒 ready: %v", st)
 	}
 }
+
+// ---- 第 2 轮：Docker 运行时 + EnsureReady 拒绝 ----
+
+func TestDockerRuntimeProbe(t *testing.T) {
+	ctx := context.Background()
+	// 空 root_path → degraded
+	st, note := runtime.Docker{}.Probe(ctx, &model.Workspace{})
+	if st != runtime.StatusDegraded || !strings.Contains(note, "容器名") {
+		t.Fatalf("空容器名应 degraded: %v %q", st, note)
+	}
+	// 本机 docker 行为不确定（daemon 可能不可用）——只断言状态 ∈ 合法集且 note 非空
+	st2, note2 := runtime.Docker{}.Probe(ctx, &model.Workspace{RootPath: "definitely-not-a-container-xyz"})
+	switch st2 {
+	case runtime.StatusReady, runtime.StatusDegraded:
+	default:
+		t.Fatalf("状态越界: %v", st2)
+	}
+	if note2 == "" {
+		t.Fatal("note 应非空")
+	}
+}

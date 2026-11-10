@@ -332,6 +332,8 @@ export interface Workspace {
   branch: string;
   note: string;
   status: string;
+  runtime_status?: string; // I16：provisioning | ready | degraded
+  runtime_note?: string;
   created_at: string;
 }
 export interface Skill {

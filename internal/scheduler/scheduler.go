@@ -274,6 +274,15 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 	var ws *model.Workspace
 	if task.WorkspaceID > 0 {
 		if w, err := s.store.GetWorkspace(ctx, task.WorkspaceID); err == nil {
+			// I16 EnsureReady：执行环境 degraded → 拒绝执行（不烧模型算力），错误带探测原因
+			if w.RuntimeStatus == "degraded" {
+				reason := w.RuntimeNote
+				if reason == "" {
+					reason = "未通过运行时探测"
+				}
+				s.failTask(ctx, &task, "执行环境不可用: "+reason)
+				return
+			}
 			ws = w
 			execPrompt += fmt.Sprintf("\n\n[执行环境] %s（分支 %s，路径 %s）", w.Name, w.Branch, w.RootPath)
 		}

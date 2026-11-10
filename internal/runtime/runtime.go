@@ -64,3 +64,26 @@ func (Local) Probe(ctx context.Context, ws *model.Workspace) (Status, string) {
 	}
 	return StatusReady, "目录与分支校验通过"
 }
+
+// Docker 容器运行时（I16 第 2 轮）：约定 RootPath 存容器名/ID。
+// Probe = docker inspect 校验容器存在且 running；daemon 不可用 → degraded。
+type Docker struct{}
+
+func (Docker) Name() string { return "docker" }
+
+func (Docker) Probe(ctx context.Context, ws *model.Workspace) (Status, string) {
+	container := strings.TrimSpace(ws.RootPath)
+	if container == "" {
+		return StatusDegraded, "未配置容器名（root_path 约定存容器名/ID）"
+	}
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(cctx, "docker", "inspect", "-f", "{{.State.Running}}", container).Output()
+	if err != nil {
+		return StatusDegraded, fmt.Sprintf("docker 探测失败（daemon 不可用或容器不存在）: %v", err)
+	}
+	if strings.TrimSpace(string(out)) != "true" {
+		return StatusDegraded, "容器未处于 running 状态"
+	}
+	return StatusReady, "容器 running"
+}

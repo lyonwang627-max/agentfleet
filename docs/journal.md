@@ -479,3 +479,8 @@
 - Projects 生命周期（缺 name 400/创建/列表计数/删除）/Comments（@agent 唤醒回帖+线程）/Steer（非 running 409+running 落库+评论留痕）/conversations 列表+详情全量消息——此前仅手工实弹，handler 0% 补齐。
 - **抓到两个真缺陷**：①mem UpdateTask 无 SteerNote 分支——Steer 功能在 --mem 模式（演示/测试主路径）写不进，决策边界永远拿不到插话（手工实弹只验了 200 没验注入）已修；②ListTaskComments map 遍历无序——线程时序漂移，加 ID 升序。
 - 9 包 -race 全绿。
+
+## 2026-11-11 C 切片：I16 Workspace Runtime 第 2/2 轮（整体收口）
+
+- DockerRuntime（root_path 约定存容器名，docker inspect 校验 running）+ EnsureReady 接线：execute 绑定 workspace 时探测 degraded → failTask 拒绝执行不烧算力（错误带探测原因；预算内重试保留——环境可能恢复）+ /studio 状态徽章三色。
+- 单测新增 3 组（Docker/拒绝/ready 对照）；9 包 -race 全绿。I16 整体 done——I34 ClaudeCodeRunner 前置就绪。

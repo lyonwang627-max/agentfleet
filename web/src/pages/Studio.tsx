@@ -61,6 +61,20 @@ function WorkspacesPanel() {
             <div key={w.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-xs">
               <span className="rounded border border-ok/40 bg-ok/10 px-1.5 py-0.5 text-[11px] text-ok">{w.status}</span>
               <span className="font-medium text-fg">{w.name}</span>
+              {w.runtime_status && (
+                <span
+                  title={w.runtime_note || ''}
+                  className={`rounded border px-1.5 py-0.5 text-[11px] ${
+                    w.runtime_status === 'ready'
+                      ? 'border-ok/40 bg-ok/10 text-ok'
+                      : w.runtime_status === 'degraded'
+                        ? 'border-bad/40 bg-bad/10 text-bad'
+                        : 'border-border bg-muted/10 text-muted'
+                  }`}
+                >
+                  {w.runtime_status}
+                </span>
+              )}
               <span className="font-mono text-[11px] text-accent">{w.branch || '—'}</span>
               <span className="truncate font-mono text-[11px] text-muted" title={w.root_path}>{w.root_path || '—'}</span>
               <span className="ml-auto flex items-center gap-2">
