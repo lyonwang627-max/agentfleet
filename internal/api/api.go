@@ -110,6 +110,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/v1/workspaces", s.createWorkspace)
 	mux.HandleFunc("GET /api/v1/workspaces/{id}", s.getWorkspace)
 	mux.HandleFunc("PATCH /api/v1/workspaces/{id}", s.patchWorkspace)
+	mux.HandleFunc("GET /api/v1/workspaces/{id}/health", s.workspaceHealth) // I16 运行时探测
 	mux.HandleFunc("DELETE /api/v1/workspaces/{id}", s.deleteWorkspace)
 	mux.HandleFunc("GET /api/v1/skills", s.listSkills)
 	mux.HandleFunc("POST /api/v1/skills", s.createSkill)

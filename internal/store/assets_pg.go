@@ -75,8 +75,8 @@ func (p *PostgresStore) CreateWorkspace(ctx context.Context, w *model.Workspace)
 func (p *PostgresStore) GetWorkspace(ctx context.Context, id int64) (*model.Workspace, error) {
 	w := &model.Workspace{}
 	err := p.pool.QueryRow(ctx,
-		`SELECT id, name, root_path, branch, note, status, created_at FROM workspaces WHERE id=$1`, id).
-		Scan(&w.ID, &w.Name, &w.RootPath, &w.Branch, &w.Note, &w.Status, &w.CreatedAt)
+		`SELECT id, name, root_path, branch, note, status, created_at, COALESCE(runtime_status,''), COALESCE(runtime_note,'') FROM workspaces WHERE id=$1`, id).
+		Scan(&w.ID, &w.Name, &w.RootPath, &w.Branch, &w.Note, &w.Status, &w.CreatedAt, &w.RuntimeStatus, &w.RuntimeNote)
 	if err == pgx.ErrNoRows {
 		return nil, fmt.Errorf("workspace %d: %w", id, ErrNotFound)
 	}
@@ -84,7 +84,7 @@ func (p *PostgresStore) GetWorkspace(ctx context.Context, id int64) (*model.Work
 }
 
 func (p *PostgresStore) ListWorkspaces(ctx context.Context, activeOnly bool) ([]model.Workspace, error) {
-	sql := `SELECT id, name, root_path, branch, note, status, created_at FROM workspaces`
+	sql := `SELECT id, name, root_path, branch, note, status, created_at, COALESCE(runtime_status,''), COALESCE(runtime_note,'') FROM workspaces`
 	if activeOnly {
 		sql += ` WHERE status='active'`
 	}
@@ -97,7 +97,7 @@ func (p *PostgresStore) ListWorkspaces(ctx context.Context, activeOnly bool) ([]
 	out := []model.Workspace{}
 	for rows.Next() {
 		w := model.Workspace{}
-		if err := rows.Scan(&w.ID, &w.Name, &w.RootPath, &w.Branch, &w.Note, &w.Status, &w.CreatedAt); err != nil {
+		if err := rows.Scan(&w.ID, &w.Name, &w.RootPath, &w.Branch, &w.Note, &w.Status, &w.CreatedAt, &w.RuntimeStatus, &w.RuntimeNote); err != nil {
 			return nil, err
 		}
 		out = append(out, w)
@@ -122,6 +122,12 @@ func (p *PostgresStore) UpdateWorkspace(ctx context.Context, id int64, patch Wor
 	}
 	if patch.Status != nil {
 		add("status", *patch.Status)
+	}
+	if patch.RuntimeStatus != nil {
+		add("runtime_status", *patch.RuntimeStatus)
+	}
+	if patch.RuntimeNote != nil {
+		add("runtime_note", *patch.RuntimeNote)
 	}
 	if len(sets) == 0 {
 		return nil

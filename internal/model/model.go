@@ -242,13 +242,15 @@ type Artifact struct {
 
 // Workspace 执行环境：任务绑定的独立工作目录（对标 Multica worktree / Orca folder context）。
 type Workspace struct {
-	ID        int64     `json:"id"`
-	Name      string    `json:"name"`
-	RootPath  string    `json:"root_path"`
-	Branch    string    `json:"branch"`
-	Note      string    `json:"note"`
-	Status    string    `json:"status"` // active | archived
-	CreatedAt time.Time `json:"created_at"`
+	ID            int64     `json:"id"`
+	Name          string    `json:"name"`
+	RootPath      string    `json:"root_path"`
+	Branch        string    `json:"branch"`
+	Note          string    `json:"note"`
+	Status        string    `json:"status"` // active | archived
+	RuntimeStatus string    `json:"runtime_status,omitempty"` // I16：provisioning | ready | degraded（与健康语义正交）
+	RuntimeNote   string    `json:"runtime_note,omitempty"`   // I16：最近一次探测原因
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 // Skill 经验沉淀：任务完成后固化的可复用 SOP/要点，创建任务时可引用注入（对标 Multica compound skills）。

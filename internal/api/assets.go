@@ -1,12 +1,14 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/lyonwang/agentfleet/internal/model"
+	"github.com/lyonwang/agentfleet/internal/runtime"
 	"github.com/lyonwang/agentfleet/internal/store"
 )
 
@@ -54,8 +56,18 @@ func (s *Server) createWorkspace(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
 	}
+	// I16：创建即探测本机运行时（目录/分支），状态落库——workspace 从元数据升级为可校验执行环境
+	probeWorkspace(r.Context(), s.Store, ws)
 	s.publish(r.Context(), "workspace.update", map[string]any{"workspace_id": id, "action": "created"})
-	writeJSON(w, http.StatusCreated, map[string]any{"id": id})
+	writeJSON(w, http.StatusCreated, map[string]any{"id": id, "runtime_status": ws.RuntimeStatus})
+}
+
+// probeWorkspace 用 Local 运行时探测并落库状态（I16）。
+func probeWorkspace(ctx context.Context, st store.Store, ws *model.Workspace) {
+	status, note := runtime.Local{}.Probe(ctx, ws)
+	sv, nv := string(status), note
+	_ = st.UpdateWorkspace(ctx, ws.ID, store.WorkspacePatch{RuntimeStatus: &sv, RuntimeNote: &nv})
+	ws.RuntimeStatus, ws.RuntimeNote = sv, nv
 }
 
 func (s *Server) listWorkspaces(w http.ResponseWriter, r *http.Request) {
@@ -109,6 +121,19 @@ func (s *Server) deleteWorkspace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"id": pathID(r), "deleted": true})
+}
+
+// workspaceHealth 实时探测 workspace 运行时并落库返回（I16）。
+func (s *Server) workspaceHealth(w http.ResponseWriter, r *http.Request) {
+	ws, err := s.Store.GetWorkspace(r.Context(), pathID(r))
+	if err != nil {
+		writeErr(w, http.StatusNotFound, err)
+		return
+	}
+	status, note := runtime.Local{}.Probe(r.Context(), ws)
+	sv, nv := string(status), note
+	_ = s.Store.UpdateWorkspace(r.Context(), ws.ID, store.WorkspacePatch{RuntimeStatus: &sv, RuntimeNote: &nv})
+	writeJSON(w, http.StatusOK, map[string]any{"id": ws.ID, "runtime_status": sv, "note": nv})
 }
 
 // ---- skills ----

@@ -108,6 +108,12 @@ func (m *MemStore) UpdateWorkspace(_ context.Context, id int64, p WorkspacePatch
 	if p.Status != nil {
 		w.Status = *p.Status
 	}
+	if p.RuntimeStatus != nil {
+		w.RuntimeStatus = *p.RuntimeStatus
+	}
+	if p.RuntimeNote != nil {
+		w.RuntimeNote = *p.RuntimeNote
+	}
 	return nil
 }
 

@@ -467,3 +467,9 @@
 - 三输出协议（text/json/stream-json+result 末行）/会话续跑（continue/resume+SIGTERM 丢 turn 教训）/权限档位（auto/dontAsk/acceptEdits→映射 I29 风险分级）/事件类型（system.init capabilities、api_retry、parent_tool_use_id 子代理）/治理（--bare 可复现、--max-budget-usd、SIGINT 优雅中断）。
 - **对 agentfleet**：I34 ClaudeCodeRunner 入池（真 coding-agent runner 执行体，I16 前置）；session 级续跑与 I11 步级重放互补分层确认；parent_tool_use_id↔parent_run_id 同构确认；SIGINT/SIGTERM 信号选择教训。
 - 明确不抄：权限分类器/插件发现/OAuth 链。
+
+## 2026-11-11 C 切片：I16 Workspace Runtime 第 1/2 轮（接口+状态机）
+
+- internal/runtime 包：Runtime 接口（Probe→provisioning/ready/degraded 三态，与归档语义正交）+ Mock 恒就绪 + Local（目录存在 + git 分支匹配，3s 超时）；workspaces.runtime_status/runtime_note additive 双列。
+- 创建即探测落库 + GET /workspaces/{id}/health 实时探测端点——workspace 从元数据绑定升级为可校验执行环境。
+- 单测 4 组；修一处静默替换未命中（mem UpdateWorkspace 实际在 assets_mem.go——python 替换前先 grep 实现位置，教训再验证）。9 包 -race 全绿。第 2 轮：Docker 实现 + 前端徽章 + EnsureReady 接线。

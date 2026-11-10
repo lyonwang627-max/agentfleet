@@ -142,10 +142,12 @@ type SquadPatch struct {
 }
 
 type WorkspacePatch struct {
-	Name   *string
-	Branch *string
-	Note   *string
-	Status *string
+	Name          *string
+	Branch        *string
+	Note          *string
+	Status        *string
+	RuntimeStatus *string // I16：provisioning | ready | degraded
+	RuntimeNote   *string // I16：最近探测原因
 }
 
 // I14 草稿/发布双态：PATCH 只进草稿（编辑不影响在途 run），publish 落线 + 版本快照。

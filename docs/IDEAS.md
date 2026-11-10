@@ -50,10 +50,11 @@
 - [x] **I15 eino 回调桥接** `done`（2026-11-07）
   实现：TraceHandler（callbacks.Handler + TimingChecker，五时点签名含 StreamReader[CallbackOutput] 流副本必须 Close 的契约）→ fleetd run_steps；ctx 双通道（InitCallbacks 注入 + TraceSinkKey 传 sink）；Generate 触发 OnStart/OnEnd/OnError 切面；EinoRunner 自动挂 sink。单测：三时点断言 + Generate 全链路（-tags eino）。
 
-- [ ] **I16 Workspace Runtime 接口** `proposed` `M`（源自 openhands-runtime-sandbox 调研，见 docs/research/）
+- [ ] **I16 Workspace Runtime 接口** `in-progress`（1/2 接口+状态机完成 2026-11-11，源自 openhands-runtime-sandbox 调研，见 docs/research/）
   动机：现在 workspace 只是路径+分支的元数据绑定，agent 并不真在其中执行；借鉴 OpenHands 的 Runtime 抽象——
   「在 workspace 中执行」抽成接口（Mock/Local/Docker 三实现），workspace 加 provisioning/ready/degraded 状态机与健康检查。
   验收：接口定义 + 三实现迁移 + 现有测试全绿；DockerRuntime 复用 docker-compose 基建。接真 coding-agent runner 的前置。
+  第 1 轮：internal/runtime 包（Runtime 接口 Probe→三态 provisioning/ready/degraded + Mock 恒就绪 + Local 目录存在/git 分支匹配校验）+ workspaces.runtime_status/runtime_note 两列 additive（与归档语义正交）+ 创建即探测落库 + GET /workspaces/{id}/health 实时探测端点。单测 4 组（Local 三分支/health 落库/创建即探测/mock）。剩余（第 2 轮）：DockerRuntime（docker exec 探测）+ 前端状态徽章 + runner 执行前 EnsureReady 接线 + I34 ClaudeCodeRunner 执行体。
 
 - [x] **I17 trace 层级化** `done`（2026-11-10，1/2 数据层 + 2/2 前端，源自 dify-nested-tracing 调研，见 docs/research/）
   动机：run_steps 是平铺列表，handoff 链与多轮循环的嵌套关系只藏在 note 文本；借鉴 Dify 1.19.0 嵌套追踪——
