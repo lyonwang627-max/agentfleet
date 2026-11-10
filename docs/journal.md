@@ -455,3 +455,9 @@
 - 3 组：全局流（历史回放 seq1 + retry:3000 首连 + 实时推送 + id:/data: 格式 + 客户端断开退出）/since 过滤（since=1 不回放 seq1）/runEvents 404。
 - **-race 抓到测试自身竞争**：主 goroutine 轮询 w.Body 与 SSE goroutine 并发写 httptest.Recorder——safeRecorder（mutex 包装 Write/Flush/Header/WriteHeader）修复。教训：python 多段替换目标串过时静默不命中（连续三次）——大段替换后必须 grep 验证。
 - 9 包 -race 全绿。
+
+## 2026-11-11 C 切片：I11 步级续跑第 2/2 轮（整体收口）
+
+- 跨版本续跑拒绝：重放通道前置校验 lastRun.AgentVersion vs 当前链最大版本——不等 → task.replay_rejected 事件 + 完全重跑（旧观察不可信）；显式 max 版本消除 mem/pg 排序差异（pg DESC / mem 降序，vers[len-1] 都是坑）。
+- 调度器级 e2e 3 组（captureRunner 注入全局注册表）：版本一致携带重放 / 版本变化拒绝+事件 / RetryCount=0 无通道。
+- **踩坑**：重放段最初放 CreateRun 之后——runs[0] 是本次新建空 run，重放永远为空；移到 CreateRun 前修复（数据可见性时序）。I11 整体 done：Temporal 结果重放语义完整落地，重试不重复调 MCP。

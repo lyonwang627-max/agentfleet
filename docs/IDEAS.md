@@ -32,7 +32,7 @@
   动机：现在认领顺序固定 priority+id；把「选哪个任务」抽成 Strategy 接口（默认/fairness/deadline），为不同业务形态留扩展点。
   验收：接口 + 默认实现迁移 + 策略单测；行为不回归。
 
-- [ ] **I11 run 步级断点续跑** `in-progress`（1/2 结果重放数据层完成 2026-11-11，源自 langgraph-checkpointer + temporal-replay 两篇调研，见 docs/research/）
+- [x] **I11 run 步级断点续跑** `done`（2026-11-11，1/2 结果重放 + 2/2 跨版本拒绝与 e2e，源自 langgraph-checkpointer + temporal-replay 两篇调研，见 docs/research/）
   动机：现在 run 失败只能整任务重试；借鉴 LangGraph checkpoint 恢复 + Temporal 结果重放语义——
   run 步骤标注确定性/非确定性：**确定性步（tool 调用）重试时返回已记录观察（Temporal 语义：结果重放而非跳过）**，非确定性步（llm）重新执行；trace 标注 resumed_from。
   验收：含 2+ tool 步的任务失败重试后，tool 步观察来自已记录结果（不重复调用 MCP）；跨 agent 版本（F2 version）变化的续跑请求被拒绝并提示重新评估；与 F11 Spill 组合。

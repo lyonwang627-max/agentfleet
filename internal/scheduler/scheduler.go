@@ -293,6 +293,49 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 	execTask := task
 	execTask.Prompt = renderTemplate(execPrompt, &task, ws, agent.Name)
 
+	// I11 结果重放：重试（RetryCount>0）时携带上一次 run 的确定性 tool 步观察——
+	// 命中则不重复调用 MCP（Temporal 结果重放语义）；replay 端点清零重试 → 不带（完全重跑）。
+	// 跨版本拒绝：agent 配置版本在上次 run 之后发生变化 → 旧观察不可信，拒绝重放并提示重新评估。
+	var replayTools []runner.ReplayTool
+	if task.RetryCount > 0 {
+		if runs, _ := s.store.ListRuns(ctx, task.ID); len(runs) > 0 {
+			last := runs[0]
+			var curVersion int
+			if vers, _ := s.store.ListAgentVersions(ctx, agent.ID); len(vers) > 0 {
+				// 显式取最大版本（pg 按 version DESC 返回，mem 按 ASC——不依赖排序约定）
+				for _, v := range vers {
+					if v.Version > curVersion {
+						curVersion = v.Version
+					}
+				}
+			}
+			if last.AgentVersion > 0 && curVersion > 0 && last.AgentVersion != curVersion {
+				s.emit(ctx, "task.replay_rejected", map[string]any{
+					"task_id": task.ID, "run_id": last.ID,
+					"run_version": last.AgentVersion, "current_version": curVersion,
+					"hint": "agent 配置已变更，重放观察不可信——本次完全重跑，请重新评估结果"})
+				log.Printf("[scheduler] task#%d 重放拒绝：run#%d 版本 v%d ≠ 当前 v%d（完全重跑）",
+					task.ID, last.ID, last.AgentVersion, curVersion)
+			} else if steps, _ := s.store.ListSteps(ctx, last.ID); len(steps) > 0 {
+				for _, st := range steps {
+					if st.Deterministic && st.Name != "" && st.Output != nil {
+						// 全量 result 优先（I11 起落库），旧步回退 result_head
+						result, _ := st.Output["result"].(string)
+						if result == "" {
+							result, _ = st.Output["result_head"].(string)
+						}
+						if result != "" {
+							replayTools = append(replayTools, runner.ReplayTool{
+								Ref:      st.Name,
+								ArgsJSON: mustJSONStep(st.Input),
+								Result:   result,
+							})
+						}
+					}
+				}
+			}
+		}
+	}
 	run := &model.Run{TaskID: task.ID, AgentID: agent.ID}
 	// I17 handoff 链：同任务第 2+ 次 run 指向前一 run（瀑布图跨 run 成链）
 	if task.HandoffCount > 0 {
@@ -359,31 +402,6 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 		empty := ""
 		_ = s.store.UpdateTask(context.Background(), task.ID, store.TaskPatch{SteerNote: &empty})
 		return note
-	}
-	// I11 结果重放：重试（RetryCount>0）时携带上一次 run 的确定性 tool 步观察——
-	// 命中则不重复调用 MCP（Temporal 结果重放语义）；replay 端点清零重试 → 不带（完全重跑）
-	var replayTools []runner.ReplayTool
-	if task.RetryCount > 0 {
-		if runs, _ := s.store.ListRuns(ctx, task.ID); len(runs) > 0 {
-			if steps, _ := s.store.ListSteps(ctx, runs[0].ID); len(steps) > 0 {
-				for _, st := range steps {
-					if st.Deterministic && st.Name != "" && st.Output != nil {
-						// 全量 result 优先（I11 起落库），旧步回退 result_head
-						result, _ := st.Output["result"].(string)
-						if result == "" {
-							result, _ = st.Output["result_head"].(string)
-						}
-						if result != "" {
-							replayTools = append(replayTools, runner.ReplayTool{
-								Ref:      st.Name,
-								ArgsJSON: mustJSONStep(st.Input),
-								Result:   result,
-							})
-						}
-					}
-				}
-			}
-		}
 	}
 	res, execErr := rn.Execute(ctx, runner.ExecRequest{Agent: *agent, Task: execTask, Recorder: recorder, ReplayTools: replayTools,
 		Workspace: ws, Skills: skills, ModelOverride: routedModel,
