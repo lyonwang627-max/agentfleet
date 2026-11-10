@@ -111,6 +111,9 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/workspaces/{id}", s.getWorkspace)
 	mux.HandleFunc("PATCH /api/v1/workspaces/{id}", s.patchWorkspace)
 	mux.HandleFunc("GET /api/v1/workspaces/{id}/health", s.workspaceHealth) // I16 运行时探测
+	mux.HandleFunc("POST /api/v1/webhooks", s.createWebhook)                // I7 出站订阅
+	mux.HandleFunc("GET /api/v1/webhooks", s.listWebhooks)
+	mux.HandleFunc("DELETE /api/v1/webhooks/{id}", s.deleteWebhook)
 	mux.HandleFunc("DELETE /api/v1/workspaces/{id}", s.deleteWorkspace)
 	mux.HandleFunc("GET /api/v1/skills", s.listSkills)
 	mux.HandleFunc("POST /api/v1/skills", s.createSkill)
@@ -691,6 +694,54 @@ func (s *Server) serveSSE(w http.ResponseWriter, r *http.Request, since int64) {
 			fl.Flush()
 		}
 	}
+}
+
+// ---- webhooks（I7）----
+
+func (s *Server) createWebhook(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Name   string   `json:"name"`
+		URL    string   `json:"url"`
+		Events []string `json:"events"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil ||
+		strings.TrimSpace(in.Name) == "" || strings.TrimSpace(in.URL) == "" {
+		writeErr(w, http.StatusBadRequest, errors.New("name 与 url 必填"))
+		return
+	}
+	// 密钥生成对齐 auth.go（crypto/rand + hex）；前缀 whk- 区分用途
+	plaintext, _, err := generateAPIKey()
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err)
+		return
+	}
+	secret := "whk-" + strings.TrimPrefix(plaintext, "fleet-")
+	hook := &model.Webhook{Name: in.Name, URL: in.URL, Secret: secret, Events: in.Events, Active: true}
+	id, err := s.Store.CreateWebhook(r.Context(), hook)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err)
+		return
+	}
+	s.publish(r.Context(), "webhook.update", map[string]any{"webhook_id": id, "action": "created"})
+	// secret 明文仅创建响应返回（对齐 API Key 惯例）
+	writeJSON(w, http.StatusCreated, map[string]any{"id": id, "secret": secret})
+}
+
+func (s *Server) listWebhooks(w http.ResponseWriter, r *http.Request) {
+	items, err := s.Store.ListWebhooks(r.Context())
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "total": len(items)})
+}
+
+func (s *Server) deleteWebhook(w http.ResponseWriter, r *http.Request) {
+	if err := s.Store.DeleteWebhook(r.Context(), pathID(r)); err != nil {
+		writeErr(w, http.StatusNotFound, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"id": pathID(r), "deleted": true})
 }
 
 // ---- chat ----

@@ -316,6 +316,17 @@ type SquadMember struct {
 	Role       string `json:"role"`
 }
 
+// Webhook 事件订阅出站配置（I7）：任务/agent 事件回调客户系统 URL。
+type Webhook struct {
+	ID        int64     `json:"id"`
+	Name      string    `json:"name"`
+	URL       string    `json:"url"`
+	Secret    string    `json:"secret,omitempty"` // HMAC 密钥（明文仅创建响应返回）
+	Events    []string  `json:"events"`           // 订阅事件 kinds；"*"=全部
+	Active    bool      `json:"active"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // SSE 事件
 type Event struct {
 	Seq       int64     `json:"seq"`

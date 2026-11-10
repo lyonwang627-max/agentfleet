@@ -15,6 +15,7 @@ type MemStore struct {
 	mu            sync.RWMutex
 	agents        map[int64]*model.Agent
 	tasks         map[int64]*model.Task
+	webhooks      map[int64]*model.Webhook
 	runs          map[int64]*model.Run
 	steps         map[int64][]model.RunStep // run_id -> steps
 	convos        map[int64]*model.Conversation
@@ -40,7 +41,7 @@ type MemStore struct {
 
 func NewMemStore() *MemStore {
 	return &MemStore{
-		agents: map[int64]*model.Agent{}, tasks: map[int64]*model.Task{},
+		agents: map[int64]*model.Agent{}, tasks: map[int64]*model.Task{}, webhooks: map[int64]*model.Webhook{},
 		runs: map[int64]*model.Run{}, steps: map[int64][]model.RunStep{},
 		convos: map[int64]*model.Conversation{}, msgs: map[int64][]model.Message{},
 		datasets: map[int64]*model.EvalDataset{}, cases: map[int64][]model.EvalCase{},
@@ -652,5 +653,47 @@ func (m *MemStore) SetRunSession(_ context.Context, runID int64, sessionID strin
 		return fmt.Errorf("run %d: %w", runID, ErrNotFound)
 	}
 	r.SessionID = sessionID
+	return nil
+}
+
+// ---- webhooks（I7）----
+
+func (m *MemStore) CreateWebhook(_ context.Context, w *model.Webhook) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.nextID++
+	w.ID = m.nextID
+	if w.Events == nil {
+		w.Events = []string{"*"}
+	}
+	w.CreatedAt = time.Now()
+	cp := *w
+	m.webhooks[w.ID] = &cp
+	return w.ID, nil
+}
+
+func (m *MemStore) ListWebhooks(_ context.Context) ([]model.Webhook, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := []model.Webhook{}
+	for _, w := range m.webhooks {
+		out = append(out, *w)
+	}
+	// ID 升序
+	for i := 1; i < len(out); i++ {
+		for j := i; j > 0 && out[j].ID < out[j-1].ID; j-- {
+			out[j], out[j-1] = out[j-1], out[j]
+		}
+	}
+	return out, nil
+}
+
+func (m *MemStore) DeleteWebhook(_ context.Context, id int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.webhooks[id]; !ok {
+		return fmt.Errorf("webhook %d: %w", id, ErrNotFound)
+	}
+	delete(m.webhooks, id)
 	return nil
 }

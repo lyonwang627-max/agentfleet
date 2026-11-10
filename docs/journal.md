@@ -524,3 +524,8 @@
 
 - listAgents（items/total）/workspaces 三件（list/get/patch branch+note 生效）/listAuthKeys/listAutomations/squad 成员移除（200+removed 标 / 404）——api 包 handler 面 0% 基本清零（仅剩 SetRateLimit 等 env 路径）。
 - 9 包 -race 全绿。
+
+## 2026-11-11 C 切片：I7 出站 Webhook 第 1/2 轮（投递核心）
+
+- internal/webhook 包：Matches 通配过滤 / Sign HMAC-SHA256 / Deliver 三签名头投递（X-Fleet-Signature/Event/Timestamp）；webhooks 表（mem/pg）+ CRUD API（secret 明文仅创建响应，对齐 API Key 惯例）。
+- 单测 4 组：签名确定性与接收方重算 / 事件过滤静默跳过 / 5xx 报错 / CRUD 全生命周期。9 包 -race 全绿。第 2 轮：fleetd dispatcher + 重试退避。
