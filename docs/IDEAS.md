@@ -95,7 +95,7 @@
   验收：@all 时模型选人输出带理由；显式 @ 行为完全不回归；选人失败回退全员唤醒。
   实现：selectRoomAgents（ChatJSON + roomSelectorSystem 选人器人格，roster=enabled 成员 name:role+提示词头 60，上下文=最近 6 条头部）→ ≤2 名有效选人（名单外幽灵名过滤、去重）；响应 additive 字段 selection（名字+理由）。单测 4 组：智能选人（ghost 过滤）/非法 JSON 回退全员/全无效名回退/显式 @ 不经选人器。真模型实弹（qwen3.5）：@all → 选中 intake 带理由 → intake 链式 @fixer 协作；幻觉 @ops（seed 无此名）被安全忽略。
 
-- [ ] **I33 工具步级审批（risk 下沉到工具调用粒度）** `in-progress`（1/2 LLM runner 闸完成 2026-11-10，源自 langgraph-interrupt 调研，见 docs/research/）
+- [x] **I33 工具步级审批（risk 下沉到工具调用粒度）** `done`（2026-11-10，1/2 LLM runner + 2/2 mock 剧本与拒绝留痕，源自 langgraph-interrupt 调研，见 docs/research/）
   动机：审批门现为任务级（review→approve→requeue 整任务重跑）；LangGraph 工具内 interrupt 证明审批可随工具走——
   high 风险任务（I29）的特定工具调用（对外发布/删除/资金类）执行前暂停，approve 带参数修正后执行，reject 跳过该工具继续。
   验收：mock 剧本高风险工具步进 review 门（带工具名/参数快照）；approve 带参数修正注入当步执行；reject 跳过并在 trace 留 gate-reject 步；F11 工具循环内同样生效。

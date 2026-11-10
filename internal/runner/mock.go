@@ -51,7 +51,16 @@ func (m *MockRunner) Execute(ctx context.Context, req ExecRequest) (Result, erro
 		}
 		server, tool = strings.TrimSpace(server), strings.TrimSpace(tool)
 		args := map[string]any{"msg": arg}
-		out, err := CallMCPTool("mcp:"+server+"/"+tool, args)
+		ref := "mcp:" + server + "/" + tool
+		// I33 工具级审批：剧本里的高风险工具同样执行前拦截（审批记录提及工具名才放行）
+		if highRiskTool(ref) && !toolApproved(prompt, ref) {
+			emit(model.StepGate, "tool-approval-gate", map[string]any{"tool": ref, "args": args},
+				map[string]any{"status": "等待人工审批（工具级）", "risk_level": "high"}, 30, 0)
+			return Result{Reply: "（暂停）工具调用需人工审批：" + ref,
+				NeedsApproval: true, RiskLevel: "high",
+				Note: "工具级审批: " + ref + "（approve 意见需提及工具名以放行）"}, nil
+		}
+		out, err := CallMCPTool(ref, args)
 		if err != nil {
 			emit(model.StepTool, "mcp:"+server+"/"+tool, args, map[string]any{"error": err.Error()}, 50, 0)
 			return Result{}, fmt.Errorf("mcp: %w", err)

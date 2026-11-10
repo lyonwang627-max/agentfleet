@@ -561,6 +561,15 @@ func (s *Server) taskAction(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusConflict, errors.New("任务已结束"))
 			return
 		}
+		// I33：review 状态下取消 = 审批拒绝 → gate-reject 步留痕（与 approve 的 approved-by-human 对称）
+		if t.Status == model.TaskReview {
+			if runs, _ := s.Store.ListRuns(ctx, id); len(runs) > 0 {
+				_, _ = s.Store.AppendStep(ctx, runs[0].ID, &model.RunStep{
+					Kind: model.StepGate, Name: "gate-reject",
+					Note: "[审批记录] 人工拒绝（cancel）——任务终止不执行",
+					Input: map[string]any{"task_id": id, "risk_level": t.RiskLevel}})
+			}
+		}
 		_ = s.Store.UpdateTask(ctx, id, store.TaskPatch{Status: ptrStatus(model.TaskCanceled), FinishedAt: &now})
 	case "approve":
 		if t.Status != model.TaskReview {

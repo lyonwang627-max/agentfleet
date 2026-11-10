@@ -397,3 +397,9 @@
 
 - createEval/listEvals/getEval/listDatasets 此前 0%：一条链直测——缺参 400 / 发起 201 running / 轮询终态 done（mock 引擎确定性满分）/ 报告形状（cases/score_avg）/ 两列表端点 / 404。Eval 引擎异步 Start 的 HTTP 编排面锁定。
 - 9 包 -race 全绿。
+
+## 2026-11-10 C 切片：I33 工具步级审批第 2/2 轮（整体收口）
+
+- mock 剧本工具路径同闸：高风险剧本工具（MCP:server/tool）执行前拦截进 review 门；审批记录提及工具名后放行真实调用。
+- cancel-on-review = 审批拒绝语义：gate-reject 步留痕（与 approved-by-human 对称），非 review 取消不产生留痕。
+- 单测 3+1 组；9 包 -race 全绿。**I33 整体 done：审批粒度双层化（任务级 I29 门 + 工具级本项）**。
