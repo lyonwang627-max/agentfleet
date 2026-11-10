@@ -71,8 +71,10 @@ const (
 )
 
 type RunStep struct {
-	Seq       int64          `json:"seq"`
-	ParentSeq int64          `json:"parent_seq,omitempty"` // I17：父步 seq（循环观察步挂 decide 步下；0=顶层）
+	Seq           int64  `json:"seq"`
+	ParentSeq     int64  `json:"parent_seq,omitempty"`       // I17：父步 seq（循环观察步挂 decide 步下；0=顶层）
+	Deterministic bool   `json:"deterministic,omitempty"`     // I11：确定性步（tool 调用——重试可结果重放）
+	Replay        bool   `json:"replay,omitempty"`            // I11：本次为重放（观察来自已记录结果，未真实调用）
 	Kind      StepKind       `json:"kind"`
 	Name      string         `json:"name"`
 	Input     map[string]any `json:"input,omitempty"`
@@ -96,6 +98,7 @@ type Run struct {
 	TaskID       int64      `json:"task_id"`
 	AgentID      int64      `json:"agent_id"`
 	ParentRunID  int64      `json:"parent_run_id,omitempty"` // I17：handoff 链父 run（0=链头）
+	AgentVersion int        `json:"agent_version,omitempty"` // I11：执行时的 agent 版本（跨版本续跑拒绝的依据）
 	Conversation int64      `json:"conversation_id,omitempty"`
 	Status       RunStatus  `json:"status"`
 	TotalTokens  int        `json:"total_tokens"`

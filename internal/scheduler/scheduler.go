@@ -7,6 +7,7 @@ package scheduler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -299,6 +300,10 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 			run.ParentRunID = prev[0].ID
 		}
 	}
+	// I11：执行时 agent 版本进 run（跨版本续跑拒绝的数据依据）
+	if vers, _ := s.store.ListAgentVersions(ctx, agent.ID); len(vers) > 0 {
+		run.AgentVersion = vers[len(vers)-1].Version
+	}
 	runID, err := s.store.CreateRun(ctx, run)
 	if err != nil {
 		s.failTask(ctx, &task, "创建 run 失败: "+err.Error())
@@ -355,7 +360,32 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 		_ = s.store.UpdateTask(context.Background(), task.ID, store.TaskPatch{SteerNote: &empty})
 		return note
 	}
-	res, execErr := rn.Execute(ctx, runner.ExecRequest{Agent: *agent, Task: execTask, Recorder: recorder,
+	// I11 结果重放：重试（RetryCount>0）时携带上一次 run 的确定性 tool 步观察——
+	// 命中则不重复调用 MCP（Temporal 结果重放语义）；replay 端点清零重试 → 不带（完全重跑）
+	var replayTools []runner.ReplayTool
+	if task.RetryCount > 0 {
+		if runs, _ := s.store.ListRuns(ctx, task.ID); len(runs) > 0 {
+			if steps, _ := s.store.ListSteps(ctx, runs[0].ID); len(steps) > 0 {
+				for _, st := range steps {
+					if st.Deterministic && st.Name != "" && st.Output != nil {
+						// 全量 result 优先（I11 起落库），旧步回退 result_head
+						result, _ := st.Output["result"].(string)
+						if result == "" {
+							result, _ = st.Output["result_head"].(string)
+						}
+						if result != "" {
+							replayTools = append(replayTools, runner.ReplayTool{
+								Ref:      st.Name,
+								ArgsJSON: mustJSONStep(st.Input),
+								Result:   result,
+							})
+						}
+					}
+				}
+			}
+		}
+	}
+	res, execErr := rn.Execute(ctx, runner.ExecRequest{Agent: *agent, Task: execTask, Recorder: recorder, ReplayTools: replayTools,
 		Workspace: ws, Skills: skills, ModelOverride: routedModel,
 		CancelCheck: cancelCheck, SteerDrain: steerDrain})
 
@@ -552,6 +582,15 @@ func (s *Scheduler) emit(ctx context.Context, kind string, data map[string]any) 
 	if s.events != nil {
 		s.events.Publish(ctx, kind, data)
 	}
+}
+
+// mustJSONStep 步 Input 重建参数 JSON（与 runner mustJSON 同序——均 json.Marshal map）
+func mustJSONStep(v map[string]any) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return ""
+	}
+	return string(b)
 }
 
 // ---- 小工具 ----

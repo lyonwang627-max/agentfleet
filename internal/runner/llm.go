@@ -169,7 +169,18 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 		}
 		return d, nil
 	}
+	// I11 重放索引：ref+argsJSON → 已记录结果
+	replayIdx := map[string]string{}
+	for _, rt := range req.ReplayTools {
+		replayIdx[rt.Ref+"|"+rt.ArgsJSON] = rt.Result
+	}
 	callTool := func(ref string, args map[string]any) (string, error) {
+		// I11 结果重放：命中已记录观察直接返回（不重复调用 MCP——确定性步重试语义）
+		if req.ReplayTools != nil {
+			if cached, ok := replayIdx[ref+"|"+mustJSON(args)]; ok {
+				return cached, nil
+			}
+		}
 		// I28 第 2 轮：幻觉工具名——不进闸不执行，转引导观察回灌下一轮（模型从清单重选）
 		// （toolKnownFn seam：生产=ToolKnown 真判定，测试注入模拟已注册工具）
 		if !toolKnownFn(ref) {
@@ -201,12 +212,21 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 		// I28 第 2 轮：幻觉工具（引导观察）与真实执行的 output 标记区分
 		hallucination := strings.HasPrefix(observation, "错误：工具")
 		out := map[string]any{"result_head": head(observation, 200),
+			"result": head(observation, 2000), // I11：完整观察（重放通道回灌用，head 不够）
 			"turn": turn, "transport": "stdio", "protocol": "mcp"}
 		if hallucination {
 			out["hallucination"] = true
 		}
+		// I11：tool 步是确定性步（可重放）；本次是否来自重放
+		replayed := false
+		if req.ReplayTools != nil {
+			if _, ok := replayIdx[d.Tool+"|"+mustJSON(d.ToolArgs)]; ok {
+				replayed = true
+				out["replay"] = true
+			}
+		}
 		st := &model.RunStep{Kind: model.StepTool, ParentSeq: parentSeq, Name: d.Tool,
-			Input: d.ToolArgs, Output: out, LatencyMS: 60}
+			Input: d.ToolArgs, Output: out, LatencyMS: 60, Deterministic: true, Replay: replayed}
 		if req.Recorder != nil {
 			_ = req.Recorder(ctx, st)
 		}
@@ -242,6 +262,15 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 }
 
 func itoa(n int) string { return fmt.Sprintf("%d", n) }
+
+// mustJSON map→JSON（Go json.Marshal 对 map 键排序，同参数序列化确定）
+func mustJSON(v any) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}
 
 func runeLen(s string) int { return len([]rune(s)) }
 

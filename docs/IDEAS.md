@@ -32,11 +32,12 @@
   动机：现在认领顺序固定 priority+id；把「选哪个任务」抽成 Strategy 接口（默认/fairness/deadline），为不同业务形态留扩展点。
   验收：接口 + 默认实现迁移 + 策略单测；行为不回归。
 
-- [ ] **I11 run 步级断点续跑** `proposed` `M`（源自 langgraph-checkpointer + temporal-replay 两篇调研，见 docs/research/）
+- [ ] **I11 run 步级断点续跑** `in-progress`（1/2 结果重放数据层完成 2026-11-11，源自 langgraph-checkpointer + temporal-replay 两篇调研，见 docs/research/）
   动机：现在 run 失败只能整任务重试；借鉴 LangGraph checkpoint 恢复 + Temporal 结果重放语义——
   run 步骤标注确定性/非确定性：**确定性步（tool 调用）重试时返回已记录观察（Temporal 语义：结果重放而非跳过）**，非确定性步（llm）重新执行；trace 标注 resumed_from。
   验收：含 2+ tool 步的任务失败重试后，tool 步观察来自已记录结果（不重复调用 MCP）；跨 agent 版本（F2 version）变化的续跑请求被拒绝并提示重新评估；与 F11 Spill 组合。
   2026-11-10 langgraph-interrupt 调研补强验收：恢复=重放 → tool 步副作用须幂等（upsert 语义），与 Temporal「结果重放」双源互证；resume 值应结构化（非纯文本）。见 docs/research/langgraph-interrupt-resume.md。
+  第 1 轮（结果重放数据层）：runs.agent_version（执行时版本快照——跨版本续跑拒绝的数据依据）+ run_steps.deterministic（tool 步=true）双列 additive；重放通道=execute 内 RetryCount>0 时取最近 run 的确定性 tool 步（output.result 全量 2000 rune 落库）构造 ExecRequest.ReplayTools → runner callTool 命中（ref+argsJSON 相同，json.Marshal map 键序确定）直接返回已记录观察不重复调 MCP；tool 步标 replay=true（Temporal 结果重放语义）。**语义边界：replay 端点清零重试 → 不带重放通道（完全重跑）**。单测 3 组：命中重放/未命中走引导/无通道真实路径。剩余（第 2 轮）：跨 agent 版本续跑拒绝 + 副作用幂等验收 + 与 F11 Spill 组合 e2e。
 
 - [x] **I13 任务状态漂移检测器** `done`（2026-11-07，源自 openhands-event-stream 调研）
   实现：GET /tasks/{id}/consistency——replayTaskStatus 纯函数折叠 task.update 事件（终态屏蔽后续/审批回退合法路径）派生应有状态 vs tasks.status；人为制造漂移检出 ✓ 正常零误报 ✓。测试技巧：直调 handler 时需 r.SetPathValue 注入路径参数（绕过 mux 匹配，PathValue 才有值）

@@ -443,3 +443,9 @@
 
 - TestMain 扩展错误模式假 server（re-exec 同款零依赖，三 mode：err_list/empty/tool_err/err_exit）——4 组：JSON-RPC error 上抛（-32601）/空 content 空串无错/isError 转错误（磁盘已满）/连接中断（broken pipe 语义合理纳入）。
 - 9 包 -race 全绿。
+
+## 2026-11-11 C 切片：I11 步级断点续跑第 1/2 轮（结果重放数据层）
+
+- runs.agent_version（执行时版本快照）+ run_steps.deterministic（tool 步）双列 additive（schema/mem/pg）。
+- 重放通道：execute 内 RetryCount>0 → 取最近 run 确定性 tool 步（output.result 全量 2000 rune 新增落库——head 200 不够回灌）→ ExecRequest.ReplayTools → runner callTool 命中（ref+argsJSON，map 键序确定）返回已记录观察不重复调 MCP；tool 步 replay=true。**replay 端点清零重试 → 不带通道（完全重跑）**——两种重试语义边界清晰。
+- 单测 3 组（命中/未命中走引导/无通道）；修一处反向断言自错。9 包 -race 全绿。第 2 轮：跨版本拒绝 + 幂等验收 + Spill 组合。

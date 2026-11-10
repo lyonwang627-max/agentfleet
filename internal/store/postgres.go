@@ -396,7 +396,7 @@ func (p *PostgresStore) GetRun(ctx context.Context, id int64) (*model.Run, error
 	err := p.pool.QueryRow(ctx,
 		`SELECT id, task_id, agent_id, COALESCE(conversation_id,0), status, total_tokens, cost_usd, error, started_at, finished_at, COALESCE(parent_run_id,0)
 		 FROM runs WHERE id=$1`, id,
-	).Scan(&r.ID, &r.TaskID, &r.AgentID, &r.Conversation, &r.Status, &r.TotalTokens, &r.CostUSD, &r.Error, &r.StartedAt, &fin, &r.ParentRunID)
+	).Scan(&r.ID, &r.TaskID, &r.AgentID, &r.Conversation, &r.Status, &r.TotalTokens, &r.CostUSD, &r.Error, &r.StartedAt, &fin, &r.ParentRunID, &r.AgentVersion)
 	if err == pgx.ErrNoRows {
 		return nil, fmt.Errorf("run %d: %w", id, ErrNotFound)
 	}
@@ -421,7 +421,7 @@ func (p *PostgresStore) ListRuns(ctx context.Context, taskID int64) ([]model.Run
 		r := model.Run{}
 		var fin *time.Time
 		if err := rows.Scan(&r.ID, &r.TaskID, &r.AgentID, &r.Conversation, &r.Status,
-			&r.TotalTokens, &r.CostUSD, &r.Error, &r.StartedAt, &fin, &r.ParentRunID); err != nil {
+			&r.TotalTokens, &r.CostUSD, &r.Error, &r.StartedAt, &fin, &r.ParentRunID, &r.AgentVersion); err != nil {
 			return nil, err
 		}
 		r.FinishedAt = fin
@@ -432,9 +432,9 @@ func (p *PostgresStore) ListRuns(ctx context.Context, taskID int64) ([]model.Run
 
 func (p *PostgresStore) AppendStep(ctx context.Context, runID int64, s *model.RunStep) (int64, error) {
 	err := p.pool.QueryRow(ctx,
-		`INSERT INTO run_steps(run_id, seq, kind, name, input, output, note, latency_ms, tokens, parent_seq)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING created_at`,
-		runID, s.Seq, string(s.Kind), s.Name, jsonb(s.Input), jsonb(s.Output), s.Note, s.LatencyMS, s.Tokens, s.ParentSeq,
+		`INSERT INTO run_steps(run_id, seq, kind, name, input, output, note, latency_ms, tokens, parent_seq, deterministic)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING created_at`,
+		runID, s.Seq, string(s.Kind), s.Name, jsonb(s.Input), jsonb(s.Output), s.Note, s.LatencyMS, s.Tokens, s.ParentSeq, s.Deterministic,
 	).Scan(&s.CreatedAt)
 	if err == nil {
 		_, _ = p.pool.Exec(ctx, `UPDATE runs SET total_tokens = total_tokens + $2 WHERE id=$1`, runID, s.Tokens)
@@ -444,7 +444,7 @@ func (p *PostgresStore) AppendStep(ctx context.Context, runID int64, s *model.Ru
 
 func (p *PostgresStore) ListSteps(ctx context.Context, runID int64) ([]model.RunStep, error) {
 	rows, err := p.pool.Query(ctx,
-		`SELECT seq, parent_seq, kind, name, COALESCE(input,'{}'::jsonb), COALESCE(output,'{}'::jsonb), note, latency_ms, tokens, created_at
+		`SELECT seq, parent_seq, kind, name, COALESCE(input,'{}'::jsonb), COALESCE(output,'{}'::jsonb), note, latency_ms, tokens, created_at, COALESCE(deterministic,false)
 		 FROM run_steps WHERE run_id=$1 ORDER BY seq`, runID)
 	if err != nil {
 		return nil, err
@@ -454,7 +454,7 @@ func (p *PostgresStore) ListSteps(ctx context.Context, runID int64) ([]model.Run
 	for rows.Next() {
 		s := model.RunStep{}
 		var input, output []byte
-		if err := rows.Scan(&s.Seq, &s.ParentSeq, &s.Kind, &s.Name, &input, &output, &s.Note, &s.LatencyMS, &s.Tokens, &s.CreatedAt); err != nil {
+		if err := rows.Scan(&s.Seq, &s.ParentSeq, &s.Kind, &s.Name, &input, &output, &s.Note, &s.LatencyMS, &s.Tokens, &s.CreatedAt, &s.Deterministic); err != nil {
 			return nil, err
 		}
 		s.Input = map[string]any{}

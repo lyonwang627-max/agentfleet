@@ -36,6 +36,17 @@ type ExecRequest struct {
 	// SteerDrain 运行中插话（Multica Steer 对标）：返回一次性插话文本并清空，
 	// runner 在决策边界注入当前轮。空串=无插话。
 	SteerDrain func() string
+	// ReplayTools 步级续跑重放观察（I11，调度器注入）：重试时携带上一次 run 的
+	// 确定性 tool 步结果——命中（ref+args 相同）则直接返回已记录观察，不重复调用 MCP
+	// （Temporal 结果重放语义）。replay 端点清零重试后不带此通道（完全重跑）。
+	ReplayTools []ReplayTool
+}
+
+// ReplayTool 已记录的确定性工具调用观察。
+type ReplayTool struct {
+	Ref      string `json:"ref"`
+	ArgsJSON string `json:"args_json"` // args 经 json.Marshal（map 键序确定）
+	Result   string `json:"result"`
 }
 
 // ErrCanceled 协作式取消信号（I1）：调度器收到后不重试不告警，任务保持 canceled。
