@@ -57,3 +57,53 @@ func TestParseErrors(t *testing.T) {
 		}
 	}
 }
+
+// Next 跳转分支直测：跳月/跳日/小时推进/无匹配零值/二月 30 号边界。
+func TestNextMonthSkip(t *testing.T) {
+	// 只在 1 月执行：11 月的下一命中应跨月跳到明年 1 月 1 日 0 点
+	e := mustParse(t, "0 0 1 1 *")
+	next := e.Next(time.Date(2026, 11, 10, 15, 0, 0, 0, time.Local))
+	want := time.Date(2027, 1, 1, 0, 0, 0, 0, time.Local)
+	if !next.Equal(want) {
+		t.Fatalf("got %v want %v", next, want)
+	}
+}
+
+func TestNextDaySkip(t *testing.T) {
+	// 只在 1 号执行：从 11 月 10 日跳到 12 月 1 日
+	e := mustParse(t, "0 12 1 * *")
+	next := e.Next(time.Date(2026, 11, 10, 12, 30, 0, 0, time.Local))
+	want := time.Date(2026, 12, 1, 12, 0, 0, 0, time.Local)
+	if !next.Equal(want) {
+		t.Fatalf("got %v want %v", next, want)
+	}
+}
+
+func TestNextHourAdvance(t *testing.T) {
+	// 每天只 9 点：8:30 的下一命中 9:00（同日小时推进）
+	e := mustParse(t, "0 9 * * *")
+	next := e.Next(time.Date(2026, 11, 10, 8, 30, 0, 0, time.Local))
+	want := time.Date(2026, 11, 10, 9, 0, 0, 0, time.Local)
+	if !next.Equal(want) {
+		t.Fatalf("got %v want %v", next, want)
+	}
+}
+
+func TestNextNoMatchZero(t *testing.T) {
+	// 2 月 30 号：永不命中 → 4 年搜索耗尽返回零值
+	e := mustParse(t, "0 0 30 2 *")
+	next := e.Next(time.Date(2026, 11, 10, 0, 0, 0, 0, time.Local))
+	if !next.IsZero() {
+		t.Fatalf("2月30号应无匹配零值: %v", next)
+	}
+}
+
+func TestNextFeb29(t *testing.T) {
+	// 2 月 29 号（闰年语义）：从 2026 出发应命中 2028-02-29
+	e := mustParse(t, "0 0 29 2 *")
+	next := e.Next(time.Date(2026, 11, 10, 0, 0, 0, 0, time.Local))
+	want := time.Date(2028, 2, 29, 0, 0, 0, 0, time.Local)
+	if !next.Equal(want) {
+		t.Fatalf("got %v want %v", next, want)
+	}
+}
