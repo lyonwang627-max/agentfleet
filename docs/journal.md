@@ -461,3 +461,9 @@
 - 跨版本续跑拒绝：重放通道前置校验 lastRun.AgentVersion vs 当前链最大版本——不等 → task.replay_rejected 事件 + 完全重跑（旧观察不可信）；显式 max 版本消除 mem/pg 排序差异（pg DESC / mem 降序，vers[len-1] 都是坑）。
 - 调度器级 e2e 3 组（captureRunner 注入全局注册表）：版本一致携带重放 / 版本变化拒绝+事件 / RetryCount=0 无通道。
 - **踩坑**：重放段最初放 CreateRun 之后——runs[0] 是本次新建空 run，重放永远为空；移到 CreateRun 前修复（数据可见性时序）。I11 整体 done：Temporal 结果重放语义完整落地，重试不重复调 MCP。
+
+## 2026-11-11 B 调研：Claude Code headless 驱动机制（docs/research/claude-code-headless-runner.md）
+
+- 三输出协议（text/json/stream-json+result 末行）/会话续跑（continue/resume+SIGTERM 丢 turn 教训）/权限档位（auto/dontAsk/acceptEdits→映射 I29 风险分级）/事件类型（system.init capabilities、api_retry、parent_tool_use_id 子代理）/治理（--bare 可复现、--max-budget-usd、SIGINT 优雅中断）。
+- **对 agentfleet**：I34 ClaudeCodeRunner 入池（真 coding-agent runner 执行体，I16 前置）；session 级续跑与 I11 步级重放互补分层确认；parent_tool_use_id↔parent_run_id 同构确认；SIGINT/SIGTERM 信号选择教训。
+- 明确不抄：权限分类器/插件发现/OAuth 链。
