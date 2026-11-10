@@ -215,7 +215,13 @@ export default function TaskDetail() {
           <div className="px-4 py-6 text-center text-xs text-muted">尚无执行记录</div>
         )}
         {(runs.data ?? []).map((r) => (
-          <RunRow key={r.id} r={r} open={openRunId === r.id} onToggle={() => void viewTrace(r.id)} />
+          <RunRow
+            key={r.id}
+            r={r}
+            open={openRunId === r.id}
+            onToggle={() => void viewTrace(r.id)}
+            chainAction={r.parent_run_id ? () => void viewTrace(r.parent_run_id as number) : undefined}
+          />
         ))}
         {openRunId !== null && (
           <div className="border-t border-border p-4">
@@ -238,10 +244,22 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function RunRow({ r, open, onToggle }: { r: RunSummary; open: boolean; onToggle: () => void }) {
+function RunRow({ r, open, onToggle, chainAction }: { r: RunSummary; open: boolean; onToggle: () => void; chainAction?: () => void }) {
   return (
     <div className="flex flex-wrap items-center gap-3 border-b border-border/60 px-4 py-2 text-xs last:border-b-0">
-      <span className="font-mono text-muted">run #{r.id}</span>
+      <span className="font-mono text-muted">
+        run #{r.id}
+        {r.parent_run_id ? (
+          <button
+            type="button"
+            onClick={chainAction}
+            title={`handoff 链：来自 run #${r.parent_run_id}`}
+            className="ml-1 rounded border border-info/40 bg-info/10 px-1 py-px text-[10px] text-info hover:underline"
+          >
+            ↳ #{r.parent_run_id}
+          </button>
+        ) : null}
+      </span>
       <StatusBadge status={r.status} />
       <span className="text-muted">
         tokens <span className="font-mono text-fg">{fmtNum(r.total_tokens)}</span>
@@ -265,7 +283,7 @@ function RunRow({ r, open, onToggle }: { r: RunSummary; open: boolean; onToggle:
   );
 }
 
-// ---------- Trace：步骤瀑布图 ----------
+// ---------- Trace：步骤瀑布图（I17 层级化：观察步缩进挂决策步下） ----------
 export function TraceView({ trace }: { trace: RunTrace }) {
   const steps = trace.steps ?? [];
   const maxLatency = Math.max(1, ...steps.map((s) => s.latency_ms ?? 0));
@@ -279,6 +297,26 @@ export function TraceView({ trace }: { trace: RunTrace }) {
       else next.add(seq);
       return next;
     });
+
+  // I17 层级化渲染：按 parent_seq 建树，深度优先展开为带缩进等级的线性序列
+  const byParent = new Map<number, RunStep[]>();
+  for (const s of steps) {
+    const p = s.parent_seq ?? 0;
+    (byParent.get(p) ?? byParent.set(p, []).get(p)!).push(s);
+  }
+  const laid: Array<{ step: RunStep; depth: number }> = [];
+  const walk = (parent: number, depth: number) => {
+    for (const s of byParent.get(parent) ?? []) {
+      laid.push({ step: s, depth });
+      walk(s.seq, depth + 1);
+    }
+  };
+  walk(0, 0);
+  // 容错：孤儿步（parent 不存在）按原序追加在顶层
+  const seen = new Set(laid.map((l) => l.step.seq));
+  for (const s of steps) {
+    if (!seen.has(s.seq)) laid.push({ step: s, depth: 0 });
+  }
 
   return (
     <div>
@@ -294,19 +332,20 @@ export function TraceView({ trace }: { trace: RunTrace }) {
         <span>
           总耗时 <span className="font-mono text-fg">{fmtDuration(totalLatency)}</span>
         </span>
-        <span className="ml-auto text-[11px]">点击步骤行展开 input / output</span>
+        <span className="ml-auto text-[11px]">点击步骤行展开 input / output；缩进行为子步骤</span>
       </div>
 
       {steps.length === 0 && <div className="py-4 text-center text-xs text-muted">无步骤数据</div>}
 
       <div className="space-y-1">
-        {steps.map((s) => (
+        {laid.map(({ step, depth }) => (
           <StepRow
-            key={s.seq}
-            step={s}
+            key={step.seq}
+            step={step}
+            depth={depth}
             maxLatency={maxLatency}
-            expanded={expanded.has(s.seq)}
-            onToggle={() => toggle(s.seq)}
+            expanded={expanded.has(step.seq)}
+            onToggle={() => toggle(step.seq)}
           />
         ))}
       </div>
@@ -316,11 +355,13 @@ export function TraceView({ trace }: { trace: RunTrace }) {
 
 function StepRow({
   step,
+  depth,
   maxLatency,
   expanded,
   onToggle,
 }: {
   step: RunStep;
+  depth: number;
   maxLatency: number;
   expanded: boolean;
   onToggle: () => void;
@@ -328,7 +369,7 @@ function StepRow({
   const pct = step.latency_ms > 0 ? Math.max(1.5, (step.latency_ms / maxLatency) * 100) : 0.5;
   const hasPayload = step.input !== undefined || step.output !== undefined;
   return (
-    <div className="rounded border border-border/60 bg-panel2/50">
+    <div className={`rounded border border-border/60 bg-panel2/50 ${depth > 0 ? 'ml-6 border-l-2 border-l-info/40' : ''}`}>
       <button
         type="button"
         onClick={onToggle}
@@ -337,7 +378,9 @@ function StepRow({
           hasPayload ? 'cursor-pointer hover:bg-panel2' : 'cursor-default'
         }`}
       >
-        <span className="w-6 shrink-0 font-mono text-[10px] text-muted">{step.seq}</span>
+        <span className="w-6 shrink-0 font-mono text-[10px] text-muted">
+          {depth > 0 ? '↳' : ''}{step.seq}
+        </span>
         <KindBadge kind={step.kind} />
         <span className="w-44 shrink-0 truncate font-medium text-fg" title={step.name}>
           {step.name}

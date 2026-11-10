@@ -415,3 +415,9 @@
 - LLM runner 发射改造：emit 返回落库步（AppendStep 回填 Seq 可读）；工具循环每轮先落 decide-turn-N 步、tool 观察步挂其下——层级语义对齐 Dify（观察步是决策步的子 span）；汇总 decide 步保持顶层。
 - handoff 链：同任务第 2+ 次 run 指向前一 run（ListRuns 首条）。
 - 单测 2 组：嵌套（decide-turn-1 顶层→tool 挂其下→汇总顶层）/平铺（无循环全顶层）。9 包 -race 全绿。前端瀑布图缩进留第 2 轮。
+
+## 2026-11-10 C 切片：I17 trace 层级化第 2/2 轮（前端收口，整体 done）
+
+- TraceView 按 parent_seq 建树（深度优先展开 + 孤儿步容错顶层追加）：子步 ml-6 缩进 + info 左色条 + ↳ 前缀 + 提示语「缩进行为子步骤」；types.ts additive（parent_seq/parent_run_id）。
+- Runs 列表 handoff 链徽标 ↳ #父run，点击直接展开父 run trace（跨 run 跳转）。
+- 真模型实弹（qwen3.5 + LLM runner agent）：run#95 层级 decide-turn-1(seq2)→tool(parent:2)→decide(seq4) 顶层；浏览器截图验收缩进渲染。I17 整体 done。

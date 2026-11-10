@@ -104,6 +104,7 @@ export interface TaskCreated {
 // ---------- Runs ----------
 export interface RunSummary {
   id: number;
+  parent_run_id?: number; // I17：handoff 链父 run（0/缺省=链头）
   status: string;
   started_at: string | null;
   finished_at: string | null;
@@ -113,6 +114,7 @@ export interface RunSummary {
 export type StepKind = 'llm' | 'tool' | 'handoff' | 'gate';
 export interface RunStep {
   seq: number;
+  parent_seq?: number; // I17：父步 seq（循环观察步挂 decide 下；0/缺省=顶层）
   kind: StepKind | string;
   name: string;
   input?: unknown;
