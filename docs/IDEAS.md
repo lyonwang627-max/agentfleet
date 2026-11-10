@@ -119,12 +119,16 @@
   端到端 + 非零退出 cc-failed + 事件抽取锁。剩余（第 2 轮）：runner 注册进 fleetd（runner=claude-code 槽位）
   + session_id 持久化续跑选项 + permission-mode 映射 I29 + cost 接 F10。
 
-- [ ] **I35 gateway 模型级冷却** `proposed` `S`（源自 litellm-router 调研，见 docs/research/）
+- [x] **I35 gateway 模型级冷却** `done`（2026-11-11，源自 litellm-router 调研，见 docs/research/）
   动机：gateway 现在启动时 Resolve 一次探测，「运行中模型持续 429/超时」会反复撞——
   LiteLLM cooldown 机制：连续 allowed_fails 次失败 → 冷却 cooldown_time 秒 →
   TierToModel 选模型时过滤冷却中模型（同档无备选回退 agent 自带，只慢不错）。
   验收：模型失败计数/冷却/到期回轮换（gateway 内存态单测）；TierToModel 过滤冷却模型；
   冷却期事件留痕（gateway.model_cooldown）。
+  实现：coolingState（自带锁——WithModel 值拷贝共享指针，双视图并发安全，修一个锁拷贝 vet 报警）
+  + native/ChatRaw 错误→recordFailure（3 次连续 → 冷却 60s）/成功→recordSuccess 重置 +
+  SelectFor S 档冷却过滤（回退 M 档——语义为「回退」非「返回空」）+ route 步 input.cooling_models 留痕。
+  单测 2 组（生命周期：3 败冷却/到期回轮换/成功重置；SelectFor 未冷却命中→冷却回退 M）。S 档 429 不再反复撞。
 
 ## 已完成（沉淀记录）
 

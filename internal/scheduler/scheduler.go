@@ -387,8 +387,14 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 	if modelOverride != agent.Model {
 		routedModel = modelOverride
 	}
+	routeInput := map[string]any{"tier": string(tier), "model": routedModel, "retry": task.RetryCount}
+	if s.llm != nil {
+		if cooling := s.llm.CoolingList(); len(cooling) > 0 {
+			routeInput["cooling_models"] = cooling // I35：冷却中模型观测
+		}
+	}
 	_, _ = s.store.AppendStep(ctx, runID, &model.RunStep{Kind: model.StepLLM, Name: "route",
-		Input: map[string]any{"tier": string(tier), "model": routedModel, "retry": task.RetryCount},
+		Input: routeInput,
 		Note:  "F18-b 任务级路由"})
 
 	// I30 小队模式：任务分给 squad 时，leader 的 system prompt 追加小队 briefing

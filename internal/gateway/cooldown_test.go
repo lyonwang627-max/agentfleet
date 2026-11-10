@@ -1,0 +1,91 @@
+package gateway
+
+import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+)
+
+// 模型级冷却（I35）：连续失败计数 → 冷却 → 到期回轮换；成功重置；TierToModel 过滤。
+
+func TestCooldownLifecycle(t *testing.T) {
+	l, srv := newNativeLLM(t, func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "overloaded", http.StatusTooManyRequests)
+	})
+	defer srv.Close()
+	// 快速时钟推进探测：替换 timeNow
+	orig := timeNow
+	cur := timeNow()
+	timeNow = func() time.Time { return cur }
+	defer func() { timeNow = orig }()
+
+	// 连续 3 次失败 → 进入冷却
+	for i := 0; i < 3; i++ {
+		_, _, _ = l.native(context.Background(), "s", "u", false, 100)
+	}
+	if !l.IsCooling(l.Model) {
+		t.Fatal("3 次连续失败应进入冷却")
+	}
+	if len(l.CoolingList()) != 1 {
+		t.Fatal("CoolingList 应含冷却模型")
+	}
+
+	// 冷却期内 → 到期后回轮换
+	cur = cur.Add(modelCooldown + time.Second)
+	if l.IsCooling(l.Model) {
+		t.Fatal("冷却到期应回轮换")
+	}
+
+	// 成功重置：失败 2 次 + 1 成功 → 计数清零，再 1 次失败不冷却
+	failMode := true
+	l2, srv2 := newNativeLLM(t, func(w http.ResponseWriter, r *http.Request) {
+		if failMode {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Write([]byte(`{"message":{"content":"ok"},"eval_count":1}`))
+	})
+	defer srv2.Close()
+	_, _, _ = l2.native(context.Background(), "s", "u", false, 100)
+	_, _, _ = l2.native(context.Background(), "s", "u", false, 100)
+	failMode = false
+	_, _, _ = l2.native(context.Background(), "s", "u", false, 100) // 成功重置
+	failMode = true
+	_, _, _ = l2.native(context.Background(), "s", "u", false, 100) // 再 1 次失败
+	if l2.IsCooling(l2.Model) {
+		t.Fatal("成功应重置计数——2 失败 + 1 成功 + 1 失败不应冷却")
+	}
+}
+
+func TestSelectForSkipsCooling(t *testing.T) {
+	t.Setenv("FLEET_TIER_S", "tiny-model:latest")
+	t.Setenv("FLEET_TIER_M", "main-model")
+	// 假端点同时服务 /api/tags（tiny-model 可用）与 /api/chat
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/tags":
+			w.Write([]byte(`{"models":[{"name":"tiny-model:latest"},{"name":"main-model"}]}`))
+		default:
+			w.Write([]byte(`{"message":{"content":"ok"},"eval_count":1}`))
+		}
+	}))
+	defer srv.Close()
+	l := NewWithBaseURL("main-model", srv.URL)
+	orig := timeNow
+	cur := timeNow()
+	timeNow = func() time.Time { return cur }
+	defer func() { timeNow = orig }()
+
+	// 前置：tiny-model 未冷却 → S 档命中
+	if got := l.SelectFor(PurposeJudge); got != "tiny-model:latest" {
+		t.Fatalf("未冷却应命中 S 档: %q", got)
+	}
+	// tiny-model 冷却中 → S 档被过滤 → 回退 Execute 档（main-model）
+	l.Model = "tiny-model:latest"
+	l.cooling = &coolingState{until: cur.Add(time.Hour)}
+	if got := l.SelectFor(PurposeJudge); got != "main-model" {
+		t.Fatalf("冷却中 S 档应回退 M 档: %q", got)
+	}
+}

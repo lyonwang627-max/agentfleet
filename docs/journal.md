@@ -513,3 +513,9 @@
 - 路由策略谱系（simple-shuffle 加权/usage-based 官方自认不适合生产/latency-based buffer 防单点/least-busy/cost-based）+ cooldown 机制（allowed_fails 计数、429 立即冷却、部署级粒度、到期回轮换）+ fallback 层级（order 逐层/错误类型分路径/重试责任单一所有者——SDK max_retries 钉 0 防叠乘）+ 会话粘滞。
 - **对 agentfleet**：I35 gateway 模型级冷却入池（补「运行中模型持续故障反复撞」缺口）；重试责任单一所有者反证现架构正确；cost-based 哨兵价 vs 我们恒 0 的权衡记录。
 - 明确不抄：Redis 跨实例/usage-based 路由/Routing Groups 语法糖。
+
+## 2026-11-11 C 切片：I35 gateway 模型级冷却（LiteLLM cooldown 落地）
+
+- coolingState（失败计数+冷却到期，自带锁——WithModel 值拷贝共享指针；修一个「锁拷贝」vet 报警：mu 不能随值拷贝，锁必须随状态指针走）；native/ChatRaw 错误→recordFailure（3 连败→冷却 60s）/成功→recordSuccess。
+- SelectFor S 档冷却过滤回退 M 档；route 步 input.cooling_models 观测留痕。
+- 单测 2 组（生命周期/SelectFor 命中→回退）；9 包 -race 全绿。S 档模型 429 不再反复撞。

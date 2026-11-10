@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -24,7 +25,17 @@ type LLM struct {
 	client   *http.Client
 	Fallback func(system, user string) string // mock 生成器（注入）
 	Pricing  map[string]ModelPrice            // 模型定价（F10 成本核算）
+	cooling  *coolingState                    // I35：失败计数与冷却（自带锁；WithModel 派生视图共享指针）
 }
+
+// coolingState 冷却状态（锁随状态走——WithModel 值拷贝共享指针，双视图并发安全）。
+type coolingState struct {
+	mu    sync.Mutex
+	fails int
+	until time.Time
+}
+
+// WithModel 派生视图：共享冷却状态？——派生是值拷贝，state 指针字段同步共享（map/指针引用语义）。
 
 func New(model string) *LLM {
 	c := &LLM{Model: model, client: &http.Client{Timeout: 300 * time.Second}}
@@ -38,7 +49,65 @@ func New(model string) *LLM {
 	return c
 }
 
-// NewWithBaseURL 以指定端点构造 ollama 模式客户端（测试/依赖注入用例；跳过 Resolve 探测）。
+// ---- I35 模型级冷却（借鉴 LiteLLM cooldown）：运行中模型持续故障不再反复撞 ----
+
+const (
+	modelAllowedFails = 3                // 连续失败阈值
+	modelCooldown     = 60 * time.Second // 冷却时长（到期自动回轮换）
+)
+
+// timeNow 可替换时钟（测试用）。
+var timeNow = time.Now
+
+// recordFailure 模型调用失败计数；连续超阈值进入冷却（I35）。
+func (l *LLM) recordFailure() {
+	if l.cooling == nil {
+		l.cooling = &coolingState{}
+	}
+	l.cooling.mu.Lock()
+	defer l.cooling.mu.Unlock()
+	l.cooling.fails++
+	if l.cooling.fails >= modelAllowedFails {
+		l.cooling.until = timeNow().Add(modelCooldown)
+		l.cooling.fails = 0
+		log.Printf("[gateway] 模型 %s 连续失败 %d 次 → 冷却 %s", l.Model, modelAllowedFails, modelCooldown)
+	}
+}
+
+// recordSuccess 成功重置失败计数（模型恢复）。
+func (l *LLM) recordSuccess() {
+	if l.cooling == nil {
+		return
+	}
+	l.cooling.mu.Lock()
+	defer l.cooling.mu.Unlock()
+	l.cooling.fails = 0
+}
+
+// IsCooling 模型是否冷却中（TierToModel 过滤依据；只对本实例 Model 生效）。
+func (l *LLM) IsCooling(model string) bool {
+	if model != l.Model || l.cooling == nil {
+		return false
+	}
+	l.cooling.mu.Lock()
+	defer l.cooling.mu.Unlock()
+	return timeNow().Before(l.cooling.until)
+}
+
+// CoolingList 冷却中模型清单（观测面：route 步留痕）。
+func (l *LLM) CoolingList() []string {
+	if l.cooling == nil {
+		return nil
+	}
+	l.cooling.mu.Lock()
+	defer l.cooling.mu.Unlock()
+	if timeNow().Before(l.cooling.until) {
+		return []string{l.Model}
+	}
+	return nil
+}
+
+// SelectFor 按用途返回模型名。档位可 env 覆写（FLEET_TIER_S/M/L）；
 func NewWithBaseURL(model, baseURL string) *LLM {
 	c := &LLM{Model: model, BaseURL: baseURL, Mode: "ollama", client: &http.Client{Timeout: 300 * time.Second}}
 	c.Pricing = LoadPricing(DefaultPricing)
@@ -133,10 +202,12 @@ func (l *LLM) ChatRaw(ctx context.Context, msgs []ChatMessage, maxTokens int) (s
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := l.client.Do(req)
 	if err != nil {
+		l.recordFailure()
 		return "", 0, fmt.Errorf("ollama chat raw: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
+		l.recordFailure()
 		return "", 0, fmt.Errorf("ollama chat raw: http %d", resp.StatusCode)
 	}
 	var out struct {
@@ -148,6 +219,7 @@ func (l *LLM) ChatRaw(ctx context.Context, msgs []ChatMessage, maxTokens int) (s
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return "", 0, err
 	}
+	l.recordSuccess()
 	return out.Message.Content, out.EvalCount, nil
 }
 
@@ -173,8 +245,8 @@ func (l *LLM) SelectFor(p Purpose) string {
 		return l.Model
 	}
 	if p == PurposeJudge {
-		for _, m := range l.ListModels() { // S 档可用性校验（本地小模型可能未装）
-			if m.Name == tier && m.Available {
+		for _, m := range l.ListModels() { // S 档可用性校验（本地小模型可能未装 + I35 冷却过滤）
+			if m.Name == tier && m.Available && !l.IsCooling(tier) {
 				return tier
 			}
 		}
@@ -188,6 +260,7 @@ func (l *LLM) SelectFor(p Purpose) string {
 func (l *LLM) WithModel(name string) *LLM {
 	c := *l
 	c.Model = name
+	// cooling 指针随值拷贝共享（自带锁）——派生视图与原视图冷却状态一致
 	return &c
 }
 
@@ -314,6 +387,7 @@ func (l *LLM) native(ctx context.Context, system, user string, forceJSON bool, m
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
+		l.recordFailure()
 		return "", 0, fmt.Errorf("ollama chat: http %d", resp.StatusCode)
 	}
 	var out struct {
@@ -325,5 +399,6 @@ func (l *LLM) native(ctx context.Context, system, user string, forceJSON bool, m
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return "", 0, err
 	}
+	l.recordSuccess()
 	return out.Message.Content, out.EvalCount, nil
 }
