@@ -105,7 +105,7 @@
   验收：mock 剧本高风险工具步进 review 门（带工具名/参数快照）；approve 带参数修正注入当步执行；reject 跳过并在 trace 留 gate-reject 步；F11 工具循环内同样生效。
   第 1 轮（LLM runner 生产路径）：highRiskTool 关键词判定（I29 同源：发布/删除/资金/部署）+ callTool 包装闸（ToolGateError 哨兵中止 runToolLoop——runToolLoop 语义扩展：callTool 可中止）→ Execute 映射 NeedsApproval/high + gate 步 tool-approval-gate 带工具/参数快照（不是失败，任务进 review 门）。放行契约：approve 审批意见必须提及工具名（toolApproved 防一次审批放行全部工具），F3 审批记录注入 task prompt 重跑时闸自然放行；参数修正经审批意见注入 prompt 由模型消费（与 F3 同机制）。单测 4 组：高风险拦截（gate 步+快照）/低风险回归/批准后放行（工具真实执行+观察回灌）/判定表。第 2 轮：mock 剧本工具路径评估 + reject（cancel）trace 留痕 gate-reject 步。
 
-- [ ] **I34 ClaudeCodeRunner（外部 agent 进程执行体）** `in-progress`（1/2 协议层完成 2026-11-11，源自 claude-code-headless 调研，见 docs/research/）
+- [x] **I34 ClaudeCodeRunner（外部 agent 进程执行体）** `done`（2026-11-11，1/2 协议层 + 2/2 接线收口，源自 claude-code-headless 调研，见 docs/research/）
   动机：runner v1 是 mock/llm（对话型），接真 coding-agent 是平台能力跃迁——Claude Code `-p --bare`
   是最成熟的被驱动对象：stream-json 行解析（复用 F15 NDJSON 经验）+ session_id 落库（会话级续跑，
   与 I11 步级重放互补）+ total_cost_usd 直连 F10 成本 + permission-mode 映射 I29 风险分级。

@@ -40,6 +40,7 @@ type Store interface {
 	// runs & steps
 	CreateRun(ctx context.Context, r *model.Run) (int64, error)
 	UpdateRun(ctx context.Context, r *model.Run) error
+	SetRunSession(ctx context.Context, runID int64, sessionID string) error // I34：CC 会话 ID 落库（续跑依据）
 	GetRun(ctx context.Context, id int64) (*model.Run, error)
 	ListRuns(ctx context.Context, taskID int64) ([]model.Run, error)
 	AppendStep(ctx context.Context, runID int64, s *model.RunStep) (int64, error)

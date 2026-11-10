@@ -127,3 +127,35 @@ func TestReplayNoChannelWhenRetryZero(t *testing.T) {
 		t.Fatalf("首跑不应带重放: %+v", capR2.captured.ReplayTools)
 	}
 }
+
+// I34 会话续跑（调度器级）：重试时 ResumeSession 携带上次 CC session；版本变化一并拒绝。
+func TestResumeSessionCarriedAndRejected(t *testing.T) {
+	// 携带：fixture 的失败 run 带 SessionID，版本链 v1 一致
+	s, st, ctx, agent, task, _, capR := replayFixture(t)
+	if runs, _ := st.ListRuns(ctx, task.ID); len(runs) > 0 {
+		_ = st.SetRunSession(ctx, runs[0].ID, "sess-cc-1")
+	}
+	_, _, _ = st.SaveAgentVersion(ctx, &model.AgentVersion{AgentID: agent.ID, Version: 1,
+		Config: map[string]any{"name": "rp"}})
+	s.execute(ctx, *task)
+	if capR.captured == nil || capR.captured.ResumeSession != "sess-cc-1" {
+		t.Fatalf("ResumeSession 应携带: %+v", capR.captured)
+	}
+
+	// 拒绝：版本升 v2 → ResumeSession 与重放一并清空
+	s, st, ctx, agent, task, _, capR = replayFixture(t)
+	if runs, _ := st.ListRuns(ctx, task.ID); len(runs) > 0 {
+		_ = st.SetRunSession(ctx, runs[0].ID, "sess-cc-1")
+	}
+	_, _, _ = st.SaveAgentVersion(ctx, &model.AgentVersion{AgentID: agent.ID, Version: 1,
+		Config: map[string]any{"name": "rp"}})
+	_, _, _ = st.SaveAgentVersion(ctx, &model.AgentVersion{AgentID: agent.ID, Version: 2,
+		Config: map[string]any{"name": "rp2"}})
+	s.execute(ctx, *task)
+	if capR.captured == nil {
+		t.Fatal("execute 未运行")
+	}
+	if capR.captured.ResumeSession != "" {
+		t.Fatalf("版本变化应拒绝会话续跑: %q", capR.captured.ResumeSession)
+	}
+}

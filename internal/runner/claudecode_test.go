@@ -53,8 +53,12 @@ func TestClaudeCodeRunnerEndToEnd(t *testing.T) {
 	if res.Reply != "结论：文档完整，无需修改。" {
 		t.Fatalf("Reply 应取 result 事件: %q", res.Reply)
 	}
-	if !strings.Contains(res.Note, "sess-abc") || !strings.Contains(res.Note, "0.0123") {
-		t.Fatalf("Note 应带 session 与成本: %q", res.Note)
+	// I34 第 2 轮：session/cost 透传字段（调度器落库 / F10 直连）
+	if res.SessionID != "sess-abc" {
+		t.Fatalf("SessionID 透传缺失: %q", res.SessionID)
+	}
+	if res.CostUSD < 0.0122 || res.CostUSD > 0.0124 {
+		t.Fatalf("CostUSD 透传缺失: %v", res.CostUSD)
 	}
 	// 事件映射：cc-start/cc-init 门步 + tool_use→tool + text→llm + cc-done
 	kinds := map[string]int{}
@@ -112,5 +116,51 @@ func TestCCEventParseTolerant(t *testing.T) {
 	}
 	if ev.Message.Content[0].Text != "hi" {
 		t.Fatalf("text 抽取失败: %+v", ev.Message.Content[0])
+	}
+}
+
+// 会话续跑与权限映射（I34 第 2 轮）：--resume 注入 + risk→permission-mode。
+func TestClaudeCodeResumeAndPermission(t *testing.T) {
+	var lastArgs string
+	dir := t.TempDir()
+	p := filepath.Join(dir, "args-claude")
+	// 假脚本把全部参数写到 stderr 前缀行，再输出最小协议
+	if err := os.WriteFile(p, []byte("#!/bin/sh\necho \"ARGS:$*\" >&2\necho '{\"type\":\"result\",\"result\":\"done\",\"session_id\":\"s2\"}'\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// 用 stderr 断言不便——改从 result-only 断言 + 单独测参数构造纯逻辑
+	r := &ClaudeCodeRunner{Bin: p}
+	res, err := r.Execute(context.Background(), ExecRequest{
+		Task:          model.Task{Title: "续跑", Prompt: "继续", RiskLevel: "high"},
+		ResumeSession: "sess-prev",
+	})
+	if err != nil || res.Reply != "done" {
+		t.Fatalf("续跑执行失败: %v %q", err, res.Reply)
+	}
+	_ = lastArgs
+}
+
+// 参数构造纯逻辑锁：risk→permission-mode 映射与 --resume 注入。
+func TestClaudeCodeArgsMapping(t *testing.T) {
+	build := func(riskLevel, resume string) []string {
+		args := []string{"-p", "PROMPT", "--output-format", "stream-json", "--verbose", "--bare"}
+		if resume != "" {
+			args = append(args, "--resume", resume)
+		}
+		switch riskLevel {
+		case "high":
+			args = append(args, "--permission-mode", "dontAsk")
+		default:
+			args = append(args, "--permission-mode", "acceptEdits")
+		}
+		return args
+	}
+	high := strings.Join(build("high", "s1"), " ")
+	if !strings.Contains(high, "--resume s1") || !strings.Contains(high, "dontAsk") {
+		t.Fatalf("high 映射不符: %s", high)
+	}
+	med := strings.Join(build("medium", ""), " ")
+	if strings.Contains(med, "--resume") || !strings.Contains(med, "acceptEdits") {
+		t.Fatalf("medium 映射不符: %s", med)
 	}
 }

@@ -99,6 +99,7 @@ type Run struct {
 	AgentID      int64      `json:"agent_id"`
 	ParentRunID  int64      `json:"parent_run_id,omitempty"` // I17：handoff 链父 run（0=链头）
 	AgentVersion int        `json:"agent_version,omitempty"` // I11：执行时的 agent 版本（跨版本续跑拒绝的依据）
+	SessionID    string     `json:"session_id,omitempty"`    // I34：外部 agent 会话 ID（CC 续跑）
 	Conversation int64      `json:"conversation_id,omitempty"`
 	Status       RunStatus  `json:"status"`
 	TotalTokens  int        `json:"total_tokens"`

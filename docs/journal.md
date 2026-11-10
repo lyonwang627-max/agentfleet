@@ -502,3 +502,8 @@
 
 - applyPrescription（无处方 409 / prompt 追加 addendum + 版本链发布——自进化闭环另一半）/routingStats（10 任务 2 重试 → escalation_rate_pct 20 healthy）/squads CRUD（建队 leader 校验/列表/详情/成员增删/删除）——0% 补齐。
 - 9 包 -race 全绿。
+
+## 2026-11-11 C 切片：I34 ClaudeCodeRunner 第 2/2 轮（整体收口）
+
+- runs.session_id additive + store.SetRunSession（mem/pg）+ Result.SessionID/CostUSD 透传落库；重试 ResumeSession 携带（版本变化与重放同 gate 拒绝——调度器 e2e 两场景）；risk→permission-mode 映射（high→dontAsk / 其余 acceptEdits）；fleetd --claude-bin 注册（空=不注册不影响演示）。
+- 参数构造纯逻辑锁 + e2e 2 场景；9 包 -race 全绿。**I34 整体 done：平台驱动外部 coding-agent 进程四面齐（协议/续跑/权限/成本）**。

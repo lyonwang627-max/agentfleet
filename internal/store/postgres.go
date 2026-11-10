@@ -396,7 +396,7 @@ func (p *PostgresStore) GetRun(ctx context.Context, id int64) (*model.Run, error
 	err := p.pool.QueryRow(ctx,
 		`SELECT id, task_id, agent_id, COALESCE(conversation_id,0), status, total_tokens, cost_usd, error, started_at, finished_at, COALESCE(parent_run_id,0)
 		 FROM runs WHERE id=$1`, id,
-	).Scan(&r.ID, &r.TaskID, &r.AgentID, &r.Conversation, &r.Status, &r.TotalTokens, &r.CostUSD, &r.Error, &r.StartedAt, &fin, &r.ParentRunID, &r.AgentVersion)
+	).Scan(&r.ID, &r.TaskID, &r.AgentID, &r.Conversation, &r.Status, &r.TotalTokens, &r.CostUSD, &r.Error, &r.StartedAt, &fin, &r.ParentRunID, &r.AgentVersion, &r.SessionID)
 	if err == pgx.ErrNoRows {
 		return nil, fmt.Errorf("run %d: %w", id, ErrNotFound)
 	}
@@ -421,7 +421,7 @@ func (p *PostgresStore) ListRuns(ctx context.Context, taskID int64) ([]model.Run
 		r := model.Run{}
 		var fin *time.Time
 		if err := rows.Scan(&r.ID, &r.TaskID, &r.AgentID, &r.Conversation, &r.Status,
-			&r.TotalTokens, &r.CostUSD, &r.Error, &r.StartedAt, &fin, &r.ParentRunID, &r.AgentVersion); err != nil {
+			&r.TotalTokens, &r.CostUSD, &r.Error, &r.StartedAt, &fin, &r.ParentRunID, &r.AgentVersion, &r.SessionID); err != nil {
 			return nil, err
 		}
 		r.FinishedAt = fin
@@ -729,4 +729,10 @@ func (p *PostgresStore) EventsSince(ctx context.Context, since int64, limit int)
 		out = append(out, e)
 	}
 	return out, rows.Err()
+}
+
+// SetRunSession 外部 agent 会话 ID 落库（I34：CC --resume 续跑依据）。
+func (p *PostgresStore) SetRunSession(ctx context.Context, runID int64, sessionID string) error {
+	_, err := p.pool.Exec(ctx, `UPDATE runs SET session_id=$2 WHERE id=$1`, runID, sessionID)
+	return err
 }

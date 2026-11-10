@@ -40,6 +40,9 @@ type ExecRequest struct {
 	// 确定性 tool 步结果——命中（ref+args 相同）则直接返回已记录观察，不重复调用 MCP
 	// （Temporal 结果重放语义）。replay 端点清零重试后不带此通道（完全重跑）。
 	ReplayTools []ReplayTool
+	// ResumeSession 外部 agent 会话续跑（I34，调度器注入）：重试时携带上一次 run 的
+	// session_id——CC 侧 --resume 接续对话记忆（与 I11 步级重放互补；版本变化时同时拒绝）。
+	ResumeSession string
 }
 
 // ReplayTool 已记录的确定性工具调用观察。
@@ -59,6 +62,8 @@ type Result struct {
 	NeedsApproval bool            // true = 任务进入人工审批门（task.status=review）
 	RiskLevel     string          // I29: low|medium|high（空=按 NeedsApproval 推导 medium）
 	Artifacts     []ArtifactDraft // 结构化产物（报告/补丁等，落 artifacts 表）
+	SessionID     string          // I34：外部 agent 会话 ID（CC session 续跑）
+	CostUSD       float64         // I34：外部进程自报成本（F10 直连）
 }
 
 // RiskLevels 审批风险三级（I29）与策略的映射。

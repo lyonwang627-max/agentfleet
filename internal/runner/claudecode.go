@@ -62,8 +62,19 @@ func (r *ClaudeCodeRunner) Execute(ctx context.Context, req ExecRequest) (Result
 
 	cctx, cancel := context.WithTimeout(ctx, ccDefaultTimeout)
 	defer cancel()
-	cmd := exec.CommandContext(cctx, r.bin(), "-p", req.Task.Prompt,
-		"--output-format", "stream-json", "--verbose", "--bare")
+	args := []string{"-p", req.Task.Prompt, "--output-format", "stream-json", "--verbose", "--bare"}
+	// I34 会话续跑：重试时携带上一次 session_id（--resume 接续对话记忆）
+	if req.ResumeSession != "" {
+		args = append(args, "--resume", req.ResumeSession)
+	}
+	// I29 风险分级 → CC 权限档位：high 无人值守锁死（需提示的操作一律拒绝），其余 acceptEdits
+	switch req.Task.RiskLevel {
+	case "high":
+		args = append(args, "--permission-mode", "dontAsk")
+	default:
+		args = append(args, "--permission-mode", "acceptEdits")
+	}
+	cmd := exec.CommandContext(cctx, r.bin(), args...)
 	// I34 教训对齐：SIGTERM=143 丢 turn——取消走 SIGINT（CC 文档建议的优雅中断信号）
 	cmd.Cancel = func() error { return cmd.Process.Signal(os.Interrupt) }
 	if req.Workspace != nil && req.Workspace.RootPath != "" {
@@ -129,8 +140,8 @@ func (r *ClaudeCodeRunner) Execute(ctx context.Context, req ExecRequest) (Result
 		return Result{}, fmt.Errorf("claude-code: %w", waitErr)
 	}
 
-	note := fmt.Sprintf("session=%s cost=$%.4f", sessionID, costUSD)
 	emit(model.StepGate, "cc-done", nil,
 		map[string]any{"session_id": sessionID, "cost_usd": costUSD}, latency, 0)
-	return Result{Reply: strings.TrimSpace(reply.String()), Note: note}, nil
+	return Result{Reply: strings.TrimSpace(reply.String()),
+		SessionID: sessionID, CostUSD: costUSD}, nil
 }

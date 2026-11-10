@@ -306,6 +306,7 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 	// 命中则不重复调用 MCP（Temporal 结果重放语义）；replay 端点清零重试 → 不带（完全重跑）。
 	// 跨版本拒绝：agent 配置版本在上次 run 之后发生变化 → 旧观察不可信，拒绝重放并提示重新评估。
 	var replayTools []runner.ReplayTool
+	var replayResume string
 	if task.RetryCount > 0 {
 		if runs, _ := s.store.ListRuns(ctx, task.ID); len(runs) > 0 {
 			last := runs[0]
@@ -325,6 +326,9 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 					"hint": "agent 配置已变更，重放观察不可信——本次完全重跑，请重新评估结果"})
 				log.Printf("[scheduler] task#%d 重放拒绝：run#%d 版本 v%d ≠ 当前 v%d（完全重跑）",
 					task.ID, last.ID, last.AgentVersion, curVersion)
+			} else if last.SessionID != "" {
+				// I34 会话级续跑：版本一致时携带 CC session（与步级重放互补；变化时一并拒绝）
+				replayResume = last.SessionID
 			} else if steps, _ := s.store.ListSteps(ctx, last.ID); len(steps) > 0 {
 				for _, st := range steps {
 					if st.Deterministic && st.Name != "" && st.Output != nil {
@@ -412,10 +416,14 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 		_ = s.store.UpdateTask(context.Background(), task.ID, store.TaskPatch{SteerNote: &empty})
 		return note
 	}
-	res, execErr := rn.Execute(ctx, runner.ExecRequest{Agent: *agent, Task: execTask, Recorder: recorder, ReplayTools: replayTools,
+	res, execErr := rn.Execute(ctx, runner.ExecRequest{Agent: *agent, Task: execTask, Recorder: recorder, ReplayTools: replayTools, ResumeSession: replayResume,
 		Workspace: ws, Skills: skills, ModelOverride: routedModel,
 		CancelCheck: cancelCheck, SteerDrain: steerDrain})
 
+	// I34：外部 agent 会话 ID 与自报成本落库（session 续跑依据 / F10 直连）
+	if res.SessionID != "" {
+		_ = s.store.SetRunSession(ctx, runID, res.SessionID)
+	}
 	// 结构化产物落库（artifacts：报告/补丁/执行记录）
 	for _, d := range res.Artifacts {
 		_, _ = s.store.SaveArtifact(ctx, &model.Artifact{TaskID: task.ID, RunID: runID,

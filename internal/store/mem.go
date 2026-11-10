@@ -642,3 +642,15 @@ func (m *MemStore) EventsSince(_ context.Context, since int64, limit int) ([]mod
 	}
 	return out, nil
 }
+
+// SetRunSession 外部 agent 会话 ID 落库（I34：CC --resume 续跑依据）。
+func (m *MemStore) SetRunSession(_ context.Context, runID int64, sessionID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	r, ok := m.runs[runID]
+	if !ok {
+		return fmt.Errorf("run %d: %w", runID, ErrNotFound)
+	}
+	r.SessionID = sessionID
+	return nil
+}
