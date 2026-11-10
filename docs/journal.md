@@ -519,3 +519,8 @@
 - coolingState（失败计数+冷却到期，自带锁——WithModel 值拷贝共享指针；修一个「锁拷贝」vet 报警：mu 不能随值拷贝，锁必须随状态指针走）；native/ChatRaw 错误→recordFailure（3 连败→冷却 60s）/成功→recordSuccess。
 - SelectFor S 档冷却过滤回退 M 档；route 步 input.cooling_models 观测留痕。
 - 单测 2 组（生命周期/SelectFor 命中→回退）；9 包 -race 全绿。S 档模型 429 不再反复撞。
+
+## 2026-11-11 A 切片：CRUD 尾巴端点回归锁（api 包 0% 清零冲刺）
+
+- listAgents（items/total）/workspaces 三件（list/get/patch branch+note 生效）/listAuthKeys/listAutomations/squad 成员移除（200+removed 标 / 404）——api 包 handler 面 0% 基本清零（仅剩 SetRateLimit 等 env 路径）。
+- 9 包 -race 全绿。
