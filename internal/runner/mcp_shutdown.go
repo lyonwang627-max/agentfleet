@@ -5,7 +5,9 @@ func ShutdownMCP() {
 	mcpMu.Lock()
 	defer mcpMu.Unlock()
 	for name, c := range mcpServers {
-		c.Close()
+		if c != nil {
+			c.Close()
+		}
 		delete(mcpServers, name)
 	}
 }

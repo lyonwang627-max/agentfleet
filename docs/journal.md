@@ -540,3 +540,9 @@
 - Dispatcher：轮询 EventsSince 增量拉取（重启从最新 seq 起——at-most-once 防重启风暴）+ 指数退避重试（1s/2s/4s/8s 上限 30s、5 次耗尽放弃）+ last_status/last_delivery_at 观测落库 + fleetd 接线（无订阅空转零成本）。
 - **抓到两个并发真 bug**：①scanOnce 持 d.mu 调 dispatch（内部再取锁）Mutex 不可重入死锁——锁纪律改「状态读写持锁、网络 IO 绝不持锁」；②重试到期项移出队列后 dispatch 重建条目 attempt 重置——退避永不耗尽，改 attempt 随调用透传只增不减。
 - 单测 3 组（scanOnce 直驱 + 时钟快进）；webhook 包转正 **10 包 -race 全绿**。I7 整体 done。
+
+## 2026-11-11 A 切片：runner 注册表与杂项直测 + 抓到 nil client 双 panic
+
+- Register 覆盖语义/Get 未注册报错/Names 清单（claude-code 与 eino 测试的全局注册表依赖首次锁定）；strictJSON 四分支（噪声包裹抽取/无对象/不完整/嵌套）；ToolGateError.Error/ListMCPServers 观测面/ShutdownMCP 幂等/mock 入口取消回归。
+- **抓到 nil client 双 panic**：ListMCPServers 与 ShutdownMCP 对 nil client（SetMCPServer 合法输入态）直接解引用——同款防御缺口两处，均已修（降级 error 项/跳过 Close）。
+- 10 包 -race 全绿。

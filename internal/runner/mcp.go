@@ -134,6 +134,11 @@ func ListMCPServers() []map[string]any {
 	defer mcpMu.RUnlock()
 	out := make([]map[string]any, 0, len(mcpServers))
 	for name, c := range mcpServers {
+		if c == nil {
+			// nil client（SetMCPServer 合法输入态）：降级为 error 项而非 panic
+			out = append(out, map[string]any{"name": name, "error": "client 未初始化"})
+			continue
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		tools, err := c.ListTools(ctx)
 		cancel()
