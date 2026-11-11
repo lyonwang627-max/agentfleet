@@ -529,3 +529,8 @@
 
 - internal/webhook 包：Matches 通配过滤 / Sign HMAC-SHA256 / Deliver 三签名头投递（X-Fleet-Signature/Event/Timestamp）；webhooks 表（mem/pg）+ CRUD API（secret 明文仅创建响应，对齐 API Key 惯例）。
 - 单测 4 组：签名确定性与接收方重算 / 事件过滤静默跳过 / 5xx 报错 / CRUD 全生命周期。9 包 -race 全绿。第 2 轮：fleetd dispatcher + 重试退避。
+
+## 2026-11-11 B 调研：OpenAI Agents SDK 五原语（docs/research/openai-agents-sdk-primitives.md）
+
+- 五原语对读：Handoff=工具化交接 + input_filter 历史过滤（**remove_all_tools 盲区与我们的指令剥离踩坑完全同构——业界同款坑互证**）/ is_enabled 动态启停但文档警告不能用于授权（与我们授权原则一致）；Guardrail 并行 fail fast vs F16 串行旁路（粒度一致、执行模型各自成立）；Session 三层记忆（工作/会话/归档——SDK 只做中间层）；Tracing processor 可插拔 ↔ I17 sink。
+- 明确不抄：Responses API 绑定/托管 trace/as_tool 替代形态。
