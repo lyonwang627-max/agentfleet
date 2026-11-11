@@ -22,7 +22,7 @@ func (p *PostgresStore) CreateWebhook(ctx context.Context, w *model.Webhook) (in
 
 func (p *PostgresStore) ListWebhooks(ctx context.Context) ([]model.Webhook, error) {
 	rows, err := p.pool.Query(ctx,
-		`SELECT id, name, url, secret, COALESCE(events,'["*"]'::jsonb), active, created_at FROM webhooks ORDER BY id`)
+		`SELECT id, name, url, secret, COALESCE(events,'["*"]'::jsonb), active, created_at, COALESCE(last_status,''), last_delivery_at FROM webhooks ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
@@ -31,13 +31,20 @@ func (p *PostgresStore) ListWebhooks(ctx context.Context) ([]model.Webhook, erro
 	for rows.Next() {
 		w := model.Webhook{}
 		var events []byte
-		if err := rows.Scan(&w.ID, &w.Name, &w.URL, &w.Secret, &events, &w.Active, &w.CreatedAt); err != nil {
+		if err := rows.Scan(&w.ID, &w.Name, &w.URL, &w.Secret, &events, &w.Active, &w.CreatedAt, &w.LastStatus, &w.LastDeliveryAt); err != nil {
 			return nil, err
 		}
 		unjsonb(events, &w.Events)
 		out = append(out, w)
 	}
 	return out, rows.Err()
+}
+
+// SetWebhookStatus 投递观测落库（I7 第 2 轮）。
+func (p *PostgresStore) SetWebhookStatus(ctx context.Context, id int64, status string) error {
+	_, err := p.pool.Exec(ctx,
+		`UPDATE webhooks SET last_status=$2, last_delivery_at=now() WHERE id=$1`, id, status)
+	return err
 }
 
 func (p *PostgresStore) DeleteWebhook(ctx context.Context, id int64) error {

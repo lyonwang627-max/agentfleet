@@ -44,6 +44,7 @@ type Store interface {
 	CreateWebhook(ctx context.Context, w *model.Webhook) (int64, error)     // I7：出站订阅 CRUD
 	ListWebhooks(ctx context.Context) ([]model.Webhook, error)
 	DeleteWebhook(ctx context.Context, id int64) error
+	SetWebhookStatus(ctx context.Context, id int64, status string) error // I7：投递观测
 	GetRun(ctx context.Context, id int64) (*model.Run, error)
 	ListRuns(ctx context.Context, taskID int64) ([]model.Run, error)
 	AppendStep(ctx context.Context, runID int64, s *model.RunStep) (int64, error)

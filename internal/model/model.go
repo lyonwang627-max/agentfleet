@@ -324,7 +324,10 @@ type Webhook struct {
 	Secret    string    `json:"secret,omitempty"` // HMAC 密钥（明文仅创建响应返回）
 	Events    []string  `json:"events"`           // 订阅事件 kinds；"*"=全部
 	Active    bool      `json:"active"`
-	CreatedAt time.Time `json:"created_at"`
+	// I7 第 2 轮：投递观测
+	LastStatus     string     `json:"last_status,omitempty"` // ok | http 500 | 投递失败: ...（尾部截断）
+	LastDeliveryAt *time.Time `json:"last_delivery_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
 }
 
 // SSE 事件

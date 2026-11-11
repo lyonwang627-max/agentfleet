@@ -688,6 +688,20 @@ func (m *MemStore) ListWebhooks(_ context.Context) ([]model.Webhook, error) {
 	return out, nil
 }
 
+// SetWebhookStatus 投递观测落库（I7 第 2 轮：last_status/last_delivery_at）。
+func (m *MemStore) SetWebhookStatus(_ context.Context, id int64, status string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	w, ok := m.webhooks[id]
+	if !ok {
+		return fmt.Errorf("webhook %d: %w", id, ErrNotFound)
+	}
+	now := time.Now()
+	w.LastStatus = status
+	w.LastDeliveryAt = &now
+	return nil
+}
+
 func (m *MemStore) DeleteWebhook(_ context.Context, id int64) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

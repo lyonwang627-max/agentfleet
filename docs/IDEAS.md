@@ -19,13 +19,18 @@
 - [x] **I5 OpenAPI 规范固化** `done`（2026-11-07 落在 offer-agent——FastAPI 自动生成 OpenAPI 可导出固化+CI 漂移校验；agentfleet 为 Go 标准库 mux 无自动 OpenAPI，契约=手写 api-contract.md 天然固化，无需此机制）
 - [x] **I6 chat 多轮上下文压缩** `done`（2026-11-10）
   实现：chatHistoryTranscript 纯函数（阈值 20 条/保留 12 条全文；较早消息确定性折叠为 40 rune 单行摘要，非模型摘要——同 F11 Spill 原则）；**三处接线**：sync/stream chat 补上多轮历史上下文（此前每轮只发当前消息，模型无记忆——比动机描述的「全量塞给模型」更根本的缺陷）+ 群聊 buildRoomPrompt 从全量无界改为有界时间线（roomKeepRecent=16）。单测 6 组：未压缩不误伤/压缩结构与折叠数/长度有界（60000→<6000 rune）/空输入/sync+stream 多轮记忆实弹（mock 回显）/room 压缩。验收达成：>20 轮仍可续聊且 prompt 有界。
-- [ ] **I7 事件订阅出站 Webhook** `in-progress`（1/2 投递核心完成 2026-11-11，M 之 1/2）
+- [x] **I7 事件订阅出站 Webhook** `done`（2026-11-11，1/2 投递核心 + 2/2 dispatcher 收口，M 之 1/2+2/2）
   动机：FDE 集成叙事——任务 done/failed 时回调客户系统 URL（带签名重试），对接企业现有告警/工单。
   验收：workspace 级 webhook 配置 + HMAC 签名 + 失败重试退避；契约新增。
   第 1 轮：internal/webhook 包（Matches 通配过滤 / Sign HMAC-SHA256 / Deliver 签名头投递——
   X-Fleet-Signature/Event/Timestamp 三头）+ webhooks 表（mem/pg）+ CRUD API（secret 明文仅创建响应，
   对齐 API Key 惯例）。单测 4 组（签名确定性与接收方重算/事件过滤静默/5xx 报错/CRUD）。
-  剩余（第 2 轮）：fleetd dispatcher goroutine（Hub 订阅→并发投递）+ 失败重试退避（last_status/last_at 落库 + 指数退避）。
+  第 2 轮：Dispatcher（轮询 EventsSince 增量拉取，重启从最新 seq 起——at-most-once 防重启风暴；
+指数退避 1s/2s/4s/8s 上限 30s、attempt≤5 耗尽放弃；last_status/last_delivery_at 观测落库）+
+fleetd 接线（go dispatcher.Run，无订阅空转零成本）。**抓到两个并发真 bug**：①scanOnce 持 d.mu 调
+dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.mu 只护状态读写，网络 IO 绝不持锁」；
+②重试到期项移出队列后 dispatch 重建条目 attempt 重置——退避永不耗尽，改 attempt 随调用透传只增不减。
+单测 3 组（增量投递不重复/退避恢复 last_status=ok/耗尽放弃 http 500 留痕），webhook 包转正 10 包全绿。I7 整体 done。
 - [ ] **I8 Runner 工具池统一** `proposed` `M`
   动机：mock 的 text_search 与 MCP 工具是两套注册路径；统一成 ToolProvider 接口后 llm runner 的多轮循环可无缝换工具源。
   验收：接口定义 + 两实现迁移 + 现有测试全绿。

@@ -534,3 +534,9 @@
 
 - 五原语对读：Handoff=工具化交接 + input_filter 历史过滤（**remove_all_tools 盲区与我们的指令剥离踩坑完全同构——业界同款坑互证**）/ is_enabled 动态启停但文档警告不能用于授权（与我们授权原则一致）；Guardrail 并行 fail fast vs F16 串行旁路（粒度一致、执行模型各自成立）；Session 三层记忆（工作/会话/归档——SDK 只做中间层）；Tracing processor 可插拔 ↔ I17 sink。
 - 明确不抄：Responses API 绑定/托管 trace/as_tool 替代形态。
+
+## 2026-11-11 C 切片：I7 出站 Webhook 第 2/2 轮（整体收口）
+
+- Dispatcher：轮询 EventsSince 增量拉取（重启从最新 seq 起——at-most-once 防重启风暴）+ 指数退避重试（1s/2s/4s/8s 上限 30s、5 次耗尽放弃）+ last_status/last_delivery_at 观测落库 + fleetd 接线（无订阅空转零成本）。
+- **抓到两个并发真 bug**：①scanOnce 持 d.mu 调 dispatch（内部再取锁）Mutex 不可重入死锁——锁纪律改「状态读写持锁、网络 IO 绝不持锁」；②重试到期项移出队列后 dispatch 重建条目 attempt 重置——退避永不耗尽，改 attempt 随调用透传只增不减。
+- 单测 3 组（scanOnce 直驱 + 时钟快进）；webhook 包转正 **10 包 -race 全绿**。I7 整体 done。
