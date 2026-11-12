@@ -589,3 +589,7 @@
 ## 2026-11-13 C 切片：webhook 第 3 轮幂等头（I7 完全收口）
 
 - DeliveryID = HMAC(secret, hookID:eventSeq:kind)——重试链内稳定，X-Fleet-Delivery 头透传；接收方按 ID 去重（at-least-once 重复投递防线，对齐 Kafka offset 惯例）。单测透传断言补齐；10 包 -race 全绿。I7 完全收口（Kafka 调研收尾项）。
+
+## 2026-11-13 A 切片：幂等头核心语义锁 + hasLabelLocal 补测
+
+- TestDeliveryIdStableAcrossRetries：重试链（首投+2 次重试）X-Fleet-Delivery 全程稳定——幂等头的核心承诺（接收方按 ID 去重）从「透传正确」升级为「语义锁死」。hasLabelLocal 三分支补测。10 包 -race 全绿。

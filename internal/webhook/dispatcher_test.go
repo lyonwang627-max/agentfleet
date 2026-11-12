@@ -142,3 +142,53 @@ func TestDispatcherRetryExhausted(t *testing.T) {
 		t.Fatalf("观测状态应记录失败: %q", hooks[0].LastStatus)
 	}
 }
+
+// 幂等头核心语义（I7 第 3 轮）：重试链内 X-Fleet-Delivery 稳定——接收方按 ID 去重的依据。
+func TestDeliveryIdStableAcrossRetries(t *testing.T) {
+	var mu sync.Mutex
+	seenDeliveries := []string{}
+	failUntil := 2
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		seenDeliveries = append(seenDeliveries, r.Header.Get("X-Fleet-Delivery"))
+		n := len(seenDeliveries)
+		mu.Unlock()
+		if n <= failUntil {
+			w.WriteHeader(http.StatusInternalServerError) // 前两次失败逼出重试
+		}
+	}))
+	defer srv.Close()
+
+	st := store.NewMemStore()
+	ctx := context.Background()
+	hook := &model.Webhook{Name: "idem", URL: srv.URL, Secret: "s", Events: []string{"*"}, Active: true}
+	st.CreateWebhook(ctx, hook)
+	_, _ = st.AppendEvent(ctx, &model.Event{Kind: "task.done"})
+
+	d := NewDispatcher(st)
+	orig := timeNow
+	cur := timeNow()
+	timeNow = func() time.Time { return cur }
+	defer func() { timeNow = orig }()
+	for i := 0; i < 20; i++ {
+		cur = cur.Add(time.Second)
+		d.scanOnce(ctx)
+		mu.Lock()
+		n := len(seenDeliveries)
+		mu.Unlock()
+		if n >= 3 {
+			break
+		}
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(seenDeliveries) < 3 {
+		t.Fatalf("重试链未收敛: %v", seenDeliveries)
+	}
+	// 全部投递（首投+重试）共享同一 delivery ID
+	for i, dv := range seenDeliveries {
+		if dv != seenDeliveries[0] || dv == "" {
+			t.Fatalf("第 %d 次投递 ID 不稳定: %q vs %q", i+1, dv, seenDeliveries[0])
+		}
+	}
+}

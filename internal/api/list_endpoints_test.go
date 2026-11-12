@@ -97,3 +97,17 @@ func TestRemainingListEndpoints(t *testing.T) {
 		t.Fatalf("removed 标缺失: %v", resp)
 	}
 }
+
+// hasLabelLocal 纯函数三分支（标签过滤底层）。
+func TestHasLabelLocal(t *testing.T) {
+	labels := []string{"sev1", "ops"}
+	if !hasLabelLocal(labels, "sev1") {
+		t.Fatal("含标签应 true")
+	}
+	if hasLabelLocal(labels, "missing") {
+		t.Fatal("不含应 false")
+	}
+	if hasLabelLocal(nil, "sev1") {
+		t.Fatal("空列表应 false")
+	}
+}
