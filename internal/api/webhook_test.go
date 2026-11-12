@@ -42,20 +42,21 @@ func TestWebhookSignDeterministic(t *testing.T) {
 func TestWebhookDeliverFiltered(t *testing.T) {
 	var mu sync.Mutex
 	var gotBody []byte
-	var gotSig, gotEvent string
+	var gotSig, gotEvent, gotDelivery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
 		gotBody, _ = io.ReadAll(r.Body)
 		gotSig = r.Header.Get("X-Fleet-Signature")
 		gotEvent = r.Header.Get("X-Fleet-Event")
+		gotDelivery = r.Header.Get("X-Fleet-Delivery")
 	}))
 	defer srv.Close()
 	ctx := context.Background()
 	hook := &model.Webhook{Name: "n", URL: srv.URL, Secret: "sec", Events: []string{"task.update"}, Active: true}
 
 	// 未订阅事件 → 静默跳过（不请求）
-	if err := webhook.Deliver(ctx, srv.Client(), hook, model.Event{Kind: "agent.update", Seq: 1}); err != nil {
+	if err := webhook.Deliver(ctx, srv.Client(), hook, model.Event{Kind: "agent.update", Seq: 1}, "d1"); err != nil {
 		t.Fatal(err)
 	}
 	mu.Lock()
@@ -66,13 +67,17 @@ func TestWebhookDeliverFiltered(t *testing.T) {
 
 	// 订阅事件 → 投递 + 签名头
 	if err := webhook.Deliver(ctx, srv.Client(), hook, model.Event{Kind: "task.update", Seq: 2,
-		Data: map[string]any{"task_id": 9}}); err != nil {
+		Data: map[string]any{"task_id": 9}}, "d2"); err != nil {
 		t.Fatal(err)
 	}
 	mu.Lock()
 	defer mu.Unlock()
 	if gotEvent != "task.update" || !strings.Contains(string(gotBody), `"task_id":9`) {
 		t.Fatalf("投递内容不符: %s %s", gotEvent, gotBody)
+	}
+	// 幂等头（I7 第 3 轮）：接收方按 ID 去重的依据——重试链内稳定
+	if gotDelivery != "d2" {
+		t.Fatalf("X-Fleet-Delivery 透传不符: %q", gotDelivery)
 	}
 	// 接收方重算签名
 	mac := hmac.New(sha256.New, []byte("sec"))
@@ -89,7 +94,7 @@ func TestWebhookDeliveryFailureStatus(t *testing.T) {
 	}))
 	defer srv.Close()
 	hook := &model.Webhook{URL: srv.URL, Secret: "s", Events: []string{"*"}, Active: true}
-	err := webhook.Deliver(context.Background(), srv.Client(), hook, model.Event{Kind: "task.update"})
+	err := webhook.Deliver(context.Background(), srv.Client(), hook, model.Event{Kind: "task.update"}, "d3")
 	if err == nil || !strings.Contains(err.Error(), "http 500") {
 		t.Fatalf("5xx 应报错: %v", err)
 	}

@@ -19,7 +19,7 @@
 - [x] **I5 OpenAPI 规范固化** `done`（2026-11-07 落在 offer-agent——FastAPI 自动生成 OpenAPI 可导出固化+CI 漂移校验；agentfleet 为 Go 标准库 mux 无自动 OpenAPI，契约=手写 api-contract.md 天然固化，无需此机制）
 - [x] **I6 chat 多轮上下文压缩** `done`（2026-11-10）
   实现：chatHistoryTranscript 纯函数（阈值 20 条/保留 12 条全文；较早消息确定性折叠为 40 rune 单行摘要，非模型摘要——同 F11 Spill 原则）；**三处接线**：sync/stream chat 补上多轮历史上下文（此前每轮只发当前消息，模型无记忆——比动机描述的「全量塞给模型」更根本的缺陷）+ 群聊 buildRoomPrompt 从全量无界改为有界时间线（roomKeepRecent=16）。单测 6 组：未压缩不误伤/压缩结构与折叠数/长度有界（60000→<6000 rune）/空输入/sync+stream 多轮记忆实弹（mock 回显）/room 压缩。验收达成：>20 轮仍可续聊且 prompt 有界。
-- [x] **I7 事件订阅出站 Webhook** `done`（2026-11-11，1/2 投递核心 + 2/2 dispatcher 收口，M 之 1/2+2/2）
+- [x] **I7 事件订阅出站 Webhook** `done`（2026-11-11 + 第 3 轮幂等头 2026-11-13，1/2+2/2+3/3）
   动机：FDE 集成叙事——任务 done/failed 时回调客户系统 URL（带签名重试），对接企业现有告警/工单。
   验收：workspace 级 webhook 配置 + HMAC 签名 + 失败重试退避；契约新增。
   第 1 轮：internal/webhook 包（Matches 通配过滤 / Sign HMAC-SHA256 / Deliver 签名头投递——

@@ -585,3 +585,7 @@
 - **与 SKIP LOCKED 对读定夺**：行级租约+争抢对无顺序需求/短时任务/故障即重试的场景是更简正确姿势——多实例扩展无需 rebalance 协议，F13-b 只需 LISTEN/NOTIFY 唤醒（协议级证据关闭「要不要学 Kafka 分区分配」）。
 - webhook 语义对读：dispatcher at-most-once + 重试队列 at-least-once——接收方幂等是共同要求（LiteLLM 调研结论互证）；第 3 轮可加 delivery_id 幂等头。
 - 明确不抄：引入 Kafka 本身/rebalance 协议/KIP-848。
+
+## 2026-11-13 C 切片：webhook 第 3 轮幂等头（I7 完全收口）
+
+- DeliveryID = HMAC(secret, hookID:eventSeq:kind)——重试链内稳定，X-Fleet-Delivery 头透传；接收方按 ID 去重（at-least-once 重复投递防线，对齐 Kafka offset 惯例）。单测透传断言补齐；10 包 -race 全绿。I7 完全收口（Kafka 调研收尾项）。

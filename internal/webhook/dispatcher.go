@@ -129,7 +129,7 @@ func (d *Dispatcher) scanOnce(ctx context.Context) {
 // dispatch 单次投递 + 状态落库 + 失败入重试队列（自身管理锁，不可在持锁区调用）。
 // prevAttempt：首投 0，重试传条目累计值——attempt 只增不减。
 func (d *Dispatcher) dispatch(ctx context.Context, h *model.Webhook, ev model.Event, prevAttempt int) {
-	err := Deliver(ctx, d.Client, h, ev)
+	err := Deliver(ctx, d.Client, h, ev, DeliveryID(h, ev))
 	status := "ok"
 	if err != nil {
 		status = fmt.Sprintf("%.80v", err)
