@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"log"
 	"strings"
 	"sync"
@@ -298,6 +299,22 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 			}
 		}
 		execPrompt += sb.String()
+	}
+	// I38 灰度：ramp_pct>0 时按 taskID 分桶——ramping 桶用灰度版本快照覆盖 agent 副本
+	if agent.RampPct > 0 && agent.RampingVersion > 0 {
+		curV := 0
+		if vers, _ := s.store.ListAgentVersions(ctx, agent.ID); len(vers) > 0 {
+			for _, av := range vers {
+				if av.Version > curV {
+					curV = av.Version
+				}
+			}
+		}
+		if v := routeVersion(task.ID, curV, agent.RampingVersion, agent.RampPct); v == agent.RampingVersion {
+			if snap, err := s.store.GetAgentVersion(ctx, agent.ID, v); err == nil {
+				applyVersionSnapshot(agent, snap.Config)
+			}
+		}
 	}
 	execTask := task
 	execTask.Prompt = renderTemplate(execPrompt, &task, ws, agent.Name)
@@ -623,6 +640,30 @@ func (s *Scheduler) emit(ctx context.Context, kind string, data map[string]any) 
 	if s.events != nil {
 		s.events.Publish(ctx, kind, data)
 	}
+}
+
+// applyVersionSnapshot 灰度版本快照覆盖 agent 执行副本（I38：system_prompt/model）。
+func applyVersionSnapshot(a *model.Agent, cfg map[string]any) {
+	if v, ok := cfg["system_prompt"].(string); ok {
+		a.SystemPrompt = v
+	}
+	if v, ok := cfg["model"].(string); ok && v != "" {
+		a.Model = v
+	}
+}
+
+// routeVersion I38 灰度分桶：taskID 确定性映射（fnv32）→ [0,100) 与 rampPct 比较——
+// 同任务判定恒一致（Temporal Ramping 同语义）；rampPct<=0 或 rampingVersion<=0 → current。
+func routeVersion(taskID int64, currentVersion, rampingVersion, rampPct int) int {
+	if rampingVersion <= 0 || rampPct <= 0 {
+		return currentVersion
+	}
+	h := fnv.New32a()
+	fmt.Fprintf(h, "%d:%d", taskID, rampingVersion) // 掺 rampingVersion：同任务不同灰度轮分桶可变
+	if int(h.Sum32()%100) < rampPct {
+		return rampingVersion
+	}
+	return currentVersion
 }
 
 // mustJSONStep 步 Input 重建参数 JSON（与 runner mustJSON 同序——均 json.Marshal map）

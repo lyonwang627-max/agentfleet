@@ -172,11 +172,16 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   边界收尾：**Idempotency-Key 幂等**（外部系统重试同 key → 返回首个任务 deduplicated=true，
   10 分钟 TTL 内存去重；不同 key 各自建；无 key 调用方自担）——单测四场景。
 
-- [ ] **I38 agent 版本灰度发布（ramping 式确定性分桶）** `proposed` `M`（源自 temporal-worker-versioning 调研，见 docs/research/）
+- [ ] **I38 agent 版本灰度发布（ramping 式确定性分桶）** `in-progress`（1/2 数据层+分桶路由完成 2026-11-13，源自 temporal-worker-versioning 调研，见 docs/research/）
   动机：I14 publish 是全量立即切换；Temporal Ramping 按百分比灰度——发布新版本时按 task ID
   确定性分桶路由新任务（Pinned run 不受影响），平滑升级。
   验收：agents 表 ramping_version/ramp_pct 列；新任务按 task ID 确定性分桶（同任务判定一致）；
   ramp=0 全走 current；重试/续跑仍锁原版本（I11 语义不变）。
+  第 1 轮：agents.ramping_version/ramp_pct 双列 additive（pg scan/patch + mem）+ routeVersion 纯函数
+  （fnv32(taskID:rampingVersion) 确定性分桶——掺版本号使不同灰度轮分桶可变）+ applyVersionSnapshot
+  （灰度桶用版本链 Config 快照覆盖 agent 执行副本 system_prompt/model）+ publishAgent ramp_pct 参数
+  （>0 时 RampingVersion 落库 + 版本备注灰度意图）。单测 2 组（分桶确定性/边界 0 与 100/快照覆盖）。
+  剩余（第 2 轮）：前端 ramp 控件 + promote（ramp→100 全量）语义完善。
 
 ## 已完成（沉淀记录）
 

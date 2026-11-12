@@ -616,3 +616,8 @@
 - Deployment Versions 模型（deployment name+Build ID / Current/Ramping/Target / Pinned vs AutoUpgrade / Draining 状态机）。
 - **对 I11 核心对读**：跨版本拒绝=Pinned 完全同构；replay 端点=AutoUpgrade 同构（且无 history 重放需求→无需 patching，语义更简正确）；Cron 永不继承=automation 独立同构。业界标准验证现设计。
 - I38 agent 版本灰度（ramping 确定性分桶）入池——可选演进非缺陷。明确不抄：服务端状态机/patching/worker 轮询。
+
+## 2026-11-13 C 切片：I38 版本灰度第 1/2 轮（数据层+分桶路由）
+
+- agents.ramping_version/ramp_pct 双列 additive（pg scan/patch 注意落对 UpdateAgent 而非 UpdateTask——Priority 分支两处同型，python 盲插踩坑一次）；routeVersion 纯函数（fnv32(taskID:rampingVersion) 确定性分桶，掺版本号使不同灰度轮可变）+ applyVersionSnapshot（灰度桶 Config 快照覆盖 agent 执行副本）+ publishAgent ramp_pct 参数。
+- 单测 2 组（分桶确定性/边界/快照覆盖）；10 包 -race 全绿。第 2 轮：前端 ramp 控件 + promote 语义。

@@ -157,6 +157,8 @@ type WorkspacePatch struct {
 
 // I14 草稿/发布双态：PATCH 只进草稿（编辑不影响在途 run），publish 落线 + 版本快照。
 type AgentPatch struct {
+	RampingVersion *int
+	RampPct        *int
 	Name           *string
 	Role           *string
 	SystemPrompt   *string

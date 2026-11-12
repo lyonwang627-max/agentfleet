@@ -121,6 +121,12 @@ func (m *MemStore) UpdateAgent(_ context.Context, id int64, p AgentPatch) error 
 
 // applyAgentPatch 无锁应用（调用方须持 m.mu；PublishAgentDraft 落线复用）。
 func (m *MemStore) applyAgentPatch(a *model.Agent, p AgentPatch) error {
+	if p.RampingVersion != nil {
+		a.RampingVersion = *p.RampingVersion
+	}
+	if p.RampPct != nil {
+		a.RampPct = *p.RampPct
+	}
 	if p.Name != nil {
 		a.Name = *p.Name
 	}

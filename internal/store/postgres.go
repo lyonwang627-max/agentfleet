@@ -59,13 +59,13 @@ func (p *PostgresStore) CreateAgent(ctx context.Context, a *model.Agent) (int64,
 	return a.ID, err
 }
 
-const agentCols = `id, name, role, system_prompt, model, tools, runner, max_concurrency, token_budget_24h, enabled, created_at, updated_at, draft_config`
+const agentCols = `id, name, role, system_prompt, model, tools, runner, max_concurrency, token_budget_24h, enabled, created_at, updated_at, draft_config, COALESCE(ramping_version,0), COALESCE(ramp_pct,0)`
 
 func scanAgent(row pgx.Row) (*model.Agent, error) {
 	a := &model.Agent{}
 	var tools, draft []byte
 	if err := row.Scan(&a.ID, &a.Name, &a.Role, &a.SystemPrompt, &a.Model, &tools, &a.Runner,
-		&a.MaxConcurrency, &a.TokenBudget24h, &a.Enabled, &a.CreatedAt, &a.UpdatedAt, &draft); err != nil {
+		&a.MaxConcurrency, &a.TokenBudget24h, &a.Enabled, &a.CreatedAt, &a.UpdatedAt, &draft, &a.RampingVersion, &a.RampPct); err != nil {
 		return nil, err
 	}
 	a.Tools = []string{}
@@ -127,6 +127,12 @@ func (p *PostgresStore) UpdateAgent(ctx context.Context, id int64, patch AgentPa
 	}
 	if patch.SystemPrompt != nil {
 		add("system_prompt", *patch.SystemPrompt)
+	}
+	if patch.RampingVersion != nil {
+		add("ramping_version", *patch.RampingVersion)
+	}
+	if patch.RampPct != nil {
+		add("ramp_pct", *patch.RampPct)
 	}
 	if patch.Model != nil {
 		add("model", *patch.Model)

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -13,6 +14,14 @@ import (
 // 版本链只前进，任何变更（包括回滚）都可追溯。
 
 // snapshotConfig 从 agent 提取参与版本管理的配置字段。
+// rampNote 灰度备注后缀（版本链可见灰度意图）。
+func rampNote(pct int) string {
+	if pct > 0 && pct <= 100 {
+		return fmt.Sprintf("（灰度 %d%%）", pct)
+	}
+	return ""
+}
+
 func snapshotConfig(a *model.Agent) map[string]any {
 	return map[string]any{
 		"name": a.Name, "role": a.Role, "system_prompt": a.SystemPrompt, "model": a.Model,
@@ -28,7 +37,8 @@ func (s *Server) publishAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in struct {
-		Note string `json:"note"`
+		Note    string `json:"note"`
+		RampPct int    `json:"ramp_pct"` // I38：灰度百分比（0=立即全量；>0=按 task ID 分桶路由）
 	}
 	_ = json.NewDecoder(r.Body).Decode(&in) // note 可选
 
@@ -44,7 +54,8 @@ func (s *Server) publishAgent(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	v := &model.AgentVersion{AgentID: id, Config: snapshotConfig(a), Note: in.Note}
+	v := &model.AgentVersion{AgentID: id, Config: snapshotConfig(a),
+		Note: in.Note + rampNote(in.RampPct)}
 	_, version, err := s.Store.SaveAgentVersion(r.Context(), v)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err)
