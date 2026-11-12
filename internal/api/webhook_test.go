@@ -223,3 +223,57 @@ func TestIngestWebhookHTTP(t *testing.T) {
 		t.Fatal("缺 webhook.ingest 事件")
 	}
 }
+
+// 幂等边界（I37 收尾）：同 Idempotency-Key 重试 → 返回首个任务不重复建；不同 key 各自建。
+func TestIngestIdempotencyKey(t *testing.T) {
+	st := store.NewMemStore()
+	s := &Server{Store: st, Hub: scheduler.NewHub(st), LLM: nil, StartedAt: time.Now()}
+	ctx := context.Background()
+	aid, _ := st.CreateAgent(ctx, &model.Agent{Name: "idem", Model: "mock", Runner: "mock", Enabled: true})
+	hid, _ := st.CreateWebhook(ctx, &model.Webhook{Name: "idem-h", URL: "https://x",
+		Secret: "s", Events: []string{"*"}, Active: true})
+	hooks, _ := st.ListWebhooks(ctx)
+	token := webhook.IngestToken(&hooks[0])
+
+	call := func(key string) map[string]any {
+		r := httptest.NewRequest("POST", "/api/v1/webhooks/"+itoaInt64(hid)+"/ingest/"+token,
+			strings.NewReader(`{"agent_id":`+itoaInt64(aid)+`,"title":"幂等任务","prompt":"p"}`))
+		r.SetPathValue("id", itoaInt64(hid))
+		r.SetPathValue("token", token)
+		if key != "" {
+			r.Header.Set("Idempotency-Key", key)
+		}
+		w := httptest.NewRecorder()
+		s.ingestWebhook(w, r)
+		var m map[string]any
+		_ = json.Unmarshal(w.Body.Bytes(), &m)
+		return m
+	}
+
+	// 同 key 两次：第二次 deduplicated 且 task_id 相同
+	r1 := call("ext-retry-1")
+	r2 := call("ext-retry-1")
+	if r1["task_id"].(float64) != r2["task_id"].(float64) || r2["deduplicated"] != true {
+		t.Fatalf("同 key 应去重: %+v vs %+v", r1, r2)
+	}
+	// 不同 key：各自建任务
+	r3 := call("ext-new-2")
+	if r3["task_id"].(float64) == r1["task_id"].(float64) {
+		t.Fatal("不同 key 应新建任务")
+	}
+	// 无 key：每次新建（无幂等契约时调用方自担）
+	r4 := call("")
+	r5 := call("")
+	if r4["task_id"] == r5["task_id"] {
+		t.Fatal("无 key 不应去重")
+	}
+	// 任务总数 = 4（r1/r2 同任务、r3、r4、r5 各一）
+	tasks, _, _ := st.ListTasks(ctx, nil, aid, 1, 50)
+	uniq := map[int64]bool{}
+	for _, tk := range tasks {
+		uniq[tk.ID] = true
+	}
+	if len(uniq) != 4 {
+		t.Fatalf("应恰好 4 个任务: %d", len(uniq))
+	}
+}

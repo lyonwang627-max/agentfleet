@@ -605,3 +605,8 @@
 - IngestToken（SHA256("ingest:"+secret) 派生——secret 不暴露、token 独立分发）+ POST /webhooks/{id}/ingest/{token}：payload（agent_id/title/prompt/priority/labels）→ 自动建任务 + 来源标签 webhook:<id> + webhook.ingest 事件留痕 + Wake 派发。
 - 防御链：无效 token 401 / 缺字段 400 / agent 无效 400（不信任外部输入）。单测五断言；10 包 -race 全绿。
 - **FDE 双向集成闭环成型**：告警系统进（入站 I37）= 结果通知出（出站 I7，HMAC 签名+幂等头）。
+
+## 2026-11-13 A 切片：I37 幂等边界收尾（Idempotency-Key）
+
+- ingest handler 加 Idempotency-Key 去重（ingestMu+ingestSeen map，10 分钟 TTL；同 key 返回首个任务 deduplicated=true；不同 key 各自建；无 key 调用方自担）——外部系统重试不重复建任务（业界惯例对齐）。
+- 单测四场景（同 key 去重/不同 key/无 key/任务总数）；10 包 -race 全绿。I37 完全收口。

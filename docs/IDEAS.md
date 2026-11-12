@@ -169,6 +169,8 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   POST /webhooks/{id}/ingest/{token}（payload agent_id/title/prompt/priority/labels → 任务 + 来源标签
   webhook:<id>）+ webhook.ingest 事件留痕 + Wake 即时派发。单测五断言（401/400 缺字段/400 agent 无效/
   201 映射+标签+事件）。FDE 双向集成闭环：告警系统进（入站）= 结果通知出（出站 I7）。
+  边界收尾：**Idempotency-Key 幂等**（外部系统重试同 key → 返回首个任务 deduplicated=true，
+  10 分钟 TTL 内存去重；不同 key 各自建；无 key 调用方自担）——单测四场景。
 
 ## 已完成（沉淀记录）
 

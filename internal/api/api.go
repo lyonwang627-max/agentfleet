@@ -3,6 +3,7 @@ package api
 
 import (
 	"context"
+	"sync"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,6 +31,36 @@ type Server struct {
 	Sched     *scheduler.Scheduler
 	StartedAt time.Time
 	limiter   *RateLimiter
+	// I37：入站回调幂等（Idempotency-Key → 首个任务；外部系统重试不重复建任务）
+	ingestMu   sync.Mutex
+	ingestSeen map[string]ingestRecord
+}
+
+// ingestRecord 幂等记录（10 分钟 TTL 内同 key 返回首个任务）。
+type ingestRecord struct {
+	taskID int64
+	seenAt time.Time
+}
+
+func (s *Server) ingestDedup(key string) (int64, bool) {
+	s.ingestMu.Lock()
+	defer s.ingestMu.Unlock()
+	if s.ingestSeen == nil {
+		s.ingestSeen = map[string]ingestRecord{}
+	}
+	if rec, ok := s.ingestSeen[key]; ok && time.Since(rec.seenAt) < 10*time.Minute {
+		return rec.taskID, true
+	}
+	return 0, false
+}
+
+func (s *Server) ingestRemember(key string, taskID int64) {
+	s.ingestMu.Lock()
+	defer s.ingestMu.Unlock()
+	if s.ingestSeen == nil {
+		s.ingestSeen = map[string]ingestRecord{}
+	}
+	s.ingestSeen[key] = ingestRecord{taskID: taskID, seenAt: time.Now()}
 }
 
 // SetRateLimit 开启 IP 级限流（次/分钟；<=0 关闭）。在 Routes() 前调用。
@@ -769,6 +800,13 @@ func (s *Server) ingestWebhook(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusUnauthorized, errors.New("ingest token 无效"))
 		return
 	}
+	// I37 幂等：外部系统重试同一请求 → 返回首个任务，不重复建
+	if key := r.Header.Get("Idempotency-Key"); key != "" {
+		if taskID, hit := s.ingestDedup(key); hit {
+			writeJSON(w, http.StatusOK, map[string]any{"task_id": taskID, "deduplicated": true})
+			return
+		}
+	}
 	var in struct {
 		AgentID  int64    `json:"agent_id"`
 		Title    string   `json:"title"`
@@ -799,6 +837,9 @@ func (s *Server) ingestWebhook(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
+	}
+	if key := r.Header.Get("Idempotency-Key"); key != "" {
+		s.ingestRemember(key, taskID)
 	}
 	s.publish(r.Context(), "webhook.ingest", map[string]any{
 		"webhook_id": hook.ID, "task_id": taskID, "title": t.Title})
