@@ -573,3 +573,8 @@
 - ClaimStrategy 接口（只选候选、闸门归存储）+ priority/fairshare 注册表 + mem 候选集改造 + pg ORDER BY 策略映射 + fleetd FLEET_CLAIM_STRATEGY env。单测 3 组（默认不回归/fairshare/未知回退）。
 - **踩坑两个**：①候选值拷贝丢指针更新致集成测试任务卡 queued——改 []*model.Task 指针切片；②python 半改静默不命中再现（GetRun 11/13 列）——全量测试兜底抓回。
 - 10 包 -race 全绿。**I10 done——IDEAS 池全清零（36 项）**。
+
+## 2026-11-13 A 切片：I36 PG 真机冒烟第二波扩面（又抓 3 个真 bug）
+
+- 第二波覆盖 squads/projects/comments/automations/skills/evals/api_keys 删除闭环——**又抓 3 个真 bug**：⑧pg UpdateTask 缺 Labels 分支（双实现不齐第二例）；⑨pg DeleteSquad 未级联清成员（FK 下删队直接炸）；⑩确认 hash 查找/UNIQUE 幂等/禁用语义正常。pg 冒烟累计 10 个真 bug，接口面真机覆盖基本完整。
+- 10 包 -race 全绿。

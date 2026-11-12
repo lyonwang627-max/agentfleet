@@ -170,3 +170,119 @@ func strPtr(s string) *string { return &s }
 
 // 编译期守卫：database/sql 由 embedded-postgres 传递依赖使用（保持导入面诚实）。
 var _ = sql.ErrNoRows
+
+// ---- 冒烟扩面（I36 第二波）： squads/projects/comments/automations/skills/evals/api_keys ----
+
+func TestPostgresStoreSmokeSecondWave(t *testing.T) {
+	p := newEmbeddedPG(t)
+	ctx := context.Background()
+	aid, _ := p.CreateAgent(ctx, &model.Agent{Name: "w2", Model: "mock", Runner: "mock", Enabled: true})
+
+	// ---- squads：建队/成员/删除（UNIQUE 幂等）----
+	sqid, err := p.CreateSquad(ctx, &model.Squad{Name: "pg小队", LeaderID: aid})
+	if err != nil {
+		t.Fatalf("CreateSquad: %v", err)
+	}
+	mem := &model.SquadMember{SquadID: sqid, MemberType: "agent", MemberID: aid, Role: "member"}
+	if err := p.AddSquadMember(ctx, mem); err != nil {
+		t.Fatalf("AddSquadMember: %v", err)
+	}
+	if err := p.AddSquadMember(ctx, mem); err != nil {
+		t.Fatalf("成员重复应幂等: %v", err)
+	}
+	sq, err := p.GetSquad(ctx, sqid)
+	if err != nil || sq.LeaderID != aid {
+		t.Fatalf("GetSquad 不符: %+v err=%v", sq, err)
+	}
+
+	// ---- projects + task comments（Multica 面）----
+	pid, err := p.CreateProject(ctx, &model.Project{Name: "pg项目", Repos: []string{"r1"}})
+	if err != nil {
+		t.Fatalf("CreateProject: %v", err)
+	}
+	tid, _ := p.CreateTask(ctx, &model.Task{Title: "评论任务", Prompt: "p", AgentID: aid, ProjectID: pid})
+	if _, err := p.AddTaskComment(ctx, &model.TaskComment{TaskID: tid, AuthorType: "member",
+		AuthorName: "you", Content: "pg 评论"}); err != nil {
+		t.Fatalf("AddTaskComment: %v", err)
+	}
+	comments, err := p.ListTaskComments(ctx, tid)
+	if err != nil || len(comments) != 1 || comments[0].Content != "pg 评论" {
+		t.Fatalf("评论往返不符: %+v err=%v", comments, err)
+	}
+	// task project_id patch 往返（labels 同列区）
+	_ = p.UpdateTask(ctx, tid, TaskPatch{Labels: &[]string{"sev1"}})
+	tk, _ := p.GetTask(ctx, tid)
+	if len(tk.Labels) != 1 || tk.Labels[0] != "sev1" {
+		t.Fatalf("labels 往返不符: %v", tk.Labels)
+	}
+
+	// ---- automations：cron/next_run/禁用 ----
+	autoID, err := p.CreateAutomation(ctx, &model.Automation{AgentID: aid, Name: "晨会",
+		CronExpr: "30 9 * * 1-5", Title: "晨会摘要", Priority: 6})
+	if err != nil {
+		t.Fatalf("CreateAutomation: %v", err)
+	}
+	aut, err := p.GetAutomation(ctx, autoID)
+	if err != nil || aut.CronExpr != "30 9 * * 1-5" {
+		t.Fatalf("automation 往返不符: %+v err=%v", aut, err)
+	}
+	disabled := false
+	_ = p.UpdateAutomation(ctx, autoID, AutomationPatch{Enabled: &disabled})
+	aut2, _ := p.GetAutomation(ctx, autoID)
+	if aut2.Enabled {
+		t.Fatal("禁用未生效")
+	}
+
+	// ---- skills：创建/引用计数/删除 ----
+	skid, err := p.SaveSkill(ctx, &model.Skill{Name: "SOP", Content: "步骤 1/2/3", Tags: []string{"ops"}})
+	if err != nil {
+		t.Fatalf("SaveSkill: %v", err)
+	}
+	_ = p.IncrSkillUsage(ctx, skid)
+	sk, err := p.GetSkill(ctx, skid)
+	if err != nil || sk.UsageCount != 1 {
+		t.Fatalf("引用计数不符: %+v err=%v", sk, err)
+	}
+	if err := p.DeleteSkill(ctx, skid); err != nil {
+		t.Fatalf("DeleteSkill: %v", err)
+	}
+
+	// ---- eval datasets/cases ----
+	did, err := p.CreateDataset(ctx, &model.EvalDataset{Name: "pg集"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.SaveCases(ctx, did, []model.EvalCase{
+		{Input: "题1", Expected: map[string]any{"points": []string{"要点A"}}}}); err != nil {
+		t.Fatalf("SaveCases: %v", err)
+	}
+	cases, _ := p.ListCases(ctx, did)
+	if len(cases) != 1 || cases[0].Input != "题1" {
+		t.Fatalf("cases 往返不符: %+v", cases)
+	}
+
+	// ---- api keys：渐进语义数据面 ----
+	kid, err := p.CreateAPIKey(ctx, "k1", "hash-1", "fleet_")
+	if err != nil {
+		t.Fatalf("CreateAPIKey: %v", err)
+	}
+	keys, _ := p.ListAPIKeys(ctx)
+	if len(keys) != 1 || keys[0].Name != "k1" {
+		t.Fatalf("keys 往返不符: %+v", keys)
+	}
+	found, err := p.FindAPIKeyByHash(ctx, "hash-1")
+	if err != nil || found.ID != kid {
+		t.Fatalf("hash 查找不符: %+v err=%v", found, err)
+	}
+	if err := p.DeleteAPIKey(ctx, kid); err != nil {
+		t.Fatalf("DeleteAPIKey: %v", err)
+	}
+
+	// ---- squad/project 删除 ----
+	if err := p.DeleteSquad(ctx, sqid); err != nil {
+		t.Fatalf("DeleteSquad: %v", err)
+	}
+	if err := p.DeleteProject(ctx, pid); err != nil {
+		t.Fatalf("DeleteProject: %v", err)
+	}
+}

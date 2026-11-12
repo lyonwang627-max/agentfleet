@@ -189,6 +189,10 @@ func (p *PostgresStore) UpdateSquad(ctx context.Context, id int64, patch SquadPa
 }
 
 func (p *PostgresStore) DeleteSquad(ctx context.Context, id int64) error {
+	// 级联清成员（mem 语义对齐；FK 约束下直接删 squads 会炸）
+	if _, err := p.pool.Exec(ctx, `DELETE FROM squad_members WHERE squad_id=$1`, id); err != nil {
+		return err
+	}
 	ct, err := p.pool.Exec(ctx, `DELETE FROM squads WHERE id=$1`, id)
 	if err != nil {
 		return err

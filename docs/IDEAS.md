@@ -153,6 +153,10 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   ④pg AppendStep 误透传 Seq=0 破坏主键递增 → DB 侧 max+1；⑤⑥CreateRun 只插 3 列丢
   parent_run_id/agent_version/session_id；⑦usage_events 缺 purpose 列（schema 漏 ALTER）。
   **教训：mem 双实现掩蔽了全部 SQL 缺陷——新列落地必须真机冒烟。**
+  第二波扩面（squads/projects/comments/automations/skills/evals/api_keys 删除闭环）又抓 3 个真 bug：
+  ⑧pg UpdateTask 缺 Labels 分支（mem/pg 双实现不齐第二例）；⑨pg DeleteSquad 未级联清
+  squad_members——FK 约束下删队直接炸（mem 遍历删除掩盖）；⑩沿袭确认 hash 查找/UNIQUE 幂等正常。
+  pg 真机冒烟累计 **10 个真 bug**——两波扩面后 store 接口面真机覆盖基本完整。
 
 ## 已完成（沉淀记录）
 

@@ -303,6 +303,9 @@ func (p *PostgresStore) UpdateTask(ctx context.Context, id int64, patch TaskPatc
 	if patch.SteerNote != nil {
 		add("steer_note", *patch.SteerNote)
 	}
+	if patch.Labels != nil {
+		add("labels", jsonb(*patch.Labels))
+	}
 	if patch.DependsOn != nil {
 		add("depends_on", jsonb(*patch.DependsOn))
 	}
