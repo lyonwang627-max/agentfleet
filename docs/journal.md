@@ -546,3 +546,8 @@
 - Register 覆盖语义/Get 未注册报错/Names 清单（claude-code 与 eino 测试的全局注册表依赖首次锁定）；strictJSON 四分支（噪声包裹抽取/无对象/不完整/嵌套）；ToolGateError.Error/ListMCPServers 观测面/ShutdownMCP 幂等/mock 入口取消回归。
 - **抓到 nil client 双 panic**：ListMCPServers 与 ShutdownMCP 对 nil client（SetMCPServer 合法输入态）直接解引用——同款防御缺口两处，均已修（降级 error 项/跳过 Close）。
 - 10 包 -race 全绿。
+
+## 2026-11-12 C 切片：I8 工具池统一第 1/2 轮（接口+双实现）
+
+- ToolProvider 接口（Invoke+Catalog）+ builtin 源（RegisterBuiltinTool 注册表，text_search 从 mock 剧本接口化）+ mcp 源（委托既有 CallMCPTool/ToolCatalog）+ UnifiedTools 统一入口（scheme 分发：mcp:/builtin:/无前缀兼容旧引用——既有剧本零影响）。
+- 单测 4 组（内置调用/未注册报错/旧引用兼容/循环对 builtin 引用透明）。10 包 -race 全绿。第 2 轮：llm runner callTool 切换 + ToolKnown 扩展 builtin。

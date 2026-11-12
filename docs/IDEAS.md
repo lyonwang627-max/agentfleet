@@ -31,9 +31,7 @@ fleetd 接线（go dispatcher.Run，无订阅空转零成本）。**抓到两个
 dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.mu 只护状态读写，网络 IO 绝不持锁」；
 ②重试到期项移出队列后 dispatch 重建条目 attempt 重置——退避永不耗尽，改 attempt 随调用透传只增不减。
 单测 3 组（增量投递不重复/退避恢复 last_status=ok/耗尽放弃 http 500 留痕），webhook 包转正 10 包全绿。I7 整体 done。
-- [ ] **I8 Runner 工具池统一** `proposed` `M`
-  动机：mock 的 text_search 与 MCP 工具是两套注册路径；统一成 ToolProvider 接口后 llm runner 的多轮循环可无缝换工具源。
-  验收：接口定义 + 两实现迁移 + 现有测试全绿。
+- [ ] **I8 Runner 工具池统一** `in-progress`（1/2 接口+双实现完成 2026-11-12，M 之 1/2）
 - [ ] **I9 前端主题切换（暗/亮）** `proposed` `S`
   动机：演示时投影仪场景亮色更清晰；设计 token 已集中在 index.css，改造成本低。
   验收：顶栏切换按钮 + localStorage 记忆；两套 token 全量覆盖无硬编码色残留。
