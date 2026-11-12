@@ -578,3 +578,10 @@
 
 - 第二波覆盖 squads/projects/comments/automations/skills/evals/api_keys 删除闭环——**又抓 3 个真 bug**：⑧pg UpdateTask 缺 Labels 分支（双实现不齐第二例）；⑨pg DeleteSquad 未级联清成员（FK 下删队直接炸）；⑩确认 hash 查找/UNIQUE 幂等/禁用语义正常。pg 冒烟累计 10 个真 bug，接口面真机覆盖基本完整。
 - 10 包 -race 全绿。
+
+## 2026-11-13 B 调研：Kafka 消费组再均衡（docs/research/kafka-consumer-rebalance.md）
+
+- Eager stop-the-world vs Cooperative 增量两轮（37s→3.5s 实测）/ sticky 是 cooperative 前提 / KIP-848 服务端协调。
+- **与 SKIP LOCKED 对读定夺**：行级租约+争抢对无顺序需求/短时任务/故障即重试的场景是更简正确姿势——多实例扩展无需 rebalance 协议，F13-b 只需 LISTEN/NOTIFY 唤醒（协议级证据关闭「要不要学 Kafka 分区分配」）。
+- webhook 语义对读：dispatcher at-most-once + 重试队列 at-least-once——接收方幂等是共同要求（LiteLLM 调研结论互证）；第 3 轮可加 delivery_id 幂等头。
+- 明确不抄：引入 Kafka 本身/rebalance 协议/KIP-848。
