@@ -107,7 +107,7 @@ export default function AgentDetail() {
       </div>
 
       {/* 版本管理（F2）：发布/历史/回滚 */}
-      <AgentVersions agentId={agentId} dirty={a.has_unpublished_changes} onPublished={() => void agent.reload()} />
+      <AgentVersions agentId={agentId} dirty={a.has_unpublished_changes} ramping={a.ramp_pct != null && a.ramp_pct > 0} rampPct={a.ramp_pct ?? 0} onPublished={() => void agent.reload()} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,520px)_minmax(0,1fr)]">
         {/* 配置表单 */}
@@ -127,6 +127,11 @@ export default function AgentDetail() {
               {a.has_unpublished_changes && (
                 <span className="rounded border border-warn/40 bg-warn/10 px-1.5 py-0.5 text-[11px] text-warn">
                   未发布变更
+                </span>
+              )}
+              {a.ramp_pct != null && a.ramp_pct > 0 && (
+                <span className="rounded border border-info/40 bg-info/10 px-1.5 py-0.5 text-[11px] text-info">
+                  灰度 {a.ramp_pct}% → v{a.ramping_version}
                 </span>
               )}
               {saved && <span className="text-ok">已存草稿</span>}
@@ -263,7 +268,7 @@ function ModelSelect({ value, onChange, inputCls }: { value: string; onChange: (
 }
 
 // AgentVersions 版本链（I14）：编辑进草稿、发布=草稿落线+版本快照；回滚=旧快照覆盖+清草稿（链只前进，可追溯）。
-function AgentVersions({ agentId, dirty, onPublished }: { agentId: number; dirty?: boolean; onPublished?: () => void }) {
+function AgentVersions({ agentId, dirty, ramping, rampPct, onPublished }: { agentId: number; dirty?: boolean; ramping?: boolean; rampPct?: number; onPublished?: () => void }) {
   const versions = useApi(() => api.listAgentVersions(agentId), [agentId]);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -303,6 +308,11 @@ function AgentVersions({ agentId, dirty, onPublished }: { agentId: number; dirty
               有草稿待发布
             </span>
           )}
+          {ramping && (
+            <span className="rounded border border-info/40 bg-info/10 px-1.5 py-0.5 text-[11px] text-info">
+              灰度 {rampPct}%
+            </span>
+          )}
           <Btn variant="primary" disabled={busy} onClick={() => void act(async () => {
             const r = await api.publishAgent(agentId, note.trim());
             setNote('');
@@ -311,6 +321,20 @@ function AgentVersions({ agentId, dirty, onPublished }: { agentId: number; dirty
           })}>
             {dirty ? '发布草稿' : '发布当前配置'}
           </Btn>
+          {ramping && (
+            <Btn disabled={busy} onClick={() => void act(async () => {
+              // promote：灰度收敛（后端 promote_ramp）
+              const r = await fetch(`/api/v1/agents/${agentId}/publish`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ promote_ramp: true }),
+              }).then((x) => x.json());
+              onPublished?.();
+              return `灰度已全量（v${r.promoted_version}）`;
+            })}>
+              全量
+            </Btn>
+          )}
         </span>
       }
       bodyClass="p-0"

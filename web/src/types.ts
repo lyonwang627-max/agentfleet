@@ -40,6 +40,9 @@ export interface AgentDetail extends AgentSummary {
   // I14 草稿/发布双态
   draft_config?: Record<string, unknown> | null;
   has_unpublished_changes?: boolean;
+  // I38 灰度
+  ramping_version?: number;
+  ramp_pct?: number;
 }
 export interface AgentPatch {
   name?: string;

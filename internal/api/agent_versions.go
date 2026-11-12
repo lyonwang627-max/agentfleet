@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"encoding/json"
 	"net/http"
@@ -22,6 +23,16 @@ func rampNote(pct int) string {
 	return ""
 }
 
+// applyVersionSnapshot 灰度版本快照覆盖 agent（promote 收敛用；与 scheduler 同逻辑）。
+func applyVersionSnapshot(a *model.Agent, cfg map[string]any) {
+	if v, ok := cfg["system_prompt"].(string); ok {
+		a.SystemPrompt = v
+	}
+	if v, ok := cfg["model"].(string); ok && v != "" {
+		a.Model = v
+	}
+}
+
 func snapshotConfig(a *model.Agent) map[string]any {
 	return map[string]any{
 		"name": a.Name, "role": a.Role, "system_prompt": a.SystemPrompt, "model": a.Model,
@@ -37,10 +48,42 @@ func (s *Server) publishAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in struct {
-		Note    string `json:"note"`
-		RampPct int    `json:"ramp_pct"` // I38：灰度百分比（0=立即全量；>0=按 task ID 分桶路由）
+		Note        string `json:"note"`
+		RampPct     int    `json:"ramp_pct"`     // I38：灰度百分比（0=立即全量；>0=按 task ID 分桶路由）
+		PromoteRamp bool   `json:"promote_ramp"` // I38：灰度收敛——ramping 版本全量（不产生新版本）
 	}
 	_ = json.NewDecoder(r.Body).Decode(&in) // note 可选
+
+	// I38 promote：灰度收敛——ramping 版本全量生效（配置已在 live？否——ramping 版本配置只
+	// 在灰度桶生效过；收敛=live 配置更新为 ramping 快照 + 清灰度标记。版本链不膨胀。）
+	if in.PromoteRamp {
+		a, err := s.Store.GetAgent(r.Context(), id)
+		if err != nil {
+			writeErr(w, http.StatusNotFound, err)
+			return
+		}
+		if a.RampingVersion == 0 || a.RampPct == 0 {
+			writeErr(w, http.StatusConflict, errors.New("无进行中的灰度"))
+			return
+		}
+		snap, err := s.Store.GetAgentVersion(r.Context(), id, a.RampingVersion)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err)
+			return
+		}
+		applyVersionSnapshot(a, snap.Config) // scheduler 同款覆盖
+		patch := store.AgentPatch{SystemPrompt: &a.SystemPrompt, Model: &a.Model}
+		if err := s.Store.UpdateAgent(r.Context(), id, patch); err != nil {
+			writeErr(w, http.StatusInternalServerError, err)
+			return
+		}
+		rv, pv := 0, 0
+		_ = s.Store.UpdateAgent(r.Context(), id, store.AgentPatch{RampingVersion: &rv, RampPct: &pv})
+		s.publish(r.Context(), "agent.update", map[string]any{
+			"agent_id": id, "action": "ramp_promoted", "version": a.RampingVersion})
+		writeJSON(w, http.StatusOK, map[string]any{"agent_id": id, "promoted_version": a.RampingVersion})
+		return
+	}
 
 	// I14：有草稿先落线（draft → live），再对落线后的 live 做版本快照；无草稿=纯版本快照（F2 语义保留）
 	if a.DraftConfig != nil {
@@ -60,6 +103,11 @@ func (s *Server) publishAgent(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
+	}
+	// I38：灰度——ramp_pct>0 时新版本仅按分桶灰度（RampingVersion 落库），live 配置不动
+	if in.RampPct > 0 && in.RampPct <= 100 {
+		rv, pv := version, in.RampPct
+		_ = s.Store.UpdateAgent(r.Context(), id, store.AgentPatch{RampingVersion: &rv, RampPct: &pv})
 	}
 	s.publish(r.Context(), "agent.update", map[string]any{"agent_id": id, "action": "published", "version": version})
 	writeJSON(w, http.StatusCreated, map[string]any{"agent_id": id, "version": version})

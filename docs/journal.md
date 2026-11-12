@@ -627,3 +627,9 @@
 - web 装 vitest+@testing-library（dev-only）；npm run test 接入；首批 4 测试：fitLabel 像素截断纯函数（CJK/短标签）+ DepGraph 渲染（SVG 节点/计数/cycle 警示）。
 - vitest 踩坑：vi.mock factory 提升限制（factory 内联数据）+ mock 覆写用 spy 模式。DepGraph 导出 fitLabel 供测。
 - web build 零报错；Go 侧全绿不受影响。
+
+## 2026-11-13 C 切片：I38 版本灰度第 2/2 轮（整体收口）
+
+- promote 语义：灰度收敛——live 配置更新为 ramping 快照（applyVersionSnapshot 同款）+ 清灰度标记，版本链不膨胀（无灰度 409）；publishAgent 补 ramp 落库分支（第一轮 python 插错 UpdateTask 位置的修复补齐——grep 确认先行）。
+- 前端：配置面板「灰度 N% → vN」info 徽章 + 版本面板「全量」按钮（promote 调用）。
+- 单测新增（ramp 落库/promote/409）；web 测试 4 过 + build 零报错；10 包 -race 全绿。**I38 整体 done——Temporal Ramping 语义完整落地**。

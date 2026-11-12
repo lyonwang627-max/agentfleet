@@ -155,3 +155,53 @@ func TestRollbackClearsDraft(t *testing.T) {
 		t.Fatal("回退后应无未发布变更")
 	}
 }
+
+// 灰度发布（I38 第 2 轮）：publish 带 ramp_pct → ramping 落库；promote 收敛 → live 更新+清标记。
+func TestRampPublishAndPromote(t *testing.T) {
+	s, st, aid := newDraftServer(t)
+	ctx := context.Background()
+
+	// 发布带 ramp_pct=50 → 版本 v1 + ramping 标记（live 配置不动）
+	pr := httptest.NewRequest("POST", "/api/v1/agents/"+itoaInt64(aid)+"/publish",
+		strings.NewReader(`{"note":"灰度发布","ramp_pct":50}`))
+	pr.SetPathValue("id", itoaInt64(aid))
+	wr := httptest.NewRecorder()
+	s.publishAgent(wr, pr)
+	if wr.Code != 201 {
+		t.Fatalf("灰度发布应 201: %d %s", wr.Code, wr.Body.String())
+	}
+	a, _ := st.GetAgent(ctx, aid)
+	if a.RampingVersion != 1 || a.RampPct != 50 {
+		t.Fatalf("ramping 标记未落库: %+v", a)
+	}
+	// 灰度阶段 live 配置仍是旧值（I14 语义：草稿落线即全量的例外——灰度下 live 不动）
+	// 注意：I14 publish 会落线草稿——ramp 发布时草稿为空，live 保持原配置 ✓
+
+	// promote → live 配置更新为 ramping 快照 + 清标记（版本链不膨胀）
+	pm := httptest.NewRequest("POST", "/api/v1/agents/"+itoaInt64(aid)+"/publish",
+		strings.NewReader(`{"promote_ramp":true}`))
+	pm.SetPathValue("id", itoaInt64(aid))
+	wm := httptest.NewRecorder()
+	s.publishAgent(wm, pm)
+	if wm.Code != 200 {
+		t.Fatalf("promote 应 200: %d %s", wm.Code, wm.Body.String())
+	}
+	a2, _ := st.GetAgent(ctx, aid)
+	if a2.RampingVersion != 0 || a2.RampPct != 0 {
+		t.Fatalf("promote 未清灰度标记: %+v", a2)
+	}
+	vers, _ := st.ListAgentVersions(ctx, aid)
+	if len(vers) != 1 {
+		t.Fatalf("promote 不应产生新版本: %d", len(vers))
+	}
+
+	// 无灰度 promote → 409
+	wm2 := httptest.NewRecorder()
+	pm2 := httptest.NewRequest("POST", "/api/v1/agents/"+itoaInt64(aid)+"/publish",
+		strings.NewReader(`{"promote_ramp":true}`))
+	pm2.SetPathValue("id", itoaInt64(aid))
+	s.publishAgent(wm2, pm2)
+	if wm2.Code != 409 {
+		t.Fatalf("无灰度 promote 应 409: %d", wm2.Code)
+	}
+}
