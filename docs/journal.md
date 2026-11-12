@@ -610,3 +610,9 @@
 
 - ingest handler 加 Idempotency-Key 去重（ingestMu+ingestSeen map，10 分钟 TTL；同 key 返回首个任务 deduplicated=true；不同 key 各自建；无 key 调用方自担）——外部系统重试不重复建任务（业界惯例对齐）。
 - 单测四场景（同 key 去重/不同 key/无 key/任务总数）；10 包 -race 全绿。I37 完全收口。
+
+## 2026-11-13 B 调研：Temporal Worker Versioning（docs/research/temporal-worker-versioning.md）
+
+- Deployment Versions 模型（deployment name+Build ID / Current/Ramping/Target / Pinned vs AutoUpgrade / Draining 状态机）。
+- **对 I11 核心对读**：跨版本拒绝=Pinned 完全同构；replay 端点=AutoUpgrade 同构（且无 history 重放需求→无需 patching，语义更简正确）；Cron 永不继承=automation 独立同构。业界标准验证现设计。
+- I38 agent 版本灰度（ramping 确定性分桶）入池——可选演进非缺陷。明确不抄：服务端状态机/patching/worker 轮询。

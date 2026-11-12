@@ -172,6 +172,12 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   边界收尾：**Idempotency-Key 幂等**（外部系统重试同 key → 返回首个任务 deduplicated=true，
   10 分钟 TTL 内存去重；不同 key 各自建；无 key 调用方自担）——单测四场景。
 
+- [ ] **I38 agent 版本灰度发布（ramping 式确定性分桶）** `proposed` `M`（源自 temporal-worker-versioning 调研，见 docs/research/）
+  动机：I14 publish 是全量立即切换；Temporal Ramping 按百分比灰度——发布新版本时按 task ID
+  确定性分桶路由新任务（Pinned run 不受影响），平滑升级。
+  验收：agents 表 ramping_version/ramp_pct 列；新任务按 task ID 确定性分桶（同任务判定一致）；
+  ramp=0 全走 current；重试/续跑仍锁原版本（I11 语义不变）。
+
 ## 已完成（沉淀记录）
 
 - ~~任务级模型路由~~（F18-b，ADR-0002）
