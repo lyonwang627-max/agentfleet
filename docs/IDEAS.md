@@ -31,8 +31,8 @@ fleetd 接线（go dispatcher.Run，无订阅空转零成本）。**抓到两个
 dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.mu 只护状态读写，网络 IO 绝不持锁」；
 ②重试到期项移出队列后 dispatch 重建条目 attempt 重置——退避永不耗尽，改 attempt 随调用透传只增不减。
 单测 3 组（增量投递不重复/退避恢复 last_status=ok/耗尽放弃 http 500 留痕），webhook 包转正 10 包全绿。I7 整体 done。
-- [ ] **I8 Runner 工具池统一** `in-progress`（1/2 接口+双实现完成 2026-11-12，M 之 1/2）
-- [ ] **I9 前端主题切换（暗/亮）** `proposed` `S`
+- [x] **I8 Runner 工具池统一** `done`（2026-11-12，1/2 接口+双实现 + 2/2 runner 切换，M 之 1/2+2/2）
+- [x] **I9 前端主题切换（暗/亮）** `done`（2026-11-10，commit 161ed18——状态补登）
   动机：演示时投影仪场景亮色更清晰；设计 token 已集中在 index.css，改造成本低。
   验收：顶栏切换按钮 + localStorage 记忆；两套 token 全量覆盖无硬编码色残留。
 - [ ] **I10 调度可插拔策略** `proposed` `L`
@@ -82,7 +82,7 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   实现：renderTemplate 纯函数（task.title/task.id/workspace.path/branch/name/agent.name 六变量；未知变量原样保留——写错应被看见；无模板快路径零开销；nil 安全）；渲染只发生在执行副本（不污染任务本体）。单测：全渲染/未知保留/快路径/nil 安全/agent.name 五组。trace 审计：渲染发生在 route 步之后的执行链路，task 本体保存未渲染原文。
 - [x] **I22 事件流过滤查询** `done`（2026-11-07）
   实现：GET /events/query?kind=&task_id=&since=&limit=（服务端过滤，data 内嵌 task_id 也能过滤）+ 单测三场景（kind/task_id/limit）。前端事件流加过滤器待后续前端切片。
-- [ ] **I23 运行报告 Markdown 导出** `proposed` `S`（实用性）
+- [x] **I23 运行报告 Markdown 导出** `done`（2026-11-07，commit 7053cac——状态补登）
   动机：run trace 是 JSON 视图；导出为可读 Markdown 报告（步骤表格+耗时+结果），归档/分享用。
   验收：GET /runs/{id}/export.md；前端下载按钮。
 - [x] **I24 并发闸占用超时告警** `done`（2026-11-07）

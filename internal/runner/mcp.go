@@ -54,6 +54,13 @@ var toolKnownFn = ToolKnown
 // ToolKnown 工具引用是否真实存在（I28 第 2 轮：幻觉工具名引导的基础判定）。
 // server 未注册直接 false；已注册则 ListTools 校验工具名（结果进缓存）。
 func ToolKnown(ref string) bool {
+	// I8：builtin 引用按内置注册表判定（与 MCP 判定同一路径语义）
+	if strings.HasPrefix(ref, "builtin:") {
+		builtinMu.RLock()
+		defer builtinMu.RUnlock()
+		_, ok := builtinTools[strings.TrimPrefix(ref, "builtin:")]
+		return ok
+	}
 	server, _, ok := strings.Cut(strings.TrimPrefix(ref, "mcp:"), "/")
 	if !ok || server == "" {
 		return false

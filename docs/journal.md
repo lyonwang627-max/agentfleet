@@ -551,3 +551,9 @@
 
 - ToolProvider 接口（Invoke+Catalog）+ builtin 源（RegisterBuiltinTool 注册表，text_search 从 mock 剧本接口化）+ mcp 源（委托既有 CallMCPTool/ToolCatalog）+ UnifiedTools 统一入口（scheme 分发：mcp:/builtin:/无前缀兼容旧引用——既有剧本零影响）。
 - 单测 4 组（内置调用/未注册报错/旧引用兼容/循环对 builtin 引用透明）。10 包 -race 全绿。第 2 轮：llm runner callTool 切换 + ToolKnown 扩展 builtin。
+
+## 2026-11-12 C 切片：I8 工具池统一第 2/2 轮（整体收口）+ 池卫生
+
+- ToolKnown 扩展 builtin 分支（注册表判定）+ llm runner callTool 切换 UnifiedTools().Invoke + decide 清单段换统一入口（恒含 builtin 项）。断言两处随语义演进更新。
+- 池卫生：I9/I23 stale 状态补登 done。**I8 整体 done**——llm runner 多轮循环对工具源透明（builtin/MCP/未来外部源单一入口）。
+- 10 包 -race 全绿。

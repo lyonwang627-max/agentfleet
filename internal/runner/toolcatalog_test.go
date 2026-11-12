@@ -13,9 +13,12 @@ import (
 // 与 I33 闸共存：清单只是提示信息，闸仍在 callTool 执行时拦截。
 
 func TestToolCatalogEmpty(t *testing.T) {
-	// 无注册 server → 空清单（decide 提示退回原形态）
+	// I8 后：builtin 源恒在 → 统一清单恒非空；纯 MCP 清单（ToolCatalog）无 server 才为空
 	if got := ToolCatalog(); got != "" {
-		t.Fatalf("无 server 应空清单: %q", got)
+		t.Fatalf("无 server 时纯 MCP 清单应为空: %q", got)
+	}
+	if got := UnifiedTools().Catalog(); !strings.Contains(got, "builtin:text_search") {
+		t.Fatalf("统一清单应恒含 builtin 项: %q", got)
 	}
 }
 
@@ -26,7 +29,7 @@ func TestDecideInjectsCatalog(t *testing.T) {
 	var seenUsers []string
 	llm := newTestLLM([]string{`{"reply":"完成"}`}, &seenUsers)
 
-	// 无 server：不注入
+	// I8 后：清单恒含 builtin → decide 注入恒含「可用工具」段（含 builtin 项）
 	req := ExecRequest{
 		Agent: model.Agent{Name: "t", Model: "mock"}, Task: model.Task{Title: "任务", Prompt: "做事"},
 		Recorder: func(_ context.Context, s *model.RunStep) error {
@@ -37,8 +40,8 @@ func TestDecideInjectsCatalog(t *testing.T) {
 	if _, err := NewLLM(llm).Execute(ctx, req); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(seenUsers[0], "可用工具") {
-		t.Fatal("无 server 不应注入工具段")
+	if !strings.Contains(seenUsers[0], "可用工具") || !strings.Contains(seenUsers[0], "builtin:text_search") {
+		t.Fatalf("decide 提示应含统一清单: %q", seenUsers[0][:min(len(seenUsers[0]), 200)])
 	}
 }
 

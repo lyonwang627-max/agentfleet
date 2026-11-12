@@ -132,7 +132,7 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 		"系统会执行并把观察结果回给你（最多 " + itoa(maxToolSteps) + " 轮）。拿到足够信息后输出最终决策（tool 留空）。"
 
 	// I28 工具能力清单：decide 提示注入「可选工具+描述」，LLM 按能力选工具（非盲选协议）
-	catalog := ToolCatalog()
+	catalog := UnifiedTools().Catalog()
 	toolSection := ""
 	if catalog != "" {
 		toolSection = "\n\n# 可用工具（只能选择下列清单中的工具引用；清单为空或无合适工具则 tool 必须留空，禁止编造未列出的工具或服务器名）\n" + catalog
@@ -184,7 +184,7 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 		// I28 第 2 轮：幻觉工具名——不进闸不执行，转引导观察回灌下一轮（模型从清单重选）
 		// （toolKnownFn seam：生产=ToolKnown 真判定，测试注入模拟已注册工具）
 		if !toolKnownFn(ref) {
-			guide := ToolCatalog()
+			guide := UnifiedTools().Catalog()
 			if guide != "" {
 				guide = "可用工具：\n" + guide
 			} else {
@@ -198,7 +198,8 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 				map[string]any{"status": "等待人工审批（工具级）", "risk_level": "high"}, 30, 0)
 			return "", &ToolGateError{Ref: ref, Args: args}
 		}
-		return CallMCPTool(ref, args)
+		// I8：统一工具池——builtin:/mcp:/无前缀引用单一入口分发
+		return UnifiedTools().Invoke(ref, args)
 	}
 	onToolTurn := func(turn int, d decision, observation string) {
 		// I17 层级：每轮决策先落 decide-turn-N 步，工具观察步挂其下（parent_seq）
