@@ -593,3 +593,9 @@
 ## 2026-11-13 A 切片：幂等头核心语义锁 + hasLabelLocal 补测
 
 - TestDeliveryIdStableAcrossRetries：重试链（首投+2 次重试）X-Fleet-Delivery 全程稳定——幂等头的核心承诺（接收方按 ID 去重）从「透传正确」升级为「语义锁死」。hasLabelLocal 三分支补测。10 包 -race 全绿。
+
+## 2026-11-13 B 调研：Dify plugin daemon（docs/research/dify-plugin-daemon.md）
+
+- 拆分动机（依赖冲突/版本管理）/四类插件（tool/model/endpoint/agent-strategy）/runtime 三形态（local subprocess 与 agentfleet MCP stdio 完全同构/serverless Lambda/debug TCP 长连接+Redis 状态管理借鉴 etcd）/签名安装安全面。
+- **对 agentfleet**：MCP+ToolProvider 已是 plugin daemon 轻量等价（不引入 daemon 服务）；**I37 入站 webhook endpoint 入池**（Dify Endpoint 对读——与 I7 出站对称，FDE 双向集成闭环）；Reverse Call 同构确认（I34 无需新基建）。
+- 明确不抄：daemon 服务/serverless/市场签名链。

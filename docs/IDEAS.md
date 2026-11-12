@@ -160,6 +160,12 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   squad_members——FK 约束下删队直接炸（mem 遍历删除掩盖）；⑩沿袭确认 hash 查找/UNIQUE 幂等正常。
   pg 真机冒烟累计 **10 个真 bug**——两波扩面后 store 接口面真机覆盖基本完整。
 
+- [ ] **I37 入站 webhook endpoint（外部系统→任务）** `proposed` `S`（源自 dify-plugin-daemon 调研，见 docs/research/）
+  动机：I7 只有出站（结果通知），Dify Endpoint 类型补全双向集成——平台生成一次性 URL，
+  外部告警/工单系统回调 → 校验映射 → 自动建任务（FDE 集成叙事闭环：告警系统进=入站、结果通知出=出站）。
+  验收：POST /api/v1/webhooks/{id}/ingest/{token}——token 校验 → payload 映射 title/prompt → 建任务；
+  无效 token 401；payload 缺字段 400；ingest 事件流留痕。
+
 ## 已完成（沉淀记录）
 
 - ~~任务级模型路由~~（F18-b，ADR-0002）
