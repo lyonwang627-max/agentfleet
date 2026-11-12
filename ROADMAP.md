@@ -53,3 +53,12 @@
 
 ### 直接开发（在线时的即时改动）
 - 2026-11-06 优雅停机 drain ✅（SIGTERM→HTTP 排空→在途任务跑完→MCP 清理，实弹验证）+ 单二进制交付 ✅（go:embed + build tag 隔离，16MB binary 实弹：API/SPA 嵌入/路由回退全通，`make release`）
+
+## 深度组件冲刺战果（2026-11-10/13，IDEAS 池 35 项全清零）
+
+- **Multica 对标大版本**：I30 小队（leader 协调协议+自动跟进）/ I31 群聊（@唤醒+链式+智能选人）/ Projects/Labels/Steer
+- **执行面深化**：I33 工具步级审批（双层审批粒度）/ I35 gateway 模型冷却 / I28 步骤级路由+幻觉引导 / I11 步级结果重放（Temporal 语义）
+- **外部 runner**：I34 ClaudeCodeRunner（stream-json 协议+session 续跑+permission 映射）——I16 Runtime（健康三态+EnsureReady）前置
+- **生产化**：I14 草稿/发布双态 / I7 出站 Webhook（HMAC+退避）/ I36 PG 真机验证（内嵌 PG 冒烟抓 7 个 SQL 真 bug）
+- **观测面**：I17 trace 层级化（parent_seq+跨 run 链）/ I20 依赖图 SVG / I6 chat 有界压缩
+- 池仅剩：I10 调度可插拔策略（L，可选演进项）

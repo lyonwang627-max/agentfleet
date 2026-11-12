@@ -36,6 +36,10 @@ docker compose up -d   # postgres + fleetd + web 一键起
 5. **自动化规则 `/automations`**：看 cron 规则的 last_run/next_run；`*/2 * * * *` 的规则会在 2 分钟内自动建一条任务并跑完（全链路无人工干预）
 6. **评测中心 `/evals`**：发起「代码评审基准 v1」评测（真模型 judge），2-4 分钟出报告：score_avg / pass_rate / 逐 case 评语
 7. **用量看板 `/usage`**：按 agent/模型聚合的 token 计量
+8. **小队模式 `/squads`**：建「告警响应小队」（leader 只协调不动手）→ 任务分给小队 → leader 自动转派成员 → 成员完成自动触发 leader 跟进评估（Multica squads 对标）
+9. **群聊会话 `/room`**：一条共享消息流 `@agent` 唤醒（链式互 @、深度防爆炸）；@all 由模型从花名册智能选人（候选集收窄）
+10. **任务依赖图 `/tasks/13`**：`depends_on` 渲染 SVG 依赖图（层级布局 + 环检测红色警示）；trace 瀑布图缩进展示工具循环嵌套
+11. **草稿/发布 `/agents/1`**：PATCH 只进草稿（在途 run 免疫）→「未发布变更」徽章 → 「发布草稿」落线 + 版本链快照
 
 ## 架构
 
@@ -48,8 +52,10 @@ flowchart TB
     subgraph fleetd["fleetd — Go 控制面（单进程 · 标准库 ServeMux）"]
         API["api<br/>REST + SSE 断线续传"]
         SCHED["scheduler · 800ms tick<br/>依赖级联 → 预算熔断 → 进展看门狗<br/>→ Automations → 认领派发"]
-        RUNNER["runner（可插拔）<br/>mock 剧本 / llm JSON 协议"]
-        GW["gateway<br/>LLM 路由 · token 计量"]
+        RUNNER["runner（可插拔）<br/>mock 剧本 / llm JSON 协议 / claude-code（外部进程 stream-json）"]
+        GW["gateway<br/>档位路由 · 模型冷却 · token 计量"]
+        HOOK["webhook dispatcher<br/>HMAC 签名 · 指数退避重试"]
+        RT["runtime<br/>workspace 健康三态（local/docker）"]
         EVAL["eval · LLM-as-judge<br/>（旁路，不占队列）"]
         STORE["store 接口 · 双实现"]
     end
@@ -62,6 +68,8 @@ flowchart TB
 
     UI -- "/api" --> API
     API --> SCHED
+    HOOK -. "任务事件回调客户系统" --> EXT["客户告警/工单系统"]
+    SCHED -- "EnsureReady" --> RT
     SCHED --> RUNNER
     RUNNER -- "决策/生成" --> GW
     RUNNER -- "tools/call" --> MCP
@@ -79,8 +87,11 @@ React 管理台 ──/api──> Go 控制面（标准库 ServeMux，零路由�
                         ├─ api         REST + SSE（Last-Event-ID 断线续传）
                         ├─ scheduler   认领(FOR UPDATE SKIP LOCKED)→并发闸→状态机→handoff/审批/重试
                         │              └─ Automations：cron 到期自动建任务（自研 cronexpr，120 行）
-                        ├─ runner      可插拔执行器：mock（确定性剧本）/ llm（JSON 协议）/ 预留 Eino
-                        ├─ gateway     LLM 路由 + 计量（Ollama 原生 think:false + format:"json"）
+                        ├─ runner      可插拔执行器：mock（确定性剧本）/ llm（JSON 协议）/ claude-code（外部进程）
+                        │              └─ 统一工具池（builtin/MCP 单一入口）+ 步级结果重放 + 工具级审批
+                        ├─ gateway     LLM 档位路由 + 模型冷却 + 计量（Ollama 原生 think:false + format:"json"）
+                        ├─ webhook     事件出站推送（HMAC 签名 + 指数退避）
+                        └─ runtime     workspace 健康三态（EnsureReady 执行门禁）
                         ├─ eval        LLM-as-judge 评测引擎（要点命中 + judge 评语）
                         └─ store       Postgres（生产）/ MemStore（演示+测试）双实现
 ```
@@ -99,6 +110,11 @@ React 管理台 ──/api──> Go 控制面（标准库 ServeMux，零路由�
 | 自研 120 行 cron 而非引库 | 平台只需要 Next()，依赖洁癖优先 | `internal/cronexpr/`（含 dom/dow 或规则单测） |
 
 ## 测试与质量
+
+> 存储双实现下，**新增列必须真机冒烟**：`go test ./internal/store/ -run TestPostgres` 会用
+> 测试内嵌的真 PostgreSQL 17（embedded-postgres，test-only 依赖）跑全链路 SQL 往返——
+> mem 实现掩蔽不了 schema 顺序/scan 列数这类 SQL 缺陷（曾借此抓出 7 个真 bug）。
+
 
 ```bash
 make test        # go test -race 全量：状态机集成测试（handoff/审批/重试/并发闸）+ cronexpr 单测
