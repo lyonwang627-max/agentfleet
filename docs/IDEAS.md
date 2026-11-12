@@ -137,6 +137,16 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   SelectFor S 档冷却过滤（回退 M 档——语义为「回退」非「返回空」）+ route 步 input.cooling_models 留痕。
   单测 2 组（生命周期：3 败冷却/到期回轮换/成功重置；SelectFor 未冷却命中→冷却回退 M）。S 档 429 不再反复撞。
 
+- [x] **I36 PG 真机验证（embedded-postgres 冒烟）** `done`（2026-11-13，源自「pg store 零真机验证」诚实缺口）
+  实现：测试内嵌真 PG 17（fergusstrange/embedded-postgres，test-only 依赖不污染系统，凭据对齐 compose）+
+  全链路冒烟 2 组（agent 草稿三方法/task patch/run 扩列往返/webhook jsonb/版本链/usage purpose）。
+  **累计抓 7 个真 bug，全部修复**：①schema.sql 21 条 ALTER 前置于 CREATE——全新部署 migrate 必炸
+  （conversations/messages/run_steps 等，旧库掩蔽）→ ALTER 统一后置；②③pg UpdateTask/ListRuns/GetRun
+  各缺 SteerNote/session_id 等列（python 半改静默不命中的后果——scan 列数对齐系统性核查）；
+  ④pg AppendStep 误透传 Seq=0 破坏主键递增 → DB 侧 max+1；⑤⑥CreateRun 只插 3 列丢
+  parent_run_id/agent_version/session_id；⑦usage_events 缺 purpose 列（schema 漏 ALTER）。
+  **教训：mem 双实现掩蔽了全部 SQL 缺陷——新列落地必须真机冒烟。**
+
 ## 已完成（沉淀记录）
 
 - ~~任务级模型路由~~（F18-b，ADR-0002）

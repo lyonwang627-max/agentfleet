@@ -557,3 +557,9 @@
 - ToolKnown 扩展 builtin 分支（注册表判定）+ llm runner callTool 切换 UnifiedTools().Invoke + decide 清单段换统一入口（恒含 builtin 项）。断言两处随语义演进更新。
 - 池卫生：I9/I23 stale 状态补登 done。**I8 整体 done**——llm runner 多轮循环对工具源透明（builtin/MCP/未来外部源单一入口）。
 - 10 包 -race 全绿。
+
+## 2026-11-13 C 切片：I36 PG 真机验证（embedded-postgres 冒烟）——最大诚实缺口补齐
+
+- 本机无 docker → 测试内嵌真 PG 17（embedded-postgres，test-only 依赖），凭据对齐 compose；全链路冒烟 2 组（draft 三方法/task patch/run 扩列/webhook jsonb/版本链/usage purpose）。
+- **累计抓 7 个真 bug 全部修复**：①schema.sql 21 条 ALTER 前置 CREATE——全新部署 migrate 必炸（旧库掩蔽）；②③④pg UpdateTask/ListRuns/GetRun 缺 SteerNote/session_id 列（scan 列数不对齐）；⑤pg AppendStep 透传 Seq=0 破坏主键递增 → DB 侧 max+1；⑥CreateRun 只插 3 列丢扩列；⑦usage_events 漏 purpose ALTER。
+- **教训（面试硬货）**：mem 双实现掩蔽全部 SQL 缺陷——「多实现抽象」的正确姿势 = 新列落地必须真机冒烟。10 包 -race 全绿 + 契约漂移补登。

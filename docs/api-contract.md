@@ -146,3 +146,12 @@ SSE 事件：`automation.fired`（触发建任务）/ `automation.update`（CRUD
 | `/chat` | Agent 试聊台 | /chat |
 | `/evals` | 评测中心（发起/报告/对比） | /evals* /eval-datasets |
 | `/usage` | 用量看板 | /usage |
+
+## 增量端点（2026-11-11/12 补登）
+
+- `GET /api/v1/workspaces/{id}/health` — I16 运行时探测（Local：目录/分支校验）→ `{id, runtime_status, note}`
+- `POST/GET/DELETE /api/v1/webhooks` — I7 出站订阅 CRUD；创建响应一次性返回 `secret`（HMAC-SHA256）
+- 投递头：`X-Fleet-Signature`（hex(hmac(secret, body))）/ `X-Fleet-Event` / `X-Fleet-Timestamp`
+- `GET /api/v1/tasks/{id}/dag` — I20 依赖子图 `{nodes, edges, cycle}`
+- runs/steps additive 字段：`parent_run_id`/`agent_version`/`session_id`（runs）、`parent_seq`/`deterministic`/`replay`（steps）
+- agents additive 字段：`draft_config`/`has_unpublished_changes`（I14）；publish 语义 = 草稿落线 + 版本快照

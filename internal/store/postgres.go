@@ -296,6 +296,9 @@ func (p *PostgresStore) UpdateTask(ctx context.Context, id int64, patch TaskPatc
 	if patch.SkillIDs != nil {
 		add("skill_ids", jsonb(*patch.SkillIDs))
 	}
+	if patch.SteerNote != nil {
+		add("steer_note", *patch.SteerNote)
+	}
 	if patch.DependsOn != nil {
 		add("depends_on", jsonb(*patch.DependsOn))
 	}
@@ -370,8 +373,9 @@ func (p *PostgresStore) ClaimNextTask(ctx context.Context) (*model.Task, error) 
 
 func (p *PostgresStore) CreateRun(ctx context.Context, r *model.Run) (int64, error) {
 	err := p.pool.QueryRow(ctx,
-		`INSERT INTO runs(task_id, agent_id, conversation_id) VALUES ($1,$2,$3) RETURNING id, started_at`,
-		r.TaskID, r.AgentID, r.Conversation,
+		`INSERT INTO runs(task_id, agent_id, conversation_id, parent_run_id, agent_version, session_id)
+		 VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, started_at`,
+		r.TaskID, r.AgentID, r.Conversation, r.ParentRunID, r.AgentVersion, r.SessionID,
 	).Scan(&r.ID, &r.StartedAt)
 	r.Status = model.RunRunning
 	return r.ID, err
@@ -394,7 +398,7 @@ func (p *PostgresStore) GetRun(ctx context.Context, id int64) (*model.Run, error
 	r := &model.Run{}
 	var fin *time.Time
 	err := p.pool.QueryRow(ctx,
-		`SELECT id, task_id, agent_id, COALESCE(conversation_id,0), status, total_tokens, cost_usd, error, started_at, finished_at, COALESCE(parent_run_id,0)
+		`SELECT id, task_id, agent_id, COALESCE(conversation_id,0), status, total_tokens, cost_usd, error, started_at, finished_at, COALESCE(parent_run_id,0), COALESCE(agent_version,0), COALESCE(session_id,'')
 		 FROM runs WHERE id=$1`, id,
 	).Scan(&r.ID, &r.TaskID, &r.AgentID, &r.Conversation, &r.Status, &r.TotalTokens, &r.CostUSD, &r.Error, &r.StartedAt, &fin, &r.ParentRunID, &r.AgentVersion, &r.SessionID)
 	if err == pgx.ErrNoRows {
@@ -410,7 +414,7 @@ func (p *PostgresStore) GetRun(ctx context.Context, id int64) (*model.Run, error
 
 func (p *PostgresStore) ListRuns(ctx context.Context, taskID int64) ([]model.Run, error) {
 	rows, err := p.pool.Query(ctx,
-		`SELECT id, task_id, agent_id, COALESCE(conversation_id,0), status, total_tokens, cost_usd, error, started_at, finished_at, COALESCE(parent_run_id,0)
+		`SELECT id, task_id, agent_id, COALESCE(conversation_id,0), status, total_tokens, cost_usd, error, started_at, finished_at, COALESCE(parent_run_id,0), COALESCE(agent_version,0), COALESCE(session_id,'')
 		 FROM runs WHERE task_id=$1 ORDER BY id DESC`, taskID)
 	if err != nil {
 		return nil, err
@@ -431,11 +435,17 @@ func (p *PostgresStore) ListRuns(ctx context.Context, taskID int64) ([]model.Run
 }
 
 func (p *PostgresStore) AppendStep(ctx context.Context, runID int64, s *model.RunStep) (int64, error) {
+	// seq 由 DB 侧 max+1 计算（调用方不传 Seq；曾误改为透传 0——seq 恒 0 破坏主键递增）
 	err := p.pool.QueryRow(ctx,
 		`INSERT INTO run_steps(run_id, seq, kind, name, input, output, note, latency_ms, tokens, parent_seq, deterministic)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING created_at`,
-		runID, s.Seq, string(s.Kind), s.Name, jsonb(s.Input), jsonb(s.Output), s.Note, s.LatencyMS, s.Tokens, s.ParentSeq, s.Deterministic,
+		 SELECT $1, COALESCE(MAX(seq),0)+1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+		 FROM run_steps WHERE run_id=$1 RETURNING created_at`,
+		runID, string(s.Kind), s.Name, jsonb(s.Input), jsonb(s.Output), s.Note, s.LatencyMS, s.Tokens, s.ParentSeq, s.Deterministic,
 	).Scan(&s.CreatedAt)
+	if err == nil {
+		_ = p.pool.QueryRow(ctx,
+			`SELECT COALESCE(MAX(seq),0) FROM run_steps WHERE run_id=$1`, runID).Scan(&s.Seq)
+	}
 	if err == nil {
 		_, _ = p.pool.Exec(ctx, `UPDATE runs SET total_tokens = total_tokens + $2 WHERE id=$1`, runID, s.Tokens)
 	}
