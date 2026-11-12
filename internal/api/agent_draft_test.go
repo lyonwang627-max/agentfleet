@@ -205,3 +205,38 @@ func TestRampPublishAndPromote(t *testing.T) {
 		t.Fatalf("无灰度 promote 应 409: %d", wm2.Code)
 	}
 }
+
+// 灰度语义锁（I38）：ramp 发布时 live 不落线——current 桶保持旧配置（灰度才有意义）。
+func TestRampPublishKeepsLive(t *testing.T) {
+	s, st, aid := newDraftServer(t)
+	ctx := context.Background()
+	_ = patchJSON(s, aid, `{"system_prompt":"灰度新词"}`)
+	pr := httptest.NewRequest("POST", "/api/v1/agents/"+itoaInt64(aid)+"/publish",
+		strings.NewReader(`{"ramp_pct":100}`))
+	pr.SetPathValue("id", itoaInt64(aid))
+	wr := httptest.NewRecorder()
+	s.publishAgent(wr, pr)
+	if wr.Code != 201 {
+		t.Fatalf("应 201: %d", wr.Code)
+	}
+	a, _ := st.GetAgent(ctx, aid)
+	if a.SystemPrompt != "原始提示词" {
+		t.Fatalf("ramp 发布不应落线 live: %q", a.SystemPrompt)
+	}
+	if a.RampingVersion != 1 {
+		t.Fatalf("ramping 标记缺失: %+v", a)
+	}
+	// promote → live 落线
+	pm := httptest.NewRequest("POST", "/api/v1/agents/"+itoaInt64(aid)+"/publish",
+		strings.NewReader(`{"promote_ramp":true}`))
+	pm.SetPathValue("id", itoaInt64(aid))
+	wm := httptest.NewRecorder()
+	s.publishAgent(wm, pm)
+	if wm.Code != 200 {
+		t.Fatalf("promote 应 200: %d", wm.Code)
+	}
+	a2, _ := st.GetAgent(ctx, aid)
+	if a2.SystemPrompt != "灰度新词" {
+		t.Fatalf("promote 后 live 应为新词: %q", a2.SystemPrompt)
+	}
+}

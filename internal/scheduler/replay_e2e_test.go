@@ -159,3 +159,54 @@ func TestResumeSessionCarriedAndRejected(t *testing.T) {
 		t.Fatalf("版本变化应拒绝会话续跑: %q", capR.captured.ResumeSession)
 	}
 }
+
+// 灰度分桶 e2e（I38 第 2 轮）：ramp=100 全 ramping（新配置）、ramp=0 全 current（旧配置）。
+func TestRampBucketingEndToEnd(t *testing.T) {
+	st := store.NewMemStore()
+	s := New(st, NewHub(st))
+	ctx := context.Background()
+	capR := &captureRunner{}
+	runner.Register("mock", capR)
+	t.Cleanup(func() { runner.Register("mock", runner.NewMock()) })
+
+	aid, _ := st.CreateAgent(ctx, &model.Agent{Name: "ramp-a", Model: "mock", Runner: "mock",
+		SystemPrompt: "旧提示词", Enabled: true})
+	// v1 快照（旧配置基线）
+	_, _, _ = st.SaveAgentVersion(ctx, &model.AgentVersion{AgentID: aid, Version: 1,
+		Config: map[string]any{"name": "ramp-a", "system_prompt": "旧提示词", "model": "mock"}})
+	// 草稿改新 → publish（ramp=100，产生 v2 新配置快照）
+	_ = st.UpdateAgentDraft(ctx, aid, store.AgentPatch{SystemPrompt: strPtr("新提示词")})
+	rp := 100
+	_ = st.UpdateAgent(ctx, aid, store.AgentPatch{RampingVersion: ptrInt(2), RampPct: &rp})
+	_, _, _ = st.SaveAgentVersion(ctx, &model.AgentVersion{AgentID: aid, Version: 2,
+		Config: map[string]any{"name": "ramp-a", "system_prompt": "新提示词", "model": "mock"}})
+
+	tid, _ := st.CreateTask(ctx, &model.Task{Title: "灰度任务", Prompt: "p", AgentID: aid})
+	_ = st.UpdateTask(ctx, tid, store.TaskPatch{Status: ptrStatus(model.TaskRunning)})
+	task, _ := st.GetTask(ctx, tid)
+
+	s.execute(ctx, *task)
+	if capR.captured == nil {
+		t.Fatal("execute 未运行")
+	}
+	// ramp=100：ramping 桶 → 快照新配置
+	if capR.captured.Agent.SystemPrompt != "新提示词" {
+		t.Fatalf("ramp=100 应用新配置: %q", capR.captured.Agent.SystemPrompt)
+	}
+
+	// 对照：ramp=0（清标记）→ current 桶 → live 配置（此处 live=旧提示词，灰度未落线场景）
+	_ = st.UpdateAgent(ctx, aid, store.AgentPatch{RampingVersion: ptrInt(0)})
+	_ = st.UpdateTask(ctx, tid, store.TaskPatch{Status: ptrStatus(model.TaskRunning), RetryCount: ptrInt(0)})
+	// 重置 run 计数（重放通道不受影响——RetryCount=0）
+	task2, _ := st.GetTask(ctx, tid)
+	s.execute(ctx, *task2)
+	if capR.captured == nil {
+		t.Fatal("execute 未运行")
+	}
+	// live 此时是什么？publish 未调用（fixture 手动标 ramping）——live 仍"旧提示词" ✓
+	if capR.captured.Agent.SystemPrompt != "旧提示词" {
+		t.Fatalf("ramp=0 应用 live 配置: %q", capR.captured.Agent.SystemPrompt)
+	}
+}
+
+func strPtr(s string) *string { return &s }

@@ -633,3 +633,8 @@
 - promote 语义：灰度收敛——live 配置更新为 ramping 快照（applyVersionSnapshot 同款）+ 清灰度标记，版本链不膨胀（无灰度 409）；publishAgent 补 ramp 落库分支（第一轮 python 插错 UpdateTask 位置的修复补齐——grep 确认先行）。
 - 前端：配置面板「灰度 N% → vN」info 徽章 + 版本面板「全量」按钮（promote 调用）。
 - 单测新增（ramp 落库/promote/409）；web 测试 4 过 + build 零报错；10 包 -race 全绿。**I38 整体 done——Temporal Ramping 语义完整落地**。
+
+## 2026-11-13 A 切片：I38 灰度调度器级 e2e——追抓 1 个语义 bug
+
+- e2e（ramp=100 全新/ramp=0 全旧对照）+ API 层语义锁——**追抓灰度语义 bug**：ramp 发布时 PublishAgentDraft 落线草稿致 current 桶灰度失效；修复=ramp>0 时草稿只进版本快照不落线（promote 才落线），快照取草稿内容。
+- I38 语义三面锁死：调度器 e2e（ramp=100/0）+ API 层（ramp 不落线/promote 落线）+ 单测（分桶确定性/快照覆盖）。10 包 -race 全绿。I38 完全收口。

@@ -184,6 +184,9 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   第 2 轮：**promote 语义**（灰度收敛——live 配置更新为 ramping 快照 + 清标记，版本链不膨胀；
   无灰度 409）+ 前端（灰度徽章「灰度 N% → vN」+ 发布旁「全量」按钮 + AgentVersions 状态条）。
   单测新增（ramp 落库/promote 收敛/无灰度 409）。I38 整体 done：Temporal Ramping 语义完整落地。
+  **e2e 追加抓 1 个语义 bug**：ramp 发布时 PublishAgentDraft 落线草稿——current 桶灰度失效；
+  修复=ramp>0 时草稿只进版本快照不落线（current 桶保持旧配置），promote 才落线；快照取草稿内容。
+  调度器级 e2e（ramp=100 全新配置/ramp=0 全旧）+ API 层语义锁（ramp 不落线/promote 落线）全绿。
 
 ## 已完成（沉淀记录）
 

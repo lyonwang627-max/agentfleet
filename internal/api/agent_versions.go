@@ -86,7 +86,9 @@ func (s *Server) publishAgent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// I14：有草稿先落线（draft → live），再对落线后的 live 做版本快照；无草稿=纯版本快照（F2 语义保留）
-	if a.DraftConfig != nil {
+	// I38 灰度例外：ramp>0 时草稿**只进版本快照不落线**——current 桶保持旧配置（灰度才有意义），
+	// ramping 桶用 vN 快照；promote 时才落线。
+	if a.DraftConfig != nil && in.RampPct == 0 {
 		if err := s.Store.PublishAgentDraft(r.Context(), id); err != nil {
 			writeErr(w, http.StatusInternalServerError, err)
 			return
@@ -99,6 +101,10 @@ func (s *Server) publishAgent(w http.ResponseWriter, r *http.Request) {
 	}
 	v := &model.AgentVersion{AgentID: id, Config: snapshotConfig(a),
 		Note: in.Note + rampNote(in.RampPct)}
+	// I38 灰度：ramp>0 时灰度候选=草稿内容（live 未落线），快照取草稿
+	if in.RampPct > 0 && a.DraftConfig != nil {
+		v.Config = a.DraftConfig
+	}
 	_, version, err := s.Store.SaveAgentVersion(r.Context(), v)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err)
