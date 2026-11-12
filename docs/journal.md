@@ -638,3 +638,9 @@
 
 - e2e（ramp=100 全新/ramp=0 全旧对照）+ API 层语义锁——**追抓灰度语义 bug**：ramp 发布时 PublishAgentDraft 落线草稿致 current 桶灰度失效；修复=ramp>0 时草稿只进版本快照不落线（promote 才落线），快照取草稿内容。
 - I38 语义三面锁死：调度器 e2e（ramp=100/0）+ API 层（ramp 不落线/promote 落线）+ 单测（分桶确定性/快照覆盖）。10 包 -race 全绿。I38 完全收口。
+
+## 2026-11-13 B 调研：Grafana Tempo 采样策略（docs/research/tempo-sampling-strategy.md）
+
+- Head vs Tail（对结果盲 vs 整 trace 缓冲）/ tail 策略 OR 组合（latency+status_code+百分比）/ decision_wait 权衡与双缓存 / 两层 collector 部署。
+- **对 agentfleet（F12 设计依据）**：双层观测——自有 run_steps 全量真相源 + 导出层 tail 采样（failed 全保+latency>10s 全保+其余 10%）；run 粒度天然 tail 零缓冲（run 结束时 steps 已完整）；策略映射复用既有常量（F14 阈值/I18 死信）。F12 ROADMAP 交叉引用回填。
+- 明确不抄：两层集群/托管服务/decision cache。
