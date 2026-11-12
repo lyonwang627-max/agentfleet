@@ -35,9 +35,16 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
 - [x] **I9 前端主题切换（暗/亮）** `done`（2026-11-10，commit 161ed18——状态补登）
   动机：演示时投影仪场景亮色更清晰；设计 token 已集中在 index.css，改造成本低。
   验收：顶栏切换按钮 + localStorage 记忆；两套 token 全量覆盖无硬编码色残留。
-- [ ] **I10 调度可插拔策略** `proposed` `L`
+- [x] **I10 调度可插拔策略** `done`（2026-11-13，第 1/2 轮即完整落地，池里最后一个大项）
   动机：现在认领顺序固定 priority+id；把「选哪个任务」抽成 Strategy 接口（默认/fairness/deadline），为不同业务形态留扩展点。
   验收：接口 + 默认实现迁移 + 策略单测；行为不回归。
+  实现：ClaimStrategy func(candidates []*model.Task) *model.Task（策略只选候选，闸门仍由存储统一保证）+
+  策略注册表（priority/fairshare，RegisterClaimStrategy 可扩展）+ mem 候选集改造（闸门收集→策略选择）+
+  pg ORDER BY 策略映射（priority→priority DESC,id / fairshare→priority DESC,created_at,id）+
+  NewMemStoreWithStrategy / NewPostgresStore(dsn, strategy) / fleetd FLEET_CLAIM_STRATEGY env 接线。
+  单测 3 组（默认不回归/fairshare created_at 最早/未知回退）。**踩坑**：候选值拷贝丢失指针更新致任务卡
+  queued——改指针切片；mem/pg 两处 python 半改静默不命中（GetRun 列数 11/13）——grep 验证教训再证。
+  第 2 轮（可选演进）：deadline 策略/策略热切换/策略命中观测指标。I10 done——IDEAS 池全清零。
 
 - [x] **I11 run 步级断点续跑** `done`（2026-11-11，1/2 结果重放 + 2/2 跨版本拒绝与 e2e，源自 langgraph-checkpointer + temporal-replay 两篇调研，见 docs/research/）
   动机：现在 run 失败只能整任务重试；借鉴 LangGraph checkpoint 恢复 + Temporal 结果重放语义——

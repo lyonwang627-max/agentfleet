@@ -13,10 +13,11 @@ import (
 )
 
 type PostgresStore struct {
-	pool *pgxpool.Pool
+	pool          *pgxpool.Pool
+	claimStrategy string // I10：认领策略名（priority|fairshare）
 }
 
-func NewPostgresStore(ctx context.Context, dsn string) (*PostgresStore, error) {
+func NewPostgresStore(ctx context.Context, dsn, claimStrategy string) (*PostgresStore, error) {
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("pgxpool: %w", err)
@@ -27,7 +28,10 @@ func NewPostgresStore(ctx context.Context, dsn string) (*PostgresStore, error) {
 	if _, err := pool.Exec(ctx, SchemaSQL); err != nil {
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
-	return &PostgresStore{pool: pool}, nil
+	if claimStrategy == "" {
+		claimStrategy = "priority"
+	}
+	return &PostgresStore{pool: pool, claimStrategy: claimStrategy}, nil
 }
 
 func (p *PostgresStore) Ping(ctx context.Context) error { return p.pool.Ping(ctx) }
@@ -333,6 +337,11 @@ func (p *PostgresStore) UpdateTask(ctx context.Context, id int64, patch TaskPatc
 // ClaimNextTask 生产级认领：单条事务内 FOR UPDATE SKIP LOCKED 抢占，天然支持多实例横向扩展。
 // 依赖满足、agent 启用、并发配额、visible_after 全部在 SQL 内判定。
 func (p *PostgresStore) ClaimNextTask(ctx context.Context) (*model.Task, error) {
+	// I10：ORDER BY 由策略映射（SQL 侧与 mem 候选集语义一致）
+	orderBy := "t.priority DESC, t.id"
+	if p.claimStrategy == "fairshare" {
+		orderBy = "t.priority DESC, t.created_at, t.id"
+	}
 	tx, err := p.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -352,7 +361,7 @@ func (p *PostgresStore) ClaimNextTask(ctx context.Context) (*model.Task, error) 
 			  )
 			  AND (SELECT COUNT(*) FROM tasks r
 				   WHERE r.agent_id = t.agent_id AND r.status = 'running') < a.max_concurrency
-			ORDER BY t.priority DESC, t.id
+			ORDER BY ` + orderBy + `
 			FOR UPDATE OF t SKIP LOCKED
 			LIMIT 1
 		)

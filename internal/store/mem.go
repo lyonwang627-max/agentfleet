@@ -12,6 +12,7 @@ import (
 
 // MemStore 进程内实现：演示模式（--mem）与单元测试共用，语义与 Postgres 版对齐。
 type MemStore struct {
+	claimStrategy ClaimStrategy
 	mu            sync.RWMutex
 	agents        map[int64]*model.Agent
 	tasks         map[int64]*model.Task
@@ -40,8 +41,14 @@ type MemStore struct {
 }
 
 func NewMemStore() *MemStore {
-	return &MemStore{
+	return NewMemStoreWithStrategy("priority")
+}
+
+// NewMemStoreWithStrategy 指定认领策略构建（I10）。
+func NewMemStoreWithStrategy(name string) *MemStore {
+	m := &MemStore{
 		agents: map[int64]*model.Agent{}, tasks: map[int64]*model.Task{}, webhooks: map[int64]*model.Webhook{},
+		claimStrategy: ClaimStrategyByName(name),
 		runs: map[int64]*model.Run{}, steps: map[int64][]model.RunStep{},
 		convos: map[int64]*model.Conversation{}, msgs: map[int64][]model.Message{},
 		datasets: map[int64]*model.EvalDataset{}, cases: map[int64][]model.EvalCase{},
@@ -56,6 +63,7 @@ func NewMemStore() *MemStore {
 		projects:      map[int64]*model.Project{},
 		taskComments:  map[int64]*model.TaskComment{},
 	}
+	return m
 }
 
 func (m *MemStore) id() int64 { m.nextID++; return m.nextID }
@@ -289,7 +297,8 @@ func (m *MemStore) ClaimNextTask(_ context.Context) (*model.Task, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	now := time.Now()
-	var best *model.Task
+	// I10：先收集全部可行候选，策略只负责「候选集中选谁」——闸门仍由存储统一保证
+	var candidates []*model.Task
 	for _, t := range m.tasks {
 		if t.Status != model.TaskQueued {
 			continue
@@ -301,7 +310,6 @@ func (m *MemStore) ClaimNextTask(_ context.Context) (*model.Task, error) {
 		if !ok || !a.Enabled {
 			continue
 		}
-		// 依赖检查：任一依赖未 done 则跳过（不阻塞其他任务）
 		blocked := false
 		for _, dep := range t.DependsOn {
 			if d, ok := m.tasks[dep]; !ok || d.Status != model.TaskDone {
@@ -315,10 +323,9 @@ func (m *MemStore) ClaimNextTask(_ context.Context) (*model.Task, error) {
 		if running := m.runningFor(t.AgentID); running >= a.MaxConcurrency {
 			continue
 		}
-		if best == nil || t.Priority > best.Priority || (t.Priority == best.Priority && t.ID < best.ID) {
-			best = t
-		}
+		candidates = append(candidates, t)
 	}
+	best := m.claimStrategy(candidates)
 	if best == nil {
 		return nil, nil
 	}

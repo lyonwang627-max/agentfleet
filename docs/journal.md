@@ -567,3 +567,9 @@
 ## 2026-11-13 文档切片：README/ROADMAP 同步深度组件战果（commit e98eca3）
 
 - 演示动线 +4 步（小队/群聊智能选人/依赖图+层级 trace/草稿发布）；Mermaid 架构图补 runner 三实现/模型冷却/webhook dispatcher/runtime；测试与质量段补真机冒烟方法论；ROADMAP 尾注汇总池全清零战果。
+
+## 2026-11-13 C 切片：I10 调度可插拔策略（池里最后一个大项，整体收口）
+
+- ClaimStrategy 接口（只选候选、闸门归存储）+ priority/fairshare 注册表 + mem 候选集改造 + pg ORDER BY 策略映射 + fleetd FLEET_CLAIM_STRATEGY env。单测 3 组（默认不回归/fairshare/未知回退）。
+- **踩坑两个**：①候选值拷贝丢指针更新致集成测试任务卡 queued——改 []*model.Task 指针切片；②python 半改静默不命中再现（GetRun 11/13 列）——全量测试兜底抓回。
+- 10 包 -race 全绿。**I10 done——IDEAS 池全清零（36 项）**。

@@ -26,7 +26,7 @@ func newEmbeddedPG(t *testing.T) *PostgresStore {
 	}
 	t.Cleanup(func() { _ = pg.Stop() })
 	ctx := context.Background()
-	p, err := NewPostgresStore(ctx, "postgres://fleet:fleet@127.0.0.1:5499/fleet?sslmode=disable")
+	p, err := NewPostgresStore(ctx, "postgres://fleet:fleet@127.0.0.1:5499/fleet?sslmode=disable", "priority")
 	if err != nil {
 		t.Skipf("PostgresStore 连接失败: %v", err)
 	}
