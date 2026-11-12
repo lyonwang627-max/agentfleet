@@ -160,11 +160,15 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   squad_members——FK 约束下删队直接炸（mem 遍历删除掩盖）；⑩沿袭确认 hash 查找/UNIQUE 幂等正常。
   pg 真机冒烟累计 **10 个真 bug**——两波扩面后 store 接口面真机覆盖基本完整。
 
-- [ ] **I37 入站 webhook endpoint（外部系统→任务）** `proposed` `S`（源自 dify-plugin-daemon 调研，见 docs/research/）
+- [x] **I37 入站 webhook endpoint（外部系统→任务）** `done`（2026-11-13，源自 dify-plugin-daemon 调研，见 docs/research/）
   动机：I7 只有出站（结果通知），Dify Endpoint 类型补全双向集成——平台生成一次性 URL，
   外部告警/工单系统回调 → 校验映射 → 自动建任务（FDE 集成叙事闭环：告警系统进=入站、结果通知出=出站）。
   验收：POST /api/v1/webhooks/{id}/ingest/{token}——token 校验 → payload 映射 title/prompt → 建任务；
   无效 token 401；payload 缺字段 400；ingest 事件流留痕。
+  实现：IngestToken（SHA256("ingest:"+secret) 派生 24 hex——secret 本体不暴露，token 可独立分发/轮换）+
+  POST /webhooks/{id}/ingest/{token}（payload agent_id/title/prompt/priority/labels → 任务 + 来源标签
+  webhook:<id>）+ webhook.ingest 事件留痕 + Wake 即时派发。单测五断言（401/400 缺字段/400 agent 无效/
+  201 映射+标签+事件）。FDE 双向集成闭环：告警系统进（入站）= 结果通知出（出站 I7）。
 
 ## 已完成（沉淀记录）
 

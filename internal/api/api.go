@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/lyonwang/agentfleet/internal/eval"
+	"github.com/lyonwang/agentfleet/internal/webhook"
 	"github.com/lyonwang/agentfleet/internal/gateway"
 	"github.com/lyonwang/agentfleet/internal/model"
 	"github.com/lyonwang/agentfleet/internal/runner"
@@ -114,6 +115,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/v1/webhooks", s.createWebhook)                // I7 出站订阅
 	mux.HandleFunc("GET /api/v1/webhooks", s.listWebhooks)
 	mux.HandleFunc("DELETE /api/v1/webhooks/{id}", s.deleteWebhook)
+	mux.HandleFunc("POST /api/v1/webhooks/{id}/ingest/{token}", s.ingestWebhook) // I37 入站回调
 	mux.HandleFunc("DELETE /api/v1/workspaces/{id}", s.deleteWorkspace)
 	mux.HandleFunc("GET /api/v1/skills", s.listSkills)
 	mux.HandleFunc("POST /api/v1/skills", s.createSkill)
@@ -742,6 +744,68 @@ func (s *Server) deleteWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"id": pathID(r), "deleted": true})
+}
+
+// ingestWebhook 入站回调（I37，与出站 I7 对称）：外部告警/工单系统 POST payload → 校验
+// → 自动建任务。token = IngestToken(hook)（secret 派生）；payload 需 agent_id/title/prompt。
+func (s *Server) ingestWebhook(w http.ResponseWriter, r *http.Request) {
+	hooks, err := s.Store.ListWebhooks(r.Context())
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err)
+		return
+	}
+	var hook *model.Webhook
+	id := pathID(r)
+	for i := range hooks {
+		if hooks[i].ID == id && hooks[i].Active {
+			hook = &hooks[i]
+		}
+	}
+	if hook == nil {
+		writeErr(w, http.StatusNotFound, errors.New("webhook 不存在或未启用"))
+		return
+	}
+	if webhook.IngestToken(hook) != r.PathValue("token") {
+		writeErr(w, http.StatusUnauthorized, errors.New("ingest token 无效"))
+		return
+	}
+	var in struct {
+		AgentID  int64    `json:"agent_id"`
+		Title    string   `json:"title"`
+		Prompt   string   `json:"prompt"`
+		Priority int      `json:"priority"`
+		Labels   []string `json:"labels"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		writeErr(w, http.StatusBadRequest, err)
+		return
+	}
+	if strings.TrimSpace(in.Title) == "" || strings.TrimSpace(in.Prompt) == "" || in.AgentID <= 0 {
+		writeErr(w, http.StatusBadRequest, errors.New("title/prompt/agent_id 必填"))
+		return
+	}
+	a, err := s.Store.GetAgent(r.Context(), in.AgentID)
+	if err != nil || !a.Enabled {
+		writeErr(w, http.StatusBadRequest, errors.New("agent 不存在或未启用"))
+		return
+	}
+	labels := append(in.Labels, "webhook:"+strconv.FormatInt(hook.ID, 10))
+	t := &model.Task{Title: clip(in.Title, 120), Prompt: clip(in.Prompt, 4000),
+		AgentID: in.AgentID, Priority: in.Priority, Labels: labels}
+	if in.Priority < 1 || in.Priority > 9 {
+		t.Priority = 5
+	}
+	taskID, err := s.Store.CreateTask(r.Context(), t)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err)
+		return
+	}
+	s.publish(r.Context(), "webhook.ingest", map[string]any{
+		"webhook_id": hook.ID, "task_id": taskID, "title": t.Title})
+	if s.Sched != nil {
+		s.Sched.Wake()
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"task_id": taskID, "webhook_id": hook.ID})
 }
 
 // ---- chat ----

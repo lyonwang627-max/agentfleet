@@ -74,3 +74,11 @@ func Deliver(ctx context.Context, client *http.Client, h *model.Webhook, event m
 	}
 	return nil
 }
+
+// IngestToken 入站回调令牌（I37，Dify Endpoint 类型对读）：
+// 从 hook secret 派生（无需新列）——外部系统持有 token 即可回调建任务；
+// secret 本体不出创建响应之外，token 可独立轮换分发。
+func IngestToken(h *model.Webhook) string {
+	sum := sha256.Sum256([]byte("ingest:" + h.Secret))
+	return hex.EncodeToString(sum[:])[:24]
+}

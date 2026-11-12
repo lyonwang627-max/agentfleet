@@ -154,3 +154,72 @@ func TestWebhookCRUDHTTP(t *testing.T) {
 		t.Fatalf("重复删除应 404: %d", wd2.Code)
 	}
 }
+
+// 入站回调（I37，与出站对称）：token 校验 → payload 映射建任务 → 事件留痕。
+func TestIngestWebhookHTTP(t *testing.T) {
+	st := store.NewMemStore()
+	s := &Server{Store: st, Hub: scheduler.NewHub(st), LLM: nil, StartedAt: time.Now()}
+	ctx := context.Background()
+	aid, _ := st.CreateAgent(ctx, &model.Agent{Name: "ingest-a", Model: "mock", Runner: "mock", Enabled: true})
+	hid, _ := st.CreateWebhook(ctx, &model.Webhook{Name: "in", URL: "https://x/y",
+		Secret: "sec-1", Events: []string{"*"}, Active: true})
+	hooks, _ := st.ListWebhooks(ctx)
+	token := webhook.IngestToken(&hooks[0])
+
+	call := func(hookID int64, tok, body string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest("POST", "/api/v1/webhooks/"+itoaInt64(hookID)+"/ingest/"+tok,
+			strings.NewReader(body))
+		r.SetPathValue("id", itoaInt64(hookID))
+		r.SetPathValue("token", tok)
+		w := httptest.NewRecorder()
+		s.ingestWebhook(w, r)
+		return w
+	}
+
+	// 无效 token → 401
+	if w := call(hid, "bad-token", `{"agent_id":` + itoaInt64(aid) + `,"title":"t","prompt":"p"}`); w.Code != 401 {
+		t.Fatalf("无效 token 应 401: %d", w.Code)
+	}
+	// 缺字段 → 400
+	if w := call(hid, token, `{"agent_id":` + itoaInt64(aid) + `}`); w.Code != 400 {
+		t.Fatalf("缺 title/prompt 应 400: %d", w.Code)
+	}
+	// agent 不存在 → 400
+	if w := call(hid, token, `{"agent_id":99999,"title":"t","prompt":"p"}`); w.Code != 400 {
+		t.Fatalf("agent 不存在应 400: %d", w.Code)
+	}
+	// 正常 → 201 建任务 + webhook 标签 + 事件留痕
+	w := call(hid, token, `{"agent_id":` + itoaInt64(aid) + `,"title":"告警进站","prompt":"处理告警","priority":8,"labels":["ops"]}`)
+	if w.Code != 201 {
+		t.Fatalf("正常应 201: %d %s", w.Code, w.Body.String())
+	}
+	var created struct {
+		TaskID int64 `json:"task_id"`
+	}
+	_ = json.Unmarshal(w.Body.Bytes(), &created)
+	task, _ := st.GetTask(ctx, created.TaskID)
+	if task.Title != "告警进站" || task.Priority != 8 {
+		t.Fatalf("任务映射不符: %+v", task)
+	}
+	// 来源标签（webhook:<id>）
+	tagged := false
+	for _, l := range task.Labels {
+		if strings.HasPrefix(l, "webhook:") {
+			tagged = true
+		}
+	}
+	if !tagged || len(task.Labels) != 2 {
+		t.Fatalf("来源标签不符: %v", task.Labels)
+	}
+	// ingest 事件留痕
+	evs, _ := st.EventsSince(ctx, 0, 50)
+	found := false
+	for _, e := range evs {
+		if e.Kind == "webhook.ingest" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("缺 webhook.ingest 事件")
+	}
+}
