@@ -621,3 +621,9 @@
 
 - agents.ramping_version/ramp_pct 双列 additive（pg scan/patch 注意落对 UpdateAgent 而非 UpdateTask——Priority 分支两处同型，python 盲插踩坑一次）；routeVersion 纯函数（fnv32(taskID:rampingVersion) 确定性分桶，掺版本号使不同灰度轮可变）+ applyVersionSnapshot（灰度桶 Config 快照覆盖 agent 执行副本）+ publishAgent ramp_pct 参数。
 - 单测 2 组（分桶确定性/边界/快照覆盖）；10 包 -race 全绿。第 2 轮：前端 ramp 控件 + promote 语义。
+
+## 2026-11-13 A 切片：前端测试基建（vitest + 首批测试）——web 零测试缺口补齐
+
+- web 装 vitest+@testing-library（dev-only）；npm run test 接入；首批 4 测试：fitLabel 像素截断纯函数（CJK/短标签）+ DepGraph 渲染（SVG 节点/计数/cycle 警示）。
+- vitest 踩坑：vi.mock factory 提升限制（factory 内联数据）+ mock 覆写用 spy 模式。DepGraph 导出 fitLabel 供测。
+- web build 零报错；Go 侧全绿不受影响。

@@ -23,7 +23,7 @@ const statusColor: Record<string, string> = {
 };
 
 // 像素预算截断：CJK ≈ fontSize、ASCII ≈ 0.55×fontSize（按字符数截会溢出框）
-function fitLabel(id: number, title: string, budget: number): string {
+export function fitLabel(id: number, title: string, budget: number): string {
   const head = `#${id} `;
   const chars = [...(head + title)];
   let w = 0;
