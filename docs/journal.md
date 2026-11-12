@@ -563,3 +563,7 @@
 - 本机无 docker → 测试内嵌真 PG 17（embedded-postgres，test-only 依赖），凭据对齐 compose；全链路冒烟 2 组（draft 三方法/task patch/run 扩列/webhook jsonb/版本链/usage purpose）。
 - **累计抓 7 个真 bug 全部修复**：①schema.sql 21 条 ALTER 前置 CREATE——全新部署 migrate 必炸（旧库掩蔽）；②③④pg UpdateTask/ListRuns/GetRun 缺 SteerNote/session_id 列（scan 列数不对齐）；⑤pg AppendStep 透传 Seq=0 破坏主键递增 → DB 侧 max+1；⑥CreateRun 只插 3 列丢扩列；⑦usage_events 漏 purpose ALTER。
 - **教训（面试硬货）**：mem 双实现掩蔽全部 SQL 缺陷——「多实现抽象」的正确姿势 = 新列落地必须真机冒烟。10 包 -race 全绿 + 契约漂移补登。
+
+## 2026-11-13 文档切片：README/ROADMAP 同步深度组件战果（commit e98eca3）
+
+- 演示动线 +4 步（小队/群聊智能选人/依赖图+层级 trace/草稿发布）；Mermaid 架构图补 runner 三实现/模型冷却/webhook dispatcher/runtime；测试与质量段补真机冒烟方法论；ROADMAP 尾注汇总池全清零战果。
