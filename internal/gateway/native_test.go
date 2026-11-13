@@ -31,7 +31,7 @@ func TestNativeSuccess(t *testing.T) {
 	})
 	defer srv.Close()
 
-	content, tokens, err := l.native(context.Background(), "sys", "usr", false, 800)
+	content, tokens, err := l.native(context.Background(), "sys", "usr", false, 800, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestNativeHTTP500(t *testing.T) {
 		http.Error(w, "model overheated", http.StatusInternalServerError)
 	})
 	defer srv.Close()
-	_, _, err := l.native(context.Background(), "s", "u", false, 100)
+	_, _, err := l.native(context.Background(), "s", "u", false, 100, nil)
 	if err == nil || !strings.Contains(err.Error(), "http 500") {
 		t.Fatalf("HTTP 500 应报错: %v", err)
 	}
@@ -88,7 +88,7 @@ func TestNativeMalformedBody(t *testing.T) {
 		_, _ = w.Write([]byte(`{not-json`))
 	})
 	defer srv.Close()
-	if _, _, err := l.native(context.Background(), "s", "u", false, 100); err == nil {
+	if _, _, err := l.native(context.Background(), "s", "u", false, 100, nil); err == nil {
 		t.Fatal("非法响应体应报错")
 	}
 }
@@ -98,7 +98,7 @@ func TestNativeServerDown(t *testing.T) {
 	url := srv.URL
 	srv.Close() // 立即关闭：连接拒绝路径
 	l := &LLM{Mode: "ollama", BaseURL: url, Model: "m", client: &http.Client{Timeout: 2 * time.Second}}
-	_, _, err := l.native(context.Background(), "s", "u", false, 100)
+	_, _, err := l.native(context.Background(), "s", "u", false, 100, nil)
 	if err == nil {
 		t.Fatal("连接拒绝应报错")
 	}

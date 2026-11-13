@@ -271,6 +271,20 @@ func envOrStr(key, def string) string {
 	return def
 }
 
+// ChatJSONSchema 带显式 schema 的结构化生成（I42）：payload.format 传 schema 对象
+// （Ollama 新版 grammar 约束——strict 级，schema 违反结构性不可能）；Ollama 旧版
+// 不支持对象 format 时行为回退由调用方决策。nil schema 请用 ChatJSON。
+func (l *LLM) ChatJSONSchema(ctx context.Context, system, user string, maxTokens int, schema json.RawMessage) (json.RawMessage, int, error) {
+	if l.Mode == "mock" {
+		if l.Fallback != nil {
+			return json.RawMessage(l.Fallback(system, user)), 64, nil
+		}
+		return json.RawMessage(`{"reply":"(mock) 已处理任务请求。","tokens":64}`), 64, nil
+	}
+	raw, tokens, err := l.native(ctx, system, user, true, maxTokens, schema)
+	return json.RawMessage(raw), tokens, err
+}
+
 // StreamChat 流式生成（F15）：native /api/chat stream:true，NDJSON 增量 → onChunk 回调。
 // 每个增量是已确认的新文本片段（非全量）；返回 token 数（优先服务端 eval_count）。
 func (l *LLM) StreamChat(ctx context.Context, system, user string, maxTokens int, onChunk func(string)) (int, error) {
@@ -346,7 +360,7 @@ func (l *LLM) Chat(ctx context.Context, system, user string, maxTokens int) (str
 		}
 		return "(mock) " + user, 64, nil
 	}
-	return l.native(ctx, system, user, false, maxTokens)
+	return l.native(ctx, system, user, false, maxTokens, nil)
 }
 
 // ChatJSON 结构化生成：Ollama 原生 format:"json"，语法级保证合法 JSON。
@@ -357,11 +371,11 @@ func (l *LLM) ChatJSON(ctx context.Context, system, user string, maxTokens int) 
 		}
 		return json.RawMessage(`{"reply":"(mock) 已处理任务请求。","tokens":64}`), 64, nil
 	}
-	raw, tokens, err := l.native(ctx, system, user, true, maxTokens)
+	raw, tokens, err := l.native(ctx, system, user, true, maxTokens, nil)
 	return json.RawMessage(raw), tokens, err
 }
 
-func (l *LLM) native(ctx context.Context, system, user string, forceJSON bool, maxTokens int) (string, int, error) {
+func (l *LLM) native(ctx context.Context, system, user string, forceJSON bool, maxTokens int, schema json.RawMessage) (string, int, error) {
 	if maxTokens <= 0 {
 		maxTokens = 1024
 	}
@@ -373,7 +387,12 @@ func (l *LLM) native(ctx context.Context, system, user string, forceJSON bool, m
 		"options":  map[string]any{"temperature": 0.3, "num_predict": maxTokens},
 	}
 	if forceJSON {
-		payload["format"] = "json"
+		// I42：schema 非空 = strict 级（Ollama 新版 grammar 约束）；nil = json_object 级
+		if len(schema) > 0 {
+			payload["format"] = schema
+		} else {
+			payload["format"] = "json"
+		}
 	}
 	body, _ := json.Marshal(payload)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, l.BaseURL+"/api/chat", strings.NewReader(string(body)))

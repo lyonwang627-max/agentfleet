@@ -26,6 +26,7 @@ type Dispatcher struct {
 	Store    store.Store
 	Client   *http.Client
 	Interval time.Duration // 扫描周期
+	timeNow  func() time.Time // 可替换时钟（重试退避测试注入；实例字段避免包级 race）
 
 	mu      sync.Mutex
 	lastSeq int64
@@ -42,7 +43,7 @@ type retryTask struct {
 
 func NewDispatcher(st store.Store) *Dispatcher {
 	return &Dispatcher{Store: st, Client: &http.Client{Timeout: 5 * time.Second},
-		Interval: 2 * time.Second, retries: map[int64]*retryTask{}}
+		Interval: 2 * time.Second, retries: map[int64]*retryTask{}, timeNow: time.Now}
 }
 
 // Run 主循环（fleetd goroutine；ctx 取消退出）。
@@ -107,7 +108,7 @@ func (d *Dispatcher) scanOnce(ctx context.Context) {
 		d.lastSeq = since
 	}
 	// 2) 重试队列到期项：attempt 随条目保留（移出再重建会重置计数——曾致退避永不耗尽）
-	now := timeNow()
+	now := d.timeNow()
 	var due []*retryTask
 	for id, rt := range d.retries {
 		h, ok := active[rt.hook.ID]
@@ -159,7 +160,7 @@ func (d *Dispatcher) dispatch(ctx context.Context, h *model.Webhook, ev model.Ev
 		d.retries[h.ID] = rt
 	}
 	rt.attempt = attempt
-	rt.nextRetry = timeNow().Add(backoff)
+	rt.nextRetry = d.timeNow().Add(backoff)
 		slog.Warn("webhook 投递失败，退避重试", "hook_id", h.ID, "event", ev.Kind,
 			"attempt", attempt, "backoff_s", backoff.Seconds(), "err", err)
 }
@@ -171,4 +172,3 @@ func (d *Dispatcher) currSeq() int64 {
 	return d.lastSeq
 }
 
-var timeNow = time.Now // 可替换时钟（重试退避测试用）

@@ -34,6 +34,21 @@ type decision struct {
 
 const maxToolSteps = 4 // 多轮工具循环上限（防上下文膨胀与死循环）
 
+// decisionSchema 决策协议 schema（I42）：ChatJSON strict 级——schema 违反结构性不可能。
+// 兼容 Ollama 旧版：不支持对象 format 时由服务端自行回退。
+var decisionSchema = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "reply":           {"type": "string"},
+    "handoff_to":      {"type": "string"},
+    "needs_approval":  {"type": "boolean"},
+    "note":            {"type": "string"},
+    "tool":            {"type": "string"},
+    "tool_args":       {"type": "object"}
+  },
+  "required": ["reply"]
+}`)
+
 // ToolGateError 工具级审批中断（I33）：高风险工具调用在执行前暂停，任务进 review 门。
 // approve 后审批记录（含工具名）注入 task prompt，重跑时闸放行（与 F3 审批记录消费同机制）。
 type ToolGateError struct {
@@ -155,7 +170,7 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 		if steer := steerCheck(); steer != "" {
 			user += "\n\n" + steer + "\n（请结合以上插话调整后续行动）"
 		}
-		raw, tokens, err := execLLM.ChatJSON(ctx, system, user, 900)
+		raw, tokens, err := execLLM.ChatJSONSchema(ctx, system, user, 900, decisionSchema)
 		if err != nil {
 			return decision{}, err
 		}
@@ -214,7 +229,7 @@ func (r *LLMRunner) Execute(ctx context.Context, req ExecRequest) (Result, error
 		hallucination := strings.HasPrefix(observation, "错误：工具")
 		out := map[string]any{"result_head": head(observation, 200),
 			"result": head(observation, 2000), // I11：完整观察（重放通道回灌用，head 不够）
-			"turn": turn, "transport": "stdio", "protocol": "mcp"}
+			"turn":   turn, "transport": "stdio", "protocol": "mcp"}
 		if hallucination {
 			out["hallucination"] = true
 		}

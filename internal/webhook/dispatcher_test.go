@@ -78,10 +78,10 @@ func TestDispatcherRetryBackoffAndRecovery(t *testing.T) {
 
 	d := NewDispatcher(st)
 	// scanOnce 直驱 + 时钟快进（1s/2s 退避内 3 次尝试收敛——fail 连挂 2 次后放行）
-	orig := timeNow
-	cur := timeNow()
-	timeNow = func() time.Time { return cur }
-	defer func() { timeNow = orig }()
+	orig := d.timeNow
+	cur := d.timeNow()
+	d.timeNow = func() time.Time { return cur }
+	defer func() { d.timeNow = orig }()
 	for i := 0; i < 30; i++ {
 		cur = cur.Add(600 * time.Millisecond)
 		d.scanOnce(ctx)
@@ -125,10 +125,10 @@ func TestDispatcherRetryExhausted(t *testing.T) {
 	_, _ = st.AppendEvent(ctx, &model.Event{Kind: "task.done"})
 
 	d := NewDispatcher(st)
-	orig := timeNow
-	cur := timeNow()
-	timeNow = func() time.Time { return cur }
-	defer func() { timeNow = orig }()
+	orig := d.timeNow
+	cur := d.timeNow()
+	d.timeNow = func() time.Time { return cur }
+	defer func() { d.timeNow = orig }()
 	_, _ = st.AppendEvent(ctx, &model.Event{Kind: "task.done"})
 	// 快进时钟 + 直驱（1+2+4+8=15s 内 5 次尝试耗尽）
 	for i := 0; i < 60 && attempts < retryMaxAttempts; i++ {
@@ -169,10 +169,10 @@ func TestDeliveryIdStableAcrossRetries(t *testing.T) {
 	_, _ = st.AppendEvent(ctx, &model.Event{Kind: "task.done"})
 
 	d := NewDispatcher(st)
-	orig := timeNow
-	cur := timeNow()
-	timeNow = func() time.Time { return cur }
-	defer func() { timeNow = orig }()
+	orig := d.timeNow
+	cur := d.timeNow()
+	d.timeNow = func() time.Time { return cur }
+	defer func() { d.timeNow = orig }()
 	for i := 0; i < 20; i++ {
 		cur = cur.Add(time.Second)
 		d.scanOnce(ctx)
@@ -259,11 +259,11 @@ func TestSlogFieldsInRetry(t *testing.T) {
 	d := NewDispatcher(st)
 	_, _ = st.AppendEvent(ctx, &model.Event{Kind: "task.done"})
 
-	orig := timeNow
-	cur := timeNow()
-	timeNow = func() time.Time { return cur }
-	defer func() { timeNow = orig }()
-	for i := 0; i < 8; i++ {
+	orig := d.timeNow
+	cur := d.timeNow()
+	d.timeNow = func() time.Time { return cur }
+	defer func() { d.timeNow = orig }()
+	for i := 0; i < 20; i++ {
 		cur = cur.Add(time.Second)
 		d.scanOnce(ctx)
 	}

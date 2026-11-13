@@ -727,3 +727,9 @@
 - json_object vs json_schema strict 本质差异（语法合法 vs grammar-constrained decoding——CFG 掩码使 schema 违反结构性不可能，ACL 2025 背书）；Willison 警告「失败更稀有但更灾难性」（schema 合法但语义错——I28 幻觉引导已是语义层解法）。
 - **对 agentfleet**：format:json = json_object 级最优实践（Ollama 生态）；**I42 ChatJSON schema 升级预留入池**（S——Ollama 新版 format 传 schema 一次改动升 strict 级）。
 - 明确不抄：Pydantic 重试全家桶/OpenAI 专有参数。
+
+## 2026-11-14 C 切片：I42 ChatJSON schema 升级（S 一轮收口）
+
+- native 加 schema 参数（nil="json"/有=schema 对象——strict 级判定）+ ChatJSONSchema 新方法（ChatJSON 委托 nil 零回归）+ llm.go decisionSchema 固化（decision 六字段）传入 decide 每轮——Ollama 新版 format 传 schema 即 grammar 约束 strict 级。
+- **顺带修 dispatcher timeNow 包级变量 race**（测试互写 timeNow——Dispatcher.timeNow 实例字段隔离）。
+- 单测：payload.format schema 对象断言。10 包 -race 全绿。I42 整体 done。

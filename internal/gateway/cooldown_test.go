@@ -2,9 +2,10 @@ package gateway
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
-	"strings"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -24,7 +25,7 @@ func TestCooldownLifecycle(t *testing.T) {
 
 	// 连续 3 次失败 → 进入冷却
 	for i := 0; i < 3; i++ {
-		_, _, _ = l.native(context.Background(), "s", "u", false, 100)
+		_, _, _ = l.native(context.Background(), "s", "u", false, 100, nil)
 	}
 	if !l.IsCooling(l.Model) {
 		t.Fatal("3 次连续失败应进入冷却")
@@ -49,12 +50,12 @@ func TestCooldownLifecycle(t *testing.T) {
 		w.Write([]byte(`{"message":{"content":"ok"},"eval_count":1}`))
 	})
 	defer srv2.Close()
-	_, _, _ = l2.native(context.Background(), "s", "u", false, 100)
-	_, _, _ = l2.native(context.Background(), "s", "u", false, 100)
+	_, _, _ = l2.native(context.Background(), "s", "u", false, 100, nil)
+	_, _, _ = l2.native(context.Background(), "s", "u", false, 100, nil)
 	failMode = false
-	_, _, _ = l2.native(context.Background(), "s", "u", false, 100) // 成功重置
+	_, _, _ = l2.native(context.Background(), "s", "u", false, 100, nil) // 成功重置
 	failMode = true
-	_, _, _ = l2.native(context.Background(), "s", "u", false, 100) // 再 1 次失败
+	_, _, _ = l2.native(context.Background(), "s", "u", false, 100, nil) // 再 1 次失败
 	if l2.IsCooling(l2.Model) {
 		t.Fatal("成功应重置计数——2 失败 + 1 成功 + 1 失败不应冷却")
 	}
@@ -134,5 +135,26 @@ func TestChatMockFallbackPaths(t *testing.T) {
 	tokens, err := l.StreamChat(context.Background(), "s", "内容", 100, func(chunk string) { full += chunk })
 	if err != nil || !strings.Contains(full, "(mock) 内容") || tokens == 0 {
 		t.Fatalf("StreamChat mock 形态不符: %q %d %v", full, tokens, err)
+	}
+}
+
+// ChatJSONSchema（I42）：payload.format 传 schema 对象（strict 级契约锁）。
+func TestChatJSONSchemaPayload(t *testing.T) {
+	var gotPayload map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&gotPayload)
+		w.Write([]byte(`{"message":{"content":"{\"score\":8}"},"eval_count":5}`))
+	}))
+	defer srv.Close()
+	l := NewWithBaseURL("m", srv.URL)
+	schema := json.RawMessage(`{"type":"object","required":["score"]}`)
+	raw, _, err := l.ChatJSONSchema(context.Background(), "sys", "usr", 200, schema)
+	if err != nil || string(raw) != `{"score":8}` {
+		t.Fatalf("ChatJSONSchema 不符: %s %v", raw, err)
+	}
+	// format 是 schema 对象而非 "json" 字符串（strict 级判定）
+	fmt_, ok := gotPayload["format"].(map[string]any)
+	if !ok || fmt_["type"] != "object" {
+		t.Fatalf("format 应为 schema 对象: %v", gotPayload["format"])
 	}
 }
