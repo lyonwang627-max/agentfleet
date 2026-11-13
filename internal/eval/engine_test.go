@@ -2,6 +2,9 @@ package eval
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -90,5 +93,46 @@ func TestRound1(t *testing.T) {
 		if got := round1(c.in); got != c.want {
 			t.Fatalf("round1(%v)=%v want %v", c.in, got, c.want)
 		}
+	}
+}
+
+// scoreCase 错误路径（作答失败——网关不可用）与 judge 越界分拒绝。
+func TestScoreCaseAnswerFailure(t *testing.T) {
+	// LLM 指向不可达端点 → Chat 报错 → 0 分不通过，comment 带错误
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"message":{"content":"ok"}}`))
+	}))
+	l := gateway.NewWithBaseURL("m", srv.URL)
+	srv.Close()
+	eng := &Engine{Store: nil, LLM: l}
+	score, pass, comment := eng.scoreCase(context.Background(),
+		&model.Agent{Name: "x"}, model.EvalCase{Input: "题"})
+	if score != 0 || pass {
+		t.Fatalf("作答失败应 0 分不通过: %d %v", score, pass)
+	}
+	if !strings.Contains(comment, "作答失败") {
+		t.Fatalf("comment 应带失败原因: %q", comment)
+	}
+}
+
+func TestJudgeScoreRejected(t *testing.T) {
+	// judge 输出越界分（15）→ 拒绝采用，回退启发式分数
+	st := store.NewMemStore()
+	eng := &Engine{Store: st, LLM: gateway.New("mock")}
+	eng.LLM.Fallback = func(system, user string) string {
+		if strings.Contains(system, "judge") {
+			return `{"score": 15, "comment": "越界分"}`
+		}
+		return "(mock) 回答"
+	}
+	agent := &model.Agent{Name: "tester", SystemPrompt: "p", Model: "mock"}
+	score, _, _ := eng.scoreCase(context.Background(), agent, model.EvalCase{
+		Input:    "题干包含 要点甲",
+		Expected: map[string]any{"points": []string{"要点甲"}},
+	})
+	// 越界分（15）被拒 → 启发式分数（Fallback 固定回答不含要点 → hit=0 → 3）
+	// 若 judge 越界分被误采用则 score=15——边界防护锁
+	if score != 3 {
+		t.Fatalf("越界 judge 分应被拒并回退启发式(3): %d", score)
 	}
 }
