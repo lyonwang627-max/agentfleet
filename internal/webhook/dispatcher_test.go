@@ -2,8 +2,11 @@ package webhook
 
 import (
 	"context"
+	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -231,4 +234,75 @@ func TestDispatcherRunTick(t *testing.T) {
 	if hits < 1 {
 		t.Fatalf("tick 循环未投递: %d", hits)
 	}
+}
+
+// slog 字段化断言（I41 第 2 轮）：重试日志 hook_id/attempt 为独立字段而非消息文本。
+func TestSlogFieldsInRetry(t *testing.T) {
+	buf := &lockedBuffer2{}
+	slog.SetDefault(slog.New(slog.NewJSONHandler(buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil))) })
+
+	attempts := 0
+	var mu sync.Mutex
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		attempts++
+		mu.Unlock()
+		w.WriteHeader(http.StatusInternalServerError) // 恒失败逼出重试日志
+	}))
+	defer srv.Close()
+
+	st := store.NewMemStore()
+	ctx := context.Background()
+	_, _ = st.CreateWebhook(ctx, &model.Webhook{Name: "sf", URL: srv.URL, Secret: "s",
+		Events: []string{"*"}, Active: true})
+	d := NewDispatcher(st)
+	_, _ = st.AppendEvent(ctx, &model.Event{Kind: "task.done"})
+
+	orig := timeNow
+	cur := timeNow()
+	timeNow = func() time.Time { return cur }
+	defer func() { timeNow = orig }()
+	for i := 0; i < 8; i++ {
+		cur = cur.Add(time.Second)
+		d.scanOnce(ctx)
+	}
+
+	// 解析 JSON 行：投递失败记录的 hook_id/attempt 为独立字段
+	found := false
+	for _, line := range strings.Split(buf.String(), "\n") {
+		var rec map[string]any
+		if json.Unmarshal([]byte(line), &rec) != nil {
+			continue
+		}
+		if rec["msg"] == "webhook 投递失败，退避重试" {
+			found = true
+			if rec["hook_id"].(float64) != 1 {
+				t.Fatalf("hook_id 字段不符: %v", rec["hook_id"])
+			}
+			if _, ok := rec["attempt"]; !ok {
+				t.Fatal("缺 attempt 字段")
+			}
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("缺结构化重试日志: %s", buf.String()[:min(len(buf.String()), 200)])
+	}
+}
+
+type lockedBuffer2 struct {
+	mu  sync.Mutex
+	buf strings.Builder
+}
+
+func (b *lockedBuffer2) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+func (b *lockedBuffer2) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }

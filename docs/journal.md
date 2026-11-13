@@ -717,3 +717,7 @@
 
 - main.go JSON handler 默认化（SetDefault 首行——启动日志即结构化）+ 15 条迁移（存储模式/runner 注册/MCP 就绪/模型分流/限流/listening/优雅退出）；webhook dispatcher 3 条（投递失败/重试耗尽/启动）；gateway 3 条（冷却/resolve/mock 降级）。
 - Printf 全仓清零（cmd/gateway/webhook——api 访问日志保留 text 属访问日志形态）。单测此前已锁字段化。10 包 -race 全绿。I41 整体 done。
+
+## 2026-11-14 A 切片：webhook slog 字段化断言（I41 对称收尾）
+
+- TestSlogFieldsInRetry：重试日志 hook_id/attempt 为独立字段（JSON handler SetDefault 替换——lockedBuffer2 同款语法坑修一次即过）。I41 字段化断言 scheduler/webhook 双面锁死。10 包 -race 全绿。
