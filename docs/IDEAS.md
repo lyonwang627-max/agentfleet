@@ -190,11 +190,15 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   修复=ramp>0 时草稿只进版本快照不落线（current 桶保持旧配置），promote 才落线；快照取草稿内容。
   调度器级 e2e（ramp=100 全新配置/ramp=0 全旧）+ API 层语义锁（ramp 不落线/promote 落线）全绿。
 
-- [ ] **I39 events_query 相对时间语法** `proposed` `S`（源自 temporal-search-attributes 调研，见 docs/research/）
+- [x] **I39 events_query 相对时间语法** `done`（2026-11-14，源自 temporal-search-attributes 调研，见 docs/research/）
   动机：events_query 的 since 只收绝对 seq/time——Temporal 的 `NOW()-'24h'` 相对时间语法
   对运维查询更友好（昨天的失败任务：since=NOW()-24h&kind=task.failed）。
   验收：since 支持 `NOW()-<duration>` 形态（Go time.ParseDuration 子集：s/m/h/d）；
   绝对 seq/time 完全兼容（不回归）；单测覆盖相对时间解析与边界。
+  实现：parseRelativeTime 纯函数（NOW()- 前缀 + ParseDuration + d=24h 独立解析）→ created_at
+  过滤（cutoff 后事件保留）；seq 绝对语义完全兼容。单测五场景（30ms 精确窗口/1h 全命中/
+  seq 兼容/非法回退/天单位）。顺带修闸超时测试 flake（事件断言改轮询等待——emit 时序竞态，
+  race 负载偶发）。I39 done。
 
 - [x] **I40 评测数据集版本化** `done`（2026-11-14，1/2 数据层 + 2/2 compare 对齐，源自 langsmith-evaluation 调研，见 docs/research/）
   动机：SaveCases 直接覆盖 cases——数据集变更多次评测间不可比（F18-c compare 按 case_id
