@@ -11,7 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
-	"log"
+	"log/slog"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -172,7 +172,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 			}
 		}
 	}()
-	log.Printf("[scheduler] started (poll=%s)", pollInterval)
+	slog.Info("scheduler started", "poll_interval", pollInterval)
 }
 
 func (s *Scheduler) Stop() {
@@ -183,10 +183,10 @@ func (s *Scheduler) Stop() {
 	inflight := len(s.running)
 	s.mu.Unlock()
 	if inflight > 0 {
-		log.Printf("[scheduler] drain：停止认领，等待 %d 个在途任务完成…", inflight)
+		slog.Info("scheduler draining", "inflight", inflight)
 	}
 	s.wg.Wait()
-	log.Printf("[scheduler] 已停止（在途任务全部落定）")
+	slog.Info("scheduler stopped")
 }
 
 func (s *Scheduler) Healthy() bool { return s.cancel != nil }
@@ -195,7 +195,7 @@ func (s *Scheduler) Healthy() bool { return s.cancel != nil }
 func (s *Scheduler) dispatch(ctx context.Context) {
 	task, err := s.store.ClaimNextTask(ctx)
 	if err != nil {
-		log.Printf("[scheduler] claim: %v", err)
+		slog.Error("claim failed", "err", err)
 		return
 	}
 	if task == nil {
@@ -259,7 +259,7 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 			Error: ptrStr("并发闸等待超时（agent 疑似卡死），已延迟重排队")})
 		s.emit(ctx, "agent.gate_timeout", map[string]any{
 			"task_id": task.ID, "agent": agent.Name, "retry_after_s": (retryBackoff * 2).Seconds()})
-		log.Printf("[scheduler] task#%d 并发闸等待超时（%s），延迟重排队", task.ID, time.Duration(gateAcquireTimeout.Load()))
+		slog.Warn("并发闸等待超时，延迟重排队", "task_id", task.ID, "timeout", time.Duration(gateAcquireTimeout.Load()))
 		return
 	}
 
@@ -341,8 +341,8 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 					"task_id": task.ID, "run_id": last.ID,
 					"run_version": last.AgentVersion, "current_version": curVersion,
 					"hint": "agent 配置已变更，重放观察不可信——本次完全重跑，请重新评估结果"})
-				log.Printf("[scheduler] task#%d 重放拒绝：run#%d 版本 v%d ≠ 当前 v%d（完全重跑）",
-					task.ID, last.ID, last.AgentVersion, curVersion)
+				slog.Warn("重放拒绝：版本变化，完全重跑", "task_id", task.ID, "run_id", last.ID,
+					"run_version", last.AgentVersion, "current_version", curVersion)
 			} else if last.SessionID != "" {
 				// I34 会话级续跑：版本一致时携带 CC session（与步级重放互补；变化时一并拒绝）
 				replayResume = last.SessionID
@@ -383,7 +383,8 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 		return
 	}
 	s.emit(ctx, "task.update", map[string]any{"task_id": task.ID, "status": string(model.TaskRunning), "run_id": runID, "agent": agent.Name})
-	log.Printf("[scheduler] task#%d 「%s」→ %s/%s (run#%d)", task.ID, task.Title, agent.Name, agent.Runner, runID)
+	slog.Info("task dispatched", "task_id", task.ID, "title", task.Title,
+		"agent", agent.Name, "runner", agent.Runner, "run_id", runID)
 
 	recorder := func(_ context.Context, st *model.RunStep) error {
 		_, err := s.store.AppendStep(ctx, runID, st)
@@ -419,7 +420,7 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 	if task.SquadID > 0 {
 		if squad, err := s.store.GetSquad(ctx, task.SquadID); err == nil {
 			agent.SystemPrompt += "\n\n" + buildSquadBriefing(ctx, s.store, squad)
-			log.Printf("[scheduler] task#%d 小队模式：leader=%s（squad#%d %s）", task.ID, agent.Name, squad.ID, squad.Name)
+			slog.Info("小队模式任务", "task_id", task.ID, "leader", agent.Name, "squad_id", squad.ID, "squad_name", squad.Name)
 		}
 	}
 
@@ -478,7 +479,7 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 		run.Status = model.RunFailed
 		run.Error = "canceled: 协作式取消退出"
 		_ = s.store.UpdateRun(ctx, run)
-		log.Printf("[scheduler] task#%d 协作式取消退出（不重试）", task.ID)
+		slog.Info("协作式取消退出（不重试）", "task_id", task.ID)
 	case execErr != nil:
 		s.failTask(ctx, &task, execErr.Error())
 	case res.NeedsApproval || res.RiskLevel == "high":
@@ -495,7 +496,7 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 			RiskLevel: ptrStr(risk), FinishedAt: &fin})
 		s.emit(ctx, "task.update", map[string]any{"task_id": task.ID, "status": string(model.TaskReview),
 			"run_id": runID, "risk_level": risk})
-		log.Printf("[scheduler] task#%d 等待人工审批（风险 %s）", task.ID, risk)
+		slog.Info("等待人工审批", "task_id", task.ID, "risk", risk)
 	case res.HandoffTo != "":
 		s.handoff(ctx, &task, runID, res)
 	default:
@@ -503,7 +504,7 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 			Status: ptrStatus(model.TaskDone), Result: ptrStr(res.Reply), Error: ptrStr(""),
 			FinishedAt: &fin})
 		s.emit(ctx, "task.update", map[string]any{"task_id": task.ID, "status": string(model.TaskDone), "run_id": runID})
-		log.Printf("[scheduler] task#%d done", task.ID)
+		slog.Info("task done", "task_id", task.ID)
 
 		// I30 小队闭环：成员（handoff 过来的）完成 → 自动 re-trigger leader 评估下一步。
 		// 实现轻量版：squad 任务的 handoff 链在成员 done 后，为 leader 建后续评估任务
@@ -518,7 +519,7 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 				}
 				if nid, err := s.store.CreateTask(ctx, followUp); err == nil {
 					s.emit(ctx, "task.update", map[string]any{"task_id": nid, "status": "queued", "squad_followup": task.ID})
-					log.Printf("[scheduler] 小队跟进：task#%d（成员完成）→ leader 评估任务 task#%d", task.ID, nid)
+					slog.Info("小队跟进评估任务生成", "member_task_id", task.ID, "leader_task_id", nid)
 					s.Wake()
 				}
 			}
@@ -584,7 +585,7 @@ func (s *Scheduler) handoff(ctx context.Context, task *model.Task, runID int64, 
 		AgentID: ptrI64(target.ID), Status: ptrStatus(model.TaskQueued),
 		HandoffCount: ptrInt(newCount), Prompt: ptrStr(composed)})
 	s.emit(ctx, "task.update", map[string]any{"task_id": task.ID, "status": "queued", "handoff_to": target.Name})
-	log.Printf("[scheduler] task#%d handoff → %s（第 %d 次）", task.ID, target.Name, newCount)
+	slog.Info("handoff 改派", "task_id", task.ID, "to", target.Name, "count", newCount)
 }
 
 // sweepDependents 依赖失败级联：依赖已 failed/canceled 的排队任务不再死等，直接判败。
@@ -610,7 +611,7 @@ func (s *Scheduler) sweepDependents(ctx context.Context) {
 					Error:      ptrStr(fmt.Sprintf("前置任务 #%d %s，本任务级联终止", dep, d.Status)),
 					FinishedAt: &fin})
 				s.emit(ctx, "task.update", map[string]any{"task_id": t.ID, "status": string(model.TaskFailed), "cascade": dep})
-				log.Printf("[scheduler] task#%d 因依赖 #%d %s 级联失败", t.ID, dep, d.Status)
+				slog.Warn("依赖失败级联", "task_id", t.ID, "dep_task_id", dep, "dep_status", d.Status)
 				break
 			}
 		}
@@ -626,14 +627,14 @@ func (s *Scheduler) failTask(ctx context.Context, task *model.Task, msg string) 
 			Error: ptrStr(msg), VisibleAfter: &visible})
 		s.emit(ctx, "task.update", map[string]any{"task_id": task.ID, "status": "queued",
 			"retry": newRetry, "error": msg})
-		log.Printf("[scheduler] task#%d 失败将重试(%d/%d): %s", task.ID, newRetry, task.MaxRetries, msg)
+		slog.Warn("任务失败将重试", "task_id", task.ID, "retry", newRetry, "max_retries", task.MaxRetries, "err", msg)
 		return
 	}
 	fin := timeNow()
 	_ = s.store.UpdateTask(ctx, task.ID, store.TaskPatch{
 		Status: ptrStatus(model.TaskFailed), Error: ptrStr(msg), FinishedAt: &fin})
 	s.emit(ctx, "task.update", map[string]any{"task_id": task.ID, "status": string(model.TaskFailed), "error": msg})
-	log.Printf("[scheduler] task#%d failed: %s", task.ID, msg)
+	slog.Error("task failed", "task_id", task.ID, "err", msg)
 }
 
 func (s *Scheduler) emit(ctx context.Context, kind string, data map[string]any) {

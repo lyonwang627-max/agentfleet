@@ -1,10 +1,16 @@
 package scheduler
 
 import (
-	"github.com/lyonwang/agentfleet/internal/model"
+	"context"
+	"encoding/json"
+	"log/slog"
+	"os"
 	"strings"
+	"sync"
 	"testing"
 
+	"github.com/lyonwang/agentfleet/internal/model"
+	"github.com/lyonwang/agentfleet/internal/runner"
 	"github.com/lyonwang/agentfleet/internal/store"
 )
 
@@ -72,4 +78,60 @@ func TestApplyVersionSnapshot(t *testing.T) {
 	if a2.Model != "qwen3.5" {
 		t.Fatalf("空 model 不应覆盖: %q", a2.Model)
 	}
+}
+
+// slog 结构化日志（I41 第 1 轮）：字段化断言（task_id/run_id 为独立字段而非消息文本）。
+func TestSlogFieldsInDispatch(t *testing.T) {
+	buf := &lockedBuffer{}
+	slog.SetDefault(slog.New(slog.NewJSONHandler(buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil))) })
+
+	st := store.NewMemStore()
+	s := New(st, NewHub(st))
+	ctx := context.Background()
+	aid, _ := st.CreateAgent(ctx, &model.Agent{Name: "sl", Model: "mock", Runner: "mock", Enabled: true})
+	tid, _ := st.CreateTask(ctx, &model.Task{Title: "日志任务", Prompt: "p", AgentID: aid})
+	_ = st.UpdateTask(ctx, tid, store.TaskPatch{Status: ptrStatus(model.TaskRunning)})
+	task, _ := st.GetTask(ctx, tid)
+
+	capR := &captureRunner{}
+	runner.Register("mock", capR)
+	t.Cleanup(func() { runner.Register("mock", runner.NewMock()) })
+	s.execute(ctx, *task)
+
+	out := buf.String()
+	// JSON 行解析：task_id/run_id 为独立字段
+	var rec map[string]any
+	found := false
+	for _, line := range strings.Split(out, "\n") {
+		if json.Unmarshal([]byte(line), &rec) == nil && rec["msg"] == "task dispatched" {
+			found = true
+			if rec["task_id"].(float64) != float64(task.ID) {
+				t.Fatalf("task_id 字段不符: %v", rec["task_id"])
+			}
+			if _, ok := rec["run_id"]; !ok {
+				t.Fatal("缺 run_id 字段")
+			}
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("缺 task dispatched 记录: %s", out[:min(len(out), 200)])
+	}
+}
+
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf strings.Builder
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }

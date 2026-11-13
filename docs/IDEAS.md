@@ -207,11 +207,16 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   additive。测试：pg 真机冒烟（1→3 自增 + run 记录版本）+ mem 对齐组。剩余（第 2 轮）：compare
   按版本对齐提示 + 前端版本显示。
 
-- [ ] **I41 slog 结构化日志统一** `proposed` `S-M`（源自 structured-logging-slog-loki 调研，见 docs/research/）
+- [ ] **I41 slog 结构化日志统一** `in-progress`（1/2 scheduler 核心路径完成 2026-11-14，源自 structured-logging-slog-loki 调研，见 docs/research/）
   动机：fleetd 日志全是 log.Printf 文本——task_id/run_id/agent 嵌在消息里不可查询；
   slog 字段化（与 events 表字段形态对齐，日志与事件流互查）是生产化缺口。
   验收：Printf → slog 全量迁移（key-value：task_id/run_id/agent/model）；run 上下文 slog.With
   注入 run_id 根字段（轻量 trace 关联）；log 输出形态不破坏现有测试（可替换 handler）。
+  第 1 轮：scheduler.go 16 条 Printf → slog 全量迁移（task dispatched/done/failed/retry/handoff/
+  重放拒绝/闸超时/依赖级联/小队——task_id/run_id/agent/retry 为独立字段）+ main 侧 JSON handler
+  待第 2 轮统一。单测：slog.SetDefault 替换 JSON handler（lockedBuffer 并发安全）断言 dispatch
+  字段化（task_id/run_id 独立字段非消息文本）。剩余（第 2 轮）：main/hub/automations/gateway/runner
+  全量迁移 + JSON handler 默认化。
 
 ## 已完成（沉淀记录）
 

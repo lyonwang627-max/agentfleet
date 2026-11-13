@@ -700,3 +700,9 @@
 - 三源共识：key-value 字段化 / trace 关联自动注入（otelslog）/ Loki labels 低基数 vs structured metadata 高基数。
 - **对 agentfleet 对读**：events 表已是结构化日志正确形态（task_id/run_id 独立列）；Printf→slog 字段化对齐 events 形态即可互查 → I41 入池（S-M）；轻量 trace 关联（run_id 根字段注入，不引全套 OTel）。
 - 明确不抄：OTel Logs SDK 全套/Loki 标签体系。
+
+## 2026-11-14 C 切片：I41 slog 结构化日志第 1/2 轮（scheduler 核心路径）
+
+- scheduler.go 16 条 Printf → slog 全量迁移（task dispatched/done/failed/retry/handoff/重放拒绝/闸超时/依赖级联/小队——task_id/run_id/agent/retry 独立字段，对齐 events 表形态可互查）。
+- 单测：slog.SetDefault 替换 JSON handler（lockedBuffer 并发安全）断言 dispatch 字段化（task_id/run_id 独立字段非消息文本——I41 验收核心）。
+- 10 包 -race 全绿。第 2 轮：main/hub/gateway/runner 全量迁移 + JSON handler 默认化。
