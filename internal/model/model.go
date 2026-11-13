@@ -158,6 +158,7 @@ type UsageEvent struct {
 type EvalDataset struct {
 	ID          int64     `json:"id"`
 	Name        string    `json:"name"`
+	Version int `json:"version"` // I40：cases 变更自增
 	Description string    `json:"description"`
 	CaseCount   int       `json:"cases"`
 	CreatedAt   time.Time `json:"created_at"`
@@ -171,9 +172,10 @@ type EvalCase struct {
 }
 
 type EvalRun struct {
-	ID        int64       `json:"id"`
-	DatasetID int64       `json:"dataset_id"`
-	AgentID   int64       `json:"agent_id"`
+	ID             int64       `json:"id"`
+	DatasetID      int64       `json:"dataset_id"`
+	AgentID        int64       `json:"agent_id"`
+	DatasetVersion int         `json:"dataset_version,omitempty"` // I40：评测时的数据集版本（compare 对齐依据）
 	Status    string      `json:"status"` // running | done | failed
 	ScoreAvg  float64     `json:"score_avg"`
 	PassRate  float64     `json:"pass_rate"`

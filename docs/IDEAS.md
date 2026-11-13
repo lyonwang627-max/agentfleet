@@ -196,11 +196,16 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   验收：since 支持 `NOW()-<duration>` 形态（Go time.ParseDuration 子集：s/m/h/d）；
   绝对 seq/time 完全兼容（不回归）；单测覆盖相对时间解析与边界。
 
-- [ ] **I40 评测数据集版本化** `proposed` `M`（源自 langsmith-evaluation 调研，见 docs/research/）
+- [ ] **I40 评测数据集版本化** `in-progress`（1/2 数据层完成 2026-11-14，源自 langsmith-evaluation 调研，见 docs/research/）
   动机：SaveCases 直接覆盖 cases——数据集变更多次评测间不可比（F18-c compare 按 case_id
   对齐，改动后旧 eval 对不上新 cases）；LangSmith 语义=example 变更自动产生新版本快照。
   验收：eval_datasets 加 version 列（SaveCases 时自增）+ eval_runs 记录评测时的 dataset_version
   + compare 时按版本对齐 case_id；旧数据兼容（version=0）。
+  第 1 轮（数据层）：eval_datasets.version（SaveCases 自增/初始 1，mem/pg 双实现——pg 附带修
+  SaveCases 全量替换语义补 DELETE）+ eval_runs.dataset_version（CreateEvalRun 时从 datasets
+  子查询落库；GetEvalRun/ListEvalRuns 读路径扩展）+ EvalDataset.Version/EvalRun.DatasetVersion
+  additive。测试：pg 真机冒烟（1→3 自增 + run 记录版本）+ mem 对齐组。剩余（第 2 轮）：compare
+  按版本对齐提示 + 前端版本显示。
 
 ## 已完成（沉淀记录）
 

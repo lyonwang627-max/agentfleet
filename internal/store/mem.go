@@ -543,6 +543,9 @@ func usageToSlice[M comparable](mm map[M]*model.UsageEvent) []model.UsageEvent {
 // ---- evals ----
 
 func (m *MemStore) CreateDataset(_ context.Context, d *model.EvalDataset) (int64, error) {
+	if d.Version == 0 {
+		d.Version = 1
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	d.ID = m.id()
@@ -568,6 +571,10 @@ func (m *MemStore) ListDatasets(_ context.Context) ([]model.EvalDataset, error) 
 func (m *MemStore) SaveCases(_ context.Context, datasetID int64, cases []model.EvalCase) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	// I40：cases 变更自增数据集版本（评测可复现——run 记录评测时版本）
+	if d, ok := m.datasets[datasetID]; ok {
+		d.Version++
+	}
 	for i := range cases {
 		m.nextID++
 		cases[i].ID = m.nextID
@@ -584,6 +591,12 @@ func (m *MemStore) ListCases(_ context.Context, datasetID int64) ([]model.EvalCa
 }
 
 func (m *MemStore) CreateEvalRun(_ context.Context, e *model.EvalRun) (int64, error) {
+	// I40：记录评测时的数据集版本（可复现/compare 对齐）
+	if e.DatasetVersion == 0 {
+		if d, ok := m.datasets[e.DatasetID]; ok {
+			e.DatasetVersion = d.Version
+		}
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	e.ID = m.id()

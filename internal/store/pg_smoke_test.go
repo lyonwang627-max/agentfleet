@@ -286,3 +286,58 @@ func TestPostgresStoreSmokeSecondWave(t *testing.T) {
 		t.Fatalf("DeleteProject: %v", err)
 	}
 }
+
+// 数据集版本化（I40 第 1 轮）：SaveCases 自增 + eval run 记录评测时版本。
+func TestPostgresDatasetVersioning(t *testing.T) {
+	p := newEmbeddedPG(t)
+	ctx := context.Background()
+	did, err := p.CreateDataset(ctx, &model.EvalDataset{Name: "版本集"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, _ := p.GetDataset(ctx, did)
+	if d.Version != 1 {
+		t.Fatalf("初始版本应 1: %d", d.Version)
+	}
+	// 两次 SaveCases → version 1→3
+	_ = p.SaveCases(ctx, did, []model.EvalCase{{Input: "题1"}})
+	_ = p.SaveCases(ctx, did, []model.EvalCase{{Input: "题2"}})
+	d, _ = p.GetDataset(ctx, did)
+	if d.Version != 3 {
+		t.Fatalf("SaveCases 应自增版本: %d", d.Version)
+	}
+	// eval run 记录评测时版本
+	if _, err := p.CreateEvalRun(ctx, &model.EvalRun{DatasetID: did, AgentID: 1}); err != nil {
+		t.Fatal(err)
+	}
+	run, _ := p.GetEvalRun(ctx, func() int64 { r, _ := p.ListEvalRuns(ctx); return r[0].ID }())
+	if run.DatasetVersion != 3 {
+		t.Fatalf("eval run 应记录版本 3: %d", run.DatasetVersion)
+	}
+}
+
+// I40 mem 侧：SaveCases 自增 + eval run 记录版本（双实现对齐验证）。
+func TestMemDatasetVersioning(t *testing.T) {
+	m := NewMemStore()
+	ctx := context.Background()
+	did, _ := m.CreateDataset(ctx, &model.EvalDataset{Name: "mem 版本集"})
+	_ = m.SaveCases(ctx, did, []model.EvalCase{{Input: "题1"}})
+	ds, _ := m.ListDatasets(ctx)
+	var d *model.EvalDataset
+	for i := range ds {
+		if ds[i].ID == did {
+			d = &ds[i]
+		}
+	}
+	if d == nil {
+		t.Fatal("dataset 缺失")
+	}
+	if d.Version != 2 {
+		t.Fatalf("SaveCases 应自增至 2: %d", d.Version)
+	}
+	eid, _ := m.CreateEvalRun(ctx, &model.EvalRun{DatasetID: did, AgentID: 1})
+	run, _ := m.GetEvalRun(ctx, eid)
+	if run.DatasetVersion != 2 {
+		t.Fatalf("eval run 应记录版本 2: %d", run.DatasetVersion)
+	}
+}

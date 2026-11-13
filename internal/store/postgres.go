@@ -624,14 +624,26 @@ func (p *PostgresStore) usageGroup(ctx context.Context, cutoff time.Time, group 
 
 func (p *PostgresStore) CreateDataset(ctx context.Context, d *model.EvalDataset) (int64, error) {
 	err := p.pool.QueryRow(ctx,
-		`INSERT INTO eval_datasets(name, description) VALUES ($1,$2) RETURNING id, created_at`,
+		`INSERT INTO eval_datasets(name, description, version) VALUES ($1,$2,1) RETURNING id, created_at`,
 		d.Name, d.Description).Scan(&d.ID, &d.CreatedAt)
 	return d.ID, err
 }
 
+func (p *PostgresStore) GetDataset(ctx context.Context, id int64) (*model.EvalDataset, error) {
+	d := &model.EvalDataset{}
+	err := p.pool.QueryRow(ctx,
+		`SELECT id, name, description, created_at, (SELECT COUNT(*) FROM eval_cases c WHERE c.dataset_id=d.id), version
+		 FROM eval_datasets d WHERE d.id=$1`, id).
+		Scan(&d.ID, &d.Name, &d.Description, &d.CreatedAt, &d.CaseCount, &d.Version)
+	if err != nil {
+		return nil, err
+	}
+	return d, nil
+}
+
 func (p *PostgresStore) ListDatasets(ctx context.Context) ([]model.EvalDataset, error) {
 	rows, err := p.pool.Query(ctx,
-		`SELECT d.id, d.name, d.description, d.created_at, (SELECT COUNT(*) FROM eval_cases c WHERE c.dataset_id=d.id)
+		`SELECT d.id, d.name, d.description, d.created_at, (SELECT COUNT(*) FROM eval_cases c WHERE c.dataset_id=d.id), d.version
 		 FROM eval_datasets d ORDER BY d.id`)
 	if err != nil {
 		return nil, err
@@ -649,6 +661,15 @@ func (p *PostgresStore) ListDatasets(ctx context.Context) ([]model.EvalDataset, 
 }
 
 func (p *PostgresStore) SaveCases(ctx context.Context, datasetID int64, cases []model.EvalCase) error {
+	// I40：cases 变更自增数据集版本（评测可复现）
+	if _, err := p.pool.Exec(ctx,
+		`UPDATE eval_datasets SET version = version + 1 WHERE id=$1`, datasetID); err != nil {
+		return err
+	}
+	// 清旧 cases（全量替换语义——mem 同款）
+	if _, err := p.pool.Exec(ctx, `DELETE FROM eval_cases WHERE dataset_id=$1`, datasetID); err != nil {
+		return err
+	}
 	batch := &pgx.Batch{}
 	for _, c := range cases {
 		batch.Queue(`INSERT INTO eval_cases(dataset_id, input, expected) VALUES ($1,$2,$3)`,
@@ -678,8 +699,10 @@ func (p *PostgresStore) ListCases(ctx context.Context, datasetID int64) ([]model
 }
 
 func (p *PostgresStore) CreateEvalRun(ctx context.Context, e *model.EvalRun) (int64, error) {
+	// I40：记录评测时的数据集版本（可复现/compare 对齐）
 	err := p.pool.QueryRow(ctx,
-		`INSERT INTO eval_runs(dataset_id, agent_id, status) VALUES ($1,$2,$3) RETURNING id, created_at`,
+		`INSERT INTO eval_runs(dataset_id, agent_id, status, dataset_version)
+		 VALUES ($1,$2,$3,(SELECT version FROM eval_datasets WHERE id=$1)) RETURNING id, created_at`,
 		e.DatasetID, e.AgentID, e.Status).Scan(&e.ID, &e.CreatedAt)
 	return e.ID, err
 }
@@ -695,9 +718,9 @@ func (p *PostgresStore) GetEvalRun(ctx context.Context, id int64) (*model.EvalRu
 	e := &model.EvalRun{}
 	var report []byte
 	err := p.pool.QueryRow(ctx,
-		`SELECT id, dataset_id, agent_id, status, score_avg, pass_rate, COALESCE(report,'null'::jsonb), created_at
+		`SELECT id, dataset_id, agent_id, status, score_avg, pass_rate, COALESCE(report,'null'::jsonb), created_at, COALESCE(dataset_version,0)
 		 FROM eval_runs WHERE id=$1`, id).
-		Scan(&e.ID, &e.DatasetID, &e.AgentID, &e.Status, &e.ScoreAvg, &e.PassRate, &report, &e.CreatedAt)
+		Scan(&e.ID, &e.DatasetID, &e.AgentID, &e.Status, &e.ScoreAvg, &e.PassRate, &report, &e.CreatedAt, &e.DatasetVersion)
 	if err == pgx.ErrNoRows {
 		return nil, fmt.Errorf("eval run %d: %w", id, ErrNotFound)
 	}
@@ -713,7 +736,7 @@ func (p *PostgresStore) GetEvalRun(ctx context.Context, id int64) (*model.EvalRu
 
 func (p *PostgresStore) ListEvalRuns(ctx context.Context) ([]model.EvalRun, error) {
 	rows, err := p.pool.Query(ctx,
-		`SELECT id, dataset_id, agent_id, status, score_avg, pass_rate, created_at FROM eval_runs ORDER BY id DESC`)
+		`SELECT id, dataset_id, agent_id, status, score_avg, pass_rate, created_at, COALESCE(dataset_version,0) FROM eval_runs ORDER BY id DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -721,7 +744,7 @@ func (p *PostgresStore) ListEvalRuns(ctx context.Context) ([]model.EvalRun, erro
 	out := []model.EvalRun{}
 	for rows.Next() {
 		e := model.EvalRun{}
-		if err := rows.Scan(&e.ID, &e.DatasetID, &e.AgentID, &e.Status, &e.ScoreAvg, &e.PassRate, &e.CreatedAt); err != nil {
+		if err := rows.Scan(&e.ID, &e.DatasetID, &e.AgentID, &e.Status, &e.ScoreAvg, &e.PassRate, &e.CreatedAt, &e.DatasetVersion); err != nil {
 			return nil, err
 		}
 		out = append(out, e)

@@ -672,3 +672,9 @@
 - 五类 evaluator 对读（Code/LLM-judge/Decision-model/Pairwise/Human——agentfleet 覆盖三半：要点命中+judge+审批门；pairwise=compareEvals 近似）；**数据集版本化是真缺口**——SaveCases 直接覆盖致变更多次评测不可比 → I40 入池（M）。
 - 标注队列闭环与 F17 处方同构确认（线上问题→诊断→修复→再评测）；在线评测（production run 实时 judge）标注为演进方向。
 - 明确不抄：SaaS/Decision model/ES 检索。
+
+## 2026-11-14 C 切片：I40 数据集版本化第 1/2 轮（数据层）
+
+- eval_datasets.version（SaveCases 自增/初始 1）+ eval_runs.dataset_version（CreateEvalRun 子查询落库；GetEvalRun/ListEvalRuns 读路径扩展）——mem/pg 双实现。
+- pg SaveCases 顺带修全量替换语义（补 DELETE——原实现只插不清，mem 同款覆盖语义对齐）；pg GetDataset 补齐（原先只有 ListDatasets）。
+- 测试：pg 真机冒烟（1→3 自增 + run 记录版本 3）+ mem 对齐组。10 包 -race 全绿。第 2 轮：compare 版本对齐提示 + 前端版本显示。
