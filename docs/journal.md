@@ -661,3 +661,8 @@
 - parseField 错误路径 12 组（步长非正/负、各域越界、非数字、范围倒置、空子项）+ 错误信息域前缀锁；组合形态（逗号+范围+步长混合）双命中断言。
 - 自纠两处：用例 1-40 对分钟域合法（改 1-70）；跨小时断言 11:00（分钟域含 0 分——11 点最先命中 0 分而非 45）。
 - 10 包 -race 全绿。
+
+## 2026-11-13 B 调研：Temporal Search Attributes（docs/research/temporal-search-attributes.md）
+
+- Search Attributes 类型面（Keyword 精确+STARTS_WITH/Text ES 词级/Datetime 相对时间 NOW()-'24h'）+ List Filter 语法（BETWEEN/IN/IS NULL；ORDER BY 云不支持）。
+- **对 agentfleet 对读**：查询面独立参数 vs 表达式语法的取舍——个人级规模独立参数+前端下拉是更简正确姿势（表达式是海量即席查询需求，明确不抄）；**I39 events_query 相对时间语法入池**（S，NOW()-24h 形态）；title 前缀搜索标注（S）。

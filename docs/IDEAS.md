@@ -190,6 +190,12 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   修复=ramp>0 时草稿只进版本快照不落线（current 桶保持旧配置），promote 才落线；快照取草稿内容。
   调度器级 e2e（ramp=100 全新配置/ramp=0 全旧）+ API 层语义锁（ramp 不落线/promote 落线）全绿。
 
+- [ ] **I39 events_query 相对时间语法** `proposed` `S`（源自 temporal-search-attributes 调研，见 docs/research/）
+  动机：events_query 的 since 只收绝对 seq/time——Temporal 的 `NOW()-'24h'` 相对时间语法
+  对运维查询更友好（昨天的失败任务：since=NOW()-24h&kind=task.failed）。
+  验收：since 支持 `NOW()-<duration>` 形态（Go time.ParseDuration 子集：s/m/h/d）；
+  绝对 seq/time 完全兼容（不回归）；单测覆盖相对时间解析与边界。
+
 ## 已完成（沉淀记录）
 
 - ~~任务级模型路由~~（F18-b，ADR-0002）
