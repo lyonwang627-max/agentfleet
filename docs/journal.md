@@ -744,3 +744,8 @@
 - I39：events_query since 支持 NOW()-<dur>（ParseDuration 子集 + d=24h 独立解析）→ created_at 过滤；绝对 seq 完全兼容。单测五场景（30ms 精确窗口/1h 全命中/seq 兼容/非法回退/天单位）。
 - 闸超时测试 flake 修复：事件断言改轮询等待（emit 在 execute goroutine 于 UpdateTask 之后，主测试看到 queued 时 emit 可能未执行——race 拖慢时序放大窗口）。4 次连续验证过。
 - 10 包 -race 全绿。
+
+## 2026-11-14 B 调研：Dify 变量系统（docs/research/dify-variable-system.md）
+
+- 四级作用域对读：sys（模板六变量✓）/env 只读（FLEET_*✓）/conversation 跨轮持久（**唯一缺位**——触发条件=实测折叠丢关键状态）/node 输出（artifacts+trace✓）。Agent 节点 env 桥接坑印证「作用域边界显式」原则（与 I33 工具审批参数校验路径一致）。
+- I21 交叉引用回填；可选演进（会话持久变量 KV）标注不急。明确不抄：Variable Assigner 图形态。

@@ -173,6 +173,8 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   10 分钟 TTL 内存去重；不同 key 各自建；无 key 调用方自担）——单测四场景。
   （I6 交叉引用：dify-conversation-memory 调研确认「零 LLM 成本确定性折叠」与业界取舍一致，
   summary/vector 均非 Dify 原生——详见 docs/research/dify-conversation-memory.md。）
+  （I21 交叉引用：dify-variable-system 调研确认四级作用域中三级已覆盖，会话持久变量为唯一
+  缺位（触发条件=实测折叠丢关键状态）——详见 docs/research/dify-variable-system.md。）
 
 - [x] **I38 agent 版本灰度发布（ramping 式确定性分桶）** `done`（2026-11-13，1/2 数据层+分桶 + 2/2 promote+前端，源自 temporal-worker-versioning 调研，见 docs/research/）
   动机：I14 publish 是全量立即切换；Temporal Ramping 按百分比灰度——发布新版本时按 task ID
