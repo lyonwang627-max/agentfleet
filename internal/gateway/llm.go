@@ -10,7 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -70,7 +70,7 @@ func (l *LLM) recordFailure() {
 	if l.cooling.fails >= modelAllowedFails {
 		l.cooling.until = timeNow().Add(modelCooldown)
 		l.cooling.fails = 0
-		log.Printf("[gateway] 模型 %s 连续失败 %d 次 → 冷却 %s", l.Model, modelAllowedFails, modelCooldown)
+		slog.Warn("模型连续失败进入冷却", "model", l.Model, "fails", modelAllowedFails, "cooldown", modelCooldown)
 	}
 }
 
@@ -121,12 +121,12 @@ func (l *LLM) Resolve() {
 		if err == nil {
 			resp.Body.Close()
 			l.Mode, l.BaseURL = "ollama", base
-			log.Printf("[gateway] llm resolved: ollama @ %s (model=%s)", base, l.Model)
+			slog.Info("llm resolved", "base_url", base, "model", l.Model)
 			return
 		}
 	}
 	l.Mode = "mock"
-	log.Printf("[gateway] llm unavailable -> mock mode")
+	slog.Warn("llm unavailable → mock mode")
 }
 
 func (l *LLM) Healthy() bool { return l.Mode == "ollama" }

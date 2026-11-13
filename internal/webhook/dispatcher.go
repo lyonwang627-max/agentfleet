@@ -3,7 +3,7 @@ package webhook
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -60,7 +60,7 @@ func (d *Dispatcher) Run(ctx context.Context) {
 		d.lastSeq = 0
 	}
 	d.mu.Unlock()
-	log.Printf("[webhook] dispatcher 启动（interval=%s，lastSeq=%d）", d.Interval, d.lastSeq)
+	slog.Info("webhook dispatcher 启动", "interval", d.Interval, "last_seq", d.lastSeq)
 
 	t := time.NewTicker(d.Interval)
 	defer t.Stop()
@@ -145,7 +145,7 @@ func (d *Dispatcher) dispatch(ctx context.Context, h *model.Webhook, ev model.Ev
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if attempt >= retryMaxAttempts {
-		log.Printf("[webhook] hook#%d %s 重试耗尽（%d 次），放弃: %v", h.ID, ev.Kind, attempt, err)
+		slog.Warn("webhook 重试耗尽，放弃", "hook_id", h.ID, "event", ev.Kind, "attempts", attempt, "err", err)
 		delete(d.retries, h.ID)
 		return
 	}
@@ -160,7 +160,8 @@ func (d *Dispatcher) dispatch(ctx context.Context, h *model.Webhook, ev model.Ev
 	}
 	rt.attempt = attempt
 	rt.nextRetry = timeNow().Add(backoff)
-	log.Printf("[webhook] hook#%d 投递失败（第 %d 次），%.0fs 后重试: %v", h.ID, attempt, backoff.Seconds(), err)
+		slog.Warn("webhook 投递失败，退避重试", "hook_id", h.ID, "event", ev.Kind,
+			"attempt", attempt, "backoff_s", backoff.Seconds(), "err", err)
 }
 
 // currSeq 并发安全读。

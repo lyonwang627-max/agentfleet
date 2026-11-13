@@ -712,3 +712,8 @@
 - WithModel 派生视图测试暴露 I35 语义细节：cooling 单槽按 model 名匹配自身——派生视图冷却与原视图模型互不可见（单槽限制而非指针共享失效）。测试改为锁「派生自身冷却 + 原模型隔离」真实语义。
 - Chat/ChatJSON mock Fallback 两路径 + StreamChat mock 逐字形态锁。
 - gateway 85.7→87.6%；10 包 -race 全绿。
+
+## 2026-11-14 C 切片：I41 slog 结构化日志第 2/2 轮（整体收口）
+
+- main.go JSON handler 默认化（SetDefault 首行——启动日志即结构化）+ 15 条迁移（存储模式/runner 注册/MCP 就绪/模型分流/限流/listening/优雅退出）；webhook dispatcher 3 条（投递失败/重试耗尽/启动）；gateway 3 条（冷却/resolve/mock 降级）。
+- Printf 全仓清零（cmd/gateway/webhook——api 访问日志保留 text 属访问日志形态）。单测此前已锁字段化。10 包 -race 全绿。I41 整体 done。
