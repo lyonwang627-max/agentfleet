@@ -192,3 +192,43 @@ func TestDeliveryIdStableAcrossRetries(t *testing.T) {
 		}
 	}
 }
+
+// Run 主循环（ticker 驱动）：启动后产事件 → tick 内投递（真 goroutine 路径）。
+func TestDispatcherRunTick(t *testing.T) {
+	var mu sync.Mutex
+	hits := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		hits++
+		mu.Unlock()
+	}))
+	defer srv.Close()
+
+	st := store.NewMemStore()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, _ = st.CreateWebhook(ctx, &model.Webhook{Name: "tick", URL: srv.URL, Secret: "s",
+		Events: []string{"*"}, Active: true})
+
+	d := NewDispatcher(st)
+	d.Interval = 40 * time.Millisecond
+	go d.Run(ctx)
+	time.Sleep(60 * time.Millisecond) // 等初始化落定（lastSeq 快照）
+	_, _ = st.AppendEvent(ctx, &model.Event{Kind: "task.done"})
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		mu.Lock()
+		h := hits
+		mu.Unlock()
+		if h >= 1 {
+			break
+		}
+		time.Sleep(30 * time.Millisecond)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if hits < 1 {
+		t.Fatalf("tick 循环未投递: %d", hits)
+	}
+}

@@ -644,3 +644,8 @@
 - Head vs Tail（对结果盲 vs 整 trace 缓冲）/ tail 策略 OR 组合（latency+status_code+百分比）/ decision_wait 权衡与双缓存 / 两层 collector 部署。
 - **对 agentfleet（F12 设计依据）**：双层观测——自有 run_steps 全量真相源 + 导出层 tail 采样（failed 全保+latency>10s 全保+其余 10%）；run 粒度天然 tail 零缓冲（run 结束时 steps 已完整）；策略映射复用既有常量（F14 阈值/I18 死信）。F12 ROADMAP 交叉引用回填。
 - 明确不抄：两层集群/托管服务/decision cache。
+
+## 2026-11-13 A 切片：webhook 包补测（Run 主循环 + IngestToken）
+
+- TestDispatcherRunTick：真 goroutine ticker 路径（启动落定后产事件→tick 投递）；TestIngestTokenDerivation（派生确定/secret 区分/24 hex/与签名通道隔离）。
+- 修自引入小坑：cat >> 新建文件漏 package 头——循环 go vet 清未用导入收尾。10 包 -race 全绿。
