@@ -721,3 +721,9 @@
 ## 2026-11-14 A 切片：webhook slog 字段化断言（I41 对称收尾）
 
 - TestSlogFieldsInRetry：重试日志 hook_id/attempt 为独立字段（JSON handler SetDefault 替换——lockedBuffer2 同款语法坑修一次即过）。I41 字段化断言 scheduler/webhook 双面锁死。10 包 -race 全绿。
+
+## 2026-11-14 B 调研：OpenAI Structured Outputs（docs/research/structured-outputs-json-schema.md）
+
+- json_object vs json_schema strict 本质差异（语法合法 vs grammar-constrained decoding——CFG 掩码使 schema 违反结构性不可能，ACL 2025 背书）；Willison 警告「失败更稀有但更灾难性」（schema 合法但语义错——I28 幻觉引导已是语义层解法）。
+- **对 agentfleet**：format:json = json_object 级最优实践（Ollama 生态）；**I42 ChatJSON schema 升级预留入池**（S——Ollama 新版 format 传 schema 一次改动升 strict 级）。
+- 明确不抄：Pydantic 重试全家桶/OpenAI 专有参数。

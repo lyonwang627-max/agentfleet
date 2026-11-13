@@ -218,6 +218,12 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   字段化（task_id/run_id 独立字段非消息文本）。剩余（第 2 轮）：main/hub/automations/gateway/runner
   全量迁移 + JSON handler 默认化。
 
+- [ ] **I42 ChatJSON schema 升级预留（json_object→strict 级）** `proposed` `S`（源自 structured-outputs 调研，见 docs/research/）
+  动机：gateway `format:"json"` 是 json_object 级保证（语法合法/schema 不保证）；Ollama
+  新版 format 接受 JSON Schema（grammar 约束——strict 级，schema 违反结构性不可能）。
+  验收：ChatJSON 加可选 schema 参数（nil=现状零回归）→ payload.format 传 schema；
+  decision 协议 schema 固化传入；无 schema 时回退 json_object。
+
 ## 已完成（沉淀记录）
 
 - ~~任务级模型路由~~（F18-b，ADR-0002）
