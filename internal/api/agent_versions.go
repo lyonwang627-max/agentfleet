@@ -1,9 +1,9 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
-	"encoding/json"
 	"net/http"
 	"strconv"
 

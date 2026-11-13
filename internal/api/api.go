@@ -3,7 +3,6 @@ package api
 
 import (
 	"context"
-	"sync"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,15 +10,16 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/lyonwang/agentfleet/internal/eval"
-	"github.com/lyonwang/agentfleet/internal/webhook"
 	"github.com/lyonwang/agentfleet/internal/gateway"
 	"github.com/lyonwang/agentfleet/internal/model"
 	"github.com/lyonwang/agentfleet/internal/runner"
 	"github.com/lyonwang/agentfleet/internal/scheduler"
 	"github.com/lyonwang/agentfleet/internal/store"
+	"github.com/lyonwang/agentfleet/internal/webhook"
 	"github.com/lyonwang/agentfleet/web"
 )
 
@@ -161,7 +161,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/evals", s.listEvals)
 	mux.HandleFunc("POST /api/v1/evals", s.createEval)
 	mux.HandleFunc("GET /api/v1/evals/{id}", s.getEval)
-	mux.HandleFunc("GET /api/v1/evals/compare", s.compareEvals)                        // 路由 A/B（F18-c）
+	mux.HandleFunc("GET /api/v1/evals/compare", s.compareEvals) // 路由 A/B（F18-c）
 	mux.HandleFunc("GET /api/v1/routing/stats", s.routingStats)
 
 	// Multica 对标：Projects / TaskComments / Steer
@@ -170,7 +170,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("DELETE /api/v1/projects/{id}", s.deleteProject)
 	mux.HandleFunc("GET /api/v1/tasks/{id}/comments", s.listTaskComments)
 	mux.HandleFunc("POST /api/v1/tasks/{id}/comments", s.postTaskComment)
-	mux.HandleFunc("POST /api/v1/tasks/{id}/steer", s.steerTask)                        // 升级率（F18-c）
+	mux.HandleFunc("POST /api/v1/tasks/{id}/steer", s.steerTask)                       // 升级率（F18-c）
 	mux.HandleFunc("POST /api/v1/evals/{id}/prescription", s.prescribe)                // RSI 处方生成（F17-a）
 	mux.HandleFunc("POST /api/v1/agents/{id}/apply-prescription", s.applyPrescription) // 处方一键应用（F17-b）
 
@@ -415,15 +415,15 @@ func (s *Server) setAgent(enabled bool) http.HandlerFunc {
 // ---- tasks ----
 
 type taskIn struct {
-	Title       string  `json:"title"`
-	Prompt      string  `json:"prompt"`
-	AgentID     int64   `json:"agent_id"`
-	Priority    int     `json:"priority"`
-	DependsOn   []int64 `json:"depends_on"`
-	WorkspaceID int64   `json:"workspace_id"`
-	SkillIDs    []int64 `json:"skill_ids"`
-	SquadID     int64   `json:"squad_id"` // 分给小队（I30）：AgentID 需为该队 leader
-	ProjectID   int64   `json:"project_id"`
+	Title       string   `json:"title"`
+	Prompt      string   `json:"prompt"`
+	AgentID     int64    `json:"agent_id"`
+	Priority    int      `json:"priority"`
+	DependsOn   []int64  `json:"depends_on"`
+	WorkspaceID int64    `json:"workspace_id"`
+	SkillIDs    []int64  `json:"skill_ids"`
+	SquadID     int64    `json:"squad_id"` // 分给小队（I30）：AgentID 需为该队 leader
+	ProjectID   int64    `json:"project_id"`
 	Labels      []string `json:"labels"`
 }
 
@@ -603,7 +603,7 @@ func (s *Server) taskAction(w http.ResponseWriter, r *http.Request) {
 			if runs, _ := s.Store.ListRuns(ctx, id); len(runs) > 0 {
 				_, _ = s.Store.AppendStep(ctx, runs[0].ID, &model.RunStep{
 					Kind: model.StepGate, Name: "gate-reject",
-					Note: "[审批记录] 人工拒绝（cancel）——任务终止不执行",
+					Note:  "[审批记录] 人工拒绝（cancel）——任务终止不执行",
 					Input: map[string]any{"task_id": id, "risk_level": t.RiskLevel}})
 			}
 		}
