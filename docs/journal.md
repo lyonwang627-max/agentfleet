@@ -738,3 +738,9 @@
 
 - TestStartInitializeRejected（握手 error 响应 → Start 失败上抛）/TestCallToolErrorResponse（unknown tool 文本非 error 语义锁）——err-server 加 err_init mode。Start 清理路径（client Close on 失败）随测试验证。
 - 10 包 -race 全绿。
+
+## 2026-11-14 A 切片：I39 相对时间语法 + 闸超时测试 flake 修复
+
+- I39：events_query since 支持 NOW()-<dur>（ParseDuration 子集 + d=24h 独立解析）→ created_at 过滤；绝对 seq 完全兼容。单测五场景（30ms 精确窗口/1h 全命中/seq 兼容/非法回退/天单位）。
+- 闸超时测试 flake 修复：事件断言改轮询等待（emit 在 execute goroutine 于 UpdateTask 之后，主测试看到 queued 时 emit 可能未执行——race 拖慢时序放大窗口）。4 次连续验证过。
+- 10 包 -race 全绿。

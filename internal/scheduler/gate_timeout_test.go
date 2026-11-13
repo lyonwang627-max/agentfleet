@@ -46,7 +46,8 @@ func TestGateTimeoutRequeues(t *testing.T) {
 	go s.execute(ctx, *task)
 
 	// 闸超时 → 延迟重排队（queued + error 说明）而非 failed
-	deadline := time.Now().Add(2 * time.Second)
+	// 轮询窗口 4s：race 全量负载下 goroutine 调度抖动（曾 2s 偶发错过窗口）
+	deadline := time.Now().Add(4 * time.Second)
 	var got *model.Task
 	for time.Now().Before(deadline) {
 		t2, _ := st.GetTask(ctx, taskID)
@@ -57,14 +58,22 @@ func TestGateTimeoutRequeues(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	if got == nil {
-		t.Fatalf("闸超时重排队未生效")
+		evs, _ := st.EventsSince(ctx, 0, 100)
+		t.Fatalf("闸超时重排队未生效; events=%v", evs)
 	}
-	// 告警事件已发出
-	evs, _ := st.EventsSince(ctx, 0, 100)
+	// 告警事件已发出（轮询等待——emit 在 execute goroutine 于 UpdateTask 之后，
+	// 主测试看到 queued 时 emit 可能还在调度窗口内未执行）
+	evDeadline := time.Now().Add(2 * time.Second)
 	found := false
-	for _, e := range evs {
-		if e.Kind == "agent.gate_timeout" {
-			found = true
+	for time.Now().Before(evDeadline) && !found {
+		evs, _ := st.EventsSince(ctx, 0, 100)
+		for _, e := range evs {
+			if e.Kind == "agent.gate_timeout" {
+				found = true
+			}
+		}
+		if !found {
+			time.Sleep(20 * time.Millisecond)
 		}
 	}
 	if !found {
