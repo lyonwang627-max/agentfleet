@@ -171,6 +171,8 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   201 映射+标签+事件）。FDE 双向集成闭环：告警系统进（入站）= 结果通知出（出站 I7）。
   边界收尾：**Idempotency-Key 幂等**（外部系统重试同 key → 返回首个任务 deduplicated=true，
   10 分钟 TTL 内存去重；不同 key 各自建；无 key 调用方自担）——单测四场景。
+  （I6 交叉引用：dify-conversation-memory 调研确认「零 LLM 成本确定性折叠」与业界取舍一致，
+  summary/vector 均非 Dify 原生——详见 docs/research/dify-conversation-memory.md。）
 
 - [x] **I38 agent 版本灰度发布（ramping 式确定性分桶）** `done`（2026-11-13，1/2 数据层+分桶 + 2/2 promote+前端，源自 temporal-worker-versioning 调研，见 docs/research/）
   动机：I14 publish 是全量立即切换；Temporal Ramping 按百分比灰度——发布新版本时按 task ID

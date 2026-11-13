@@ -649,3 +649,9 @@
 
 - TestDispatcherRunTick：真 goroutine ticker 路径（启动落定后产事件→tick 投递）；TestIngestTokenDerivation（派生确定/secret 区分/24 hex/与签名通道隔离）。
 - 修自引入小坑：cat >> 新建文件漏 package 头——循环 go vet 清未用导入收尾。10 包 -race 全绿。
+
+## 2026-11-13 B 调研：Dify 会话记忆（docs/research/dify-conversation-memory.md）
+
+- Dify 原生只有 buffer/window（TokenBufferMemory per-LLM-node）；summary/vector 非原生（插件/自定义）。社区坑：多 LLM 节点记忆不共享。
+- **对 I6 对读**：同构确认「零 LLM 成本确定性上下文治理」；我们的折叠保留摘要行优于纯截断；群聊显式共享时间线 vs Dify 隐式不共享坑——设计意图明确性优势。I6 交叉引用回填。
+- 可选演进（不急）：I6 summary 模式（实测折叠丢事实才值得）。
