@@ -180,6 +180,7 @@ export interface EvalSummary {
   agent_id: number;
   status: string;
   score_avg: number | null;
+  dataset_version?: number; // I40：评测时的数据集版本
   created_at: string;
 }
 export interface EvalCase {

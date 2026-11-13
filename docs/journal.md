@@ -749,3 +749,8 @@
 
 - 四级作用域对读：sys（模板六变量✓）/env 只读（FLEET_*✓）/conversation 跨轮持久（**唯一缺位**——触发条件=实测折叠丢关键状态）/node 输出（artifacts+trace✓）。Agent 节点 env 桥接坑印证「作用域边界显式」原则（与 I33 工具审批参数校验路径一致）。
 - I21 交叉引用回填；可选演进（会话持久变量 KV）标注不急。明确不抄：Variable Assigner 图形态。
+
+## 2026-11-14 A 切片：evals 页 dataset_version 徽章（I40 前端收尾）
+
+- Evals 页 eval run 行加「ds vN」版本徽章（评测时的数据集版本——数据集变更后对比可信性一目了然）；types.ts additive。
+- web build 零报错；tsc 零报错。I40 前端收尾完成（compare 视图仍归 F18-c 独立演进）。

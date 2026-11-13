@@ -118,6 +118,11 @@ export default function Evals() {
                 <span className="font-mono text-muted">#{ev.id}</span>
                 <span className="font-medium text-fg">{agentName(ev.agent_id)}</span>
                 <span className="text-muted">· {datasetName(ev.dataset_id)}</span>
+                {ev.dataset_version != null && ev.dataset_version > 0 && (
+                  <span className="rounded border border-border bg-panel2 px-1 py-px font-mono text-[10px] text-muted" title="评测时的数据集版本">
+                    ds v{ev.dataset_version}
+                  </span>
+                )}
                 <StatusBadge status={ev.status} />
                 <span className="ml-auto flex items-center gap-2">
                   <span className="font-mono tabular-nums text-fg">
