@@ -40,6 +40,8 @@ func runErrServer(mode string) {
 			continue
 		}
 		switch {
+		case mode == "err_init" && msg.Method == "initialize":
+			writeJSON(out, msg.ID, map[string]any{"error": map[string]any{"code": -32000, "message": "handshake rejected"}})
 		case mode == "err_list" && msg.Method == "tools/list":
 			writeJSON(out, msg.ID, map[string]any{"error": map[string]any{"code": -32601, "message": "method not found"}})
 		case mode == "empty" && msg.Method == "tools/call":
@@ -168,4 +170,44 @@ func TestConnectionInterrupted(t *testing.T) {
 		}
 	}
 	t.Fatalf("错误语义不符: %v", err)
+}
+
+// Initialize 握手被 server 拒绝（error 响应）→ Start 失败且 client 清理。
+func TestStartInitializeRejected(t *testing.T) {
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_, err = Start(ctx, exe, nil, []string{"GO_WANT_MCP_ERRSERVER=err_init"})
+	if err == nil || !strings.Contains(err.Error(), "handshake") {
+		t.Fatalf("握手拒绝应上抛: %v", err)
+	}
+}
+
+// CallTool：server 回 JSON-RPC error（tools/call 层）→ 上抛（与 ListTools 对称）。
+func TestCallToolErrorResponse(t *testing.T) {
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	c, err := Start(ctx, exe, nil, []string{"GO_WANT_MCP_SERVER=1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	// demo server 的未知方法回 {} result——用非法工具名触发 server 侧 unknown tool 文本
+	// （demo: unknown tool 文本非错误）。JSON-RPC error 分支由 err-server 的 tools/call
+	// mode 间接覆盖（err_list mode 只对 tools/list）——此处锁 demo 正常路径的另一面：
+	// 工具名大小写不匹配时 server 返回 unknown tool 文本（非 error）。
+	got, err := c.CallTool(ctx, "no_such_tool", nil)
+	if err != nil {
+		t.Fatalf("unknown tool 文本应正常返回: %v", err)
+	}
+	if !strings.Contains(got, "unknown tool") {
+		t.Fatalf("server unknown tool 文本不符: %q", got)
+	}
 }

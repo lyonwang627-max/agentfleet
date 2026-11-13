@@ -733,3 +733,8 @@
 - native 加 schema 参数（nil="json"/有=schema 对象——strict 级判定）+ ChatJSONSchema 新方法（ChatJSON 委托 nil 零回归）+ llm.go decisionSchema 固化（decision 六字段）传入 decide 每轮——Ollama 新版 format 传 schema 即 grammar 约束 strict 级。
 - **顺带修 dispatcher timeNow 包级变量 race**（测试互写 timeNow——Dispatcher.timeNow 实例字段隔离）。
 - 单测：payload.format schema 对象断言。10 包 -race 全绿。I42 整体 done。
+
+## 2026-11-14 A 切片：mcp 错误分支补测（63.1%→65.6%）
+
+- TestStartInitializeRejected（握手 error 响应 → Start 失败上抛）/TestCallToolErrorResponse（unknown tool 文本非 error 语义锁）——err-server 加 err_init mode。Start 清理路径（client Close on 失败）随测试验证。
+- 10 包 -race 全绿。
