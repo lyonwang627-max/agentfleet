@@ -678,3 +678,8 @@
 - eval_datasets.version（SaveCases 自增/初始 1）+ eval_runs.dataset_version（CreateEvalRun 子查询落库；GetEvalRun/ListEvalRuns 读路径扩展）——mem/pg 双实现。
 - pg SaveCases 顺带修全量替换语义（补 DELETE——原实现只插不清，mem 同款覆盖语义对齐）；pg GetDataset 补齐（原先只有 ListDatasets）。
 - 测试：pg 真机冒烟（1→3 自增 + run 记录版本 3）+ mem 对齐组。10 包 -race 全绿。第 2 轮：compare 版本对齐提示 + 前端版本显示。
+
+## 2026-11-14 A 切片：前端测试第二波（AgentVersions 灰度两态）
+
+- AgentVersions 导出（非导出组件可测化）+ 3 组两态渲染测试：干净态（无徽章+「发布当前配置」）/ dirty 态（草稿徽章+按钮文案切「发布草稿」）/ ramping 态（灰度 50% 徽章+「全量」按钮）。
+- web 测试累计 7 过（2 文件）；tsc 零报错；build 零报错；10 包 -race 全绿。

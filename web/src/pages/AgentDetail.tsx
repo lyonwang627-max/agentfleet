@@ -268,7 +268,7 @@ function ModelSelect({ value, onChange, inputCls }: { value: string; onChange: (
 }
 
 // AgentVersions 版本链（I14）：编辑进草稿、发布=草稿落线+版本快照；回滚=旧快照覆盖+清草稿（链只前进，可追溯）。
-function AgentVersions({ agentId, dirty, ramping, rampPct, onPublished }: { agentId: number; dirty?: boolean; ramping?: boolean; rampPct?: number; onPublished?: () => void }) {
+export function AgentVersions({ agentId, dirty, ramping, rampPct, onPublished }: { agentId: number; dirty?: boolean; ramping?: boolean; rampPct?: number; onPublished?: () => void }) {
   const versions = useApi(() => api.listAgentVersions(agentId), [agentId]);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
