@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"net/http"
+	"strings"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -87,5 +88,51 @@ func TestSelectForSkipsCooling(t *testing.T) {
 	l.cooling = &coolingState{until: cur.Add(time.Hour)}
 	if got := l.SelectFor(PurposeJudge); got != "main-model" {
 		t.Fatalf("冷却中 S 档应回退 M 档: %q", got)
+	}
+}
+
+func gatewayNewCoolingTest() *LLM {
+	l := New("mock")
+	return l
+}
+
+// WithModel 派生视图与原视图共享冷却状态（I35 重构语义锁：cooling 指针随值拷贝共享，
+// 双视图并发安全——recordFailure 在派生视图上生效，原视图 IsCooling 同步可见）。
+func TestWithModelSharesCooling(t *testing.T) {
+	l := gatewayNewCoolingTest()
+	derived := l.WithModel("other-model")
+	// 派生视图上 recordFailure（3 连败 → 冷却）
+	for i := 0; i < 3; i++ {
+		derived.recordFailure()
+	}
+	// 派生视图自身冷却（IsCooling 按自身 Model 匹配）
+	if !derived.IsCooling("other-model") {
+		t.Fatal("派生视图自身应冷却")
+	}
+	// 原视图按自身 Model 查询——单槽冷却按 model 名匹配，跨模型查询不可见（单槽限制锁）
+	if l.IsCooling("mock") {
+		t.Fatal("原视图自身模型不应受派生视图冷却影响")
+	}
+}
+
+// Chat mock Fallback 注入（与 runner 测试同款用法——gateway 包内锁定）。
+func TestChatMockFallbackPaths(t *testing.T) {
+	l := New("mock")
+	l.Fallback = func(system, user string) string { return `{"reply":"fb"}` }
+	// Chat → Fallback 输出
+	reply, _, err := l.Chat(context.Background(), "sys", "u", 100)
+	if err != nil || reply != `{"reply":"fb"}` {
+		t.Fatalf("Chat Fallback 不符: %q %v", reply, err)
+	}
+	// ChatJSON → 同 Fallback
+	raw, _, err := l.ChatJSON(context.Background(), "sys", "u", 100)
+	if err != nil || string(raw) != `{"reply":"fb"}` {
+		t.Fatalf("ChatJSON Fallback 不符: %s %v", raw, err)
+	}
+	// StreamChat mock 无 Fallback → 逐字前缀
+	full := ""
+	tokens, err := l.StreamChat(context.Background(), "s", "内容", 100, func(chunk string) { full += chunk })
+	if err != nil || !strings.Contains(full, "(mock) 内容") || tokens == 0 {
+		t.Fatalf("StreamChat mock 形态不符: %q %d %v", full, tokens, err)
 	}
 }

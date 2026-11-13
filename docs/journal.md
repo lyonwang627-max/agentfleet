@@ -706,3 +706,9 @@
 - scheduler.go 16 条 Printf → slog 全量迁移（task dispatched/done/failed/retry/handoff/重放拒绝/闸超时/依赖级联/小队——task_id/run_id/agent/retry 独立字段，对齐 events 表形态可互查）。
 - 单测：slog.SetDefault 替换 JSON handler（lockedBuffer 并发安全）断言 dispatch 字段化（task_id/run_id 独立字段非消息文本——I41 验收核心）。
 - 10 包 -race 全绿。第 2 轮：main/hub/gateway/runner 全量迁移 + JSON handler 默认化。
+
+## 2026-11-13 A 切片：gateway 补测（87.6%）——WithModel 冷却语义澄清
+
+- WithModel 派生视图测试暴露 I35 语义细节：cooling 单槽按 model 名匹配自身——派生视图冷却与原视图模型互不可见（单槽限制而非指针共享失效）。测试改为锁「派生自身冷却 + 原模型隔离」真实语义。
+- Chat/ChatJSON mock Fallback 两路径 + StreamChat mock 逐字形态锁。
+- gateway 85.7→87.6%；10 包 -race 全绿。
