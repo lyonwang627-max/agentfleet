@@ -164,3 +164,48 @@ func TestPrescribeHTTP(t *testing.T) {
 		t.Fatalf("处方未写回报告: %+v", e.Report)
 	}
 }
+
+// I40 第 2 轮：compare 版本对齐提示——数据集变更后对比不可信的字段级提示。
+func TestCompareEvalsVersionAlignment(t *testing.T) {
+	st := store.NewMemStore()
+	s := &Server{Store: st, Hub: scheduler.NewHub(st), LLM: nil, StartedAt: time.Now()}
+	ctx := context.Background()
+	did, _ := st.CreateDataset(ctx, &model.EvalDataset{Name: "版本对比集"})
+	mkRun := func(score float64) int64 {
+		id, _ := st.CreateEvalRun(ctx, &model.EvalRun{DatasetID: did, AgentID: 1, Status: "done"})
+		_ = st.UpdateEvalRun(ctx, &model.EvalRun{ID: id, Status: "done",
+			Report: &model.EvalReport{ScoreAvg: score, PassRate: 100,
+				Cases: []model.EvalCaseResult{{CaseID: 1, Score: int(score), Pass: true}}}})
+		return id
+	}
+	a := mkRun(5)
+	// 数据集未变更（version=1）：两 run 版本一致
+	_ = st.SaveCases(ctx, did, []model.EvalCase{{Input: "题", Expected: nil}}) // version→2
+	b := mkRun(8)
+
+	cmp := func() map[string]any {
+		r := httptest.NewRequest("GET", "/api/v1/evals/compare?a="+itoaInt64(a)+"&b="+itoaInt64(b), nil)
+		w := httptest.NewRecorder()
+		s.compareEvals(w, r)
+		var m map[string]any
+		_ = json.Unmarshal(w.Body.Bytes(), &m)
+		return m
+	}
+
+	out := cmp()
+	// a 在 version=1 评测、b 在 version=2 评测 → 版本不对齐提示
+	if out["same_dataset_version"] != false {
+		t.Fatalf("版本应不对齐: %+v", out["same_dataset_version"])
+	}
+	// 数据集未变更场景：两 run 同版本 → 对齐
+	a2, b2 := mkRun(5), mkRun(8)
+	r2 := httptest.NewRequest("GET", "/api/v1/evals/compare?a="+itoaInt64(a2)+"&b="+itoaInt64(b2), nil)
+	w2 := httptest.NewRecorder()
+	s.compareEvals(w2, r2)
+	var out2 map[string]any
+	_ = json.Unmarshal(w2.Body.Bytes(), &out2)
+	if out2["same_dataset_version"] != true {
+		t.Fatalf("同版本应对齐: %v", out2["same_dataset_version"])
+	}
+	_ = cmp
+}

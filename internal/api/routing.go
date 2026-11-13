@@ -77,8 +77,11 @@ func (s *Server) compareEvals(w http.ResponseWriter, r *http.Request) {
 		"pass_rate_delta": passDelta,
 		"quality_held":    qualityHeld,
 		"verdict":         verdict,
-		"same_dataset":    ea.DatasetID == eb.DatasetID,
-		"divergent_cases": divergent,
+		"same_dataset":         ea.DatasetID == eb.DatasetID,
+		"dataset_version_a":    ea.DatasetVersion, // I40：版本对齐——数据集在两次评测间变更则对比不可信
+		"dataset_version_b":    eb.DatasetVersion,
+		"same_dataset_version": ea.DatasetVersion == eb.DatasetVersion,
+		"divergent_cases":      divergent,
 	})
 }
 

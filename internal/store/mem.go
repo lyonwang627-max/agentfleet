@@ -610,8 +610,13 @@ func (m *MemStore) CreateEvalRun(_ context.Context, e *model.EvalRun) (int64, er
 func (m *MemStore) UpdateEvalRun(_ context.Context, e *model.EvalRun) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if _, ok := m.evalRuns[e.ID]; !ok {
+	existing, ok := m.evalRuns[e.ID]
+	if !ok {
 		return fmt.Errorf("eval run %d: %w", e.ID, ErrNotFound)
+	}
+	// I40：调用方构造的 EvalRun 常不带 DatasetVersion（如评测完成回写）——保留原值防覆盖
+	if e.DatasetVersion == 0 && existing.DatasetVersion != 0 {
+		e.DatasetVersion = existing.DatasetVersion
 	}
 	cp := *e
 	m.evalRuns[e.ID] = &cp

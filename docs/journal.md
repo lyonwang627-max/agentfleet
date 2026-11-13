@@ -688,3 +688,9 @@
 
 - scoreCase 错误路径（LLM 不可达 → 0 分不通过 + comment 带失败原因）+ judge 越界分拒绝锁（score=15 越界 → 回退启发式——judge 边界防护）。
 - 10 包 -race 全绿。
+
+## 2026-11-14 C 切片：I40 数据集版本化第 2/2 轮（整体收口）
+
+- compareEvals 响应加 dataset_version_a/b + same_dataset_version（数据集变更后对比不可信的字段级提示）。
+- **顺带抓 1 个真 bug**：mem UpdateEvalRun 整体替换对象——评测完成回写时传入构造体无 DatasetVersion → 版本被覆盖为 0（compare 读到 0/0 恒"对齐"）——保留原值防覆盖修复。
+- 10 包 -race 全绿。I40 整体 done；前端 compare 视图归 F18-c 独立演进。
