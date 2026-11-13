@@ -666,3 +666,9 @@
 
 - Search Attributes 类型面（Keyword 精确+STARTS_WITH/Text ES 词级/Datetime 相对时间 NOW()-'24h'）+ List Filter 语法（BETWEEN/IN/IS NULL；ORDER BY 云不支持）。
 - **对 agentfleet 对读**：查询面独立参数 vs 表达式语法的取舍——个人级规模独立参数+前端下拉是更简正确姿势（表达式是海量即席查询需求，明确不抄）；**I39 events_query 相对时间语法入池**（S，NOW()-24h 形态）；title 前缀搜索标注（S）。
+
+## 2026-11-13 B 调研：LangSmith 评测与反馈闭环（docs/research/langsmith-evaluation.md）
+
+- 五类 evaluator 对读（Code/LLM-judge/Decision-model/Pairwise/Human——agentfleet 覆盖三半：要点命中+judge+审批门；pairwise=compareEvals 近似）；**数据集版本化是真缺口**——SaveCases 直接覆盖致变更多次评测不可比 → I40 入池（M）。
+- 标注队列闭环与 F17 处方同构确认（线上问题→诊断→修复→再评测）；在线评测（production run 实时 judge）标注为演进方向。
+- 明确不抄：SaaS/Decision model/ES 检索。
