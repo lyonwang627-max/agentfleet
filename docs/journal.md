@@ -754,3 +754,7 @@
 
 - Evals 页 eval run 行加「ds vN」版本徽章（评测时的数据集版本——数据集变更后对比可信性一目了然）；types.ts additive。
 - web build 零报错；tsc 零报错。I40 前端收尾完成（compare 视图仍归 F18-c 独立演进）。
+
+## 2026-11-14 A 切片：web 测试第三波（Evals 页 ds vN 徽章渲染）
+
+- Evals 页 mock 测试：eval run 行 ds v3 版本徽章渲染锁（I40 前端）。web 累计 8 测试过（3 文件）。
