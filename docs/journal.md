@@ -694,3 +694,9 @@
 - compareEvals 响应加 dataset_version_a/b + same_dataset_version（数据集变更后对比不可信的字段级提示）。
 - **顺带抓 1 个真 bug**：mem UpdateEvalRun 整体替换对象——评测完成回写时传入构造体无 DatasetVersion → 版本被覆盖为 0（compare 读到 0/0 恒"对齐"）——保留原值防覆盖修复。
 - 10 包 -race 全绿。I40 整体 done；前端 compare 视图归 F18-c 独立演进。
+
+## 2026-11-13 B 调研：结构化日志语义 slog/Loki/OTel（docs/research/structured-logging-slog-loki.md）
+
+- 三源共识：key-value 字段化 / trace 关联自动注入（otelslog）/ Loki labels 低基数 vs structured metadata 高基数。
+- **对 agentfleet 对读**：events 表已是结构化日志正确形态（task_id/run_id 独立列）；Printf→slog 字段化对齐 events 形态即可互查 → I41 入池（S-M）；轻量 trace 关联（run_id 根字段注入，不引全套 OTel）。
+- 明确不抄：OTel Logs SDK 全套/Loki 标签体系。
