@@ -33,7 +33,7 @@ describe('Usage 页渲染', () => {
     let shown = false;
     for (let i = 0; i < 20; i++) {
       await new Promise((r) => setTimeout(r, 50));
-      if (container.textContent.includes('4.6k')) {
+      if ((container.textContent ?? '').includes('4.6k')) {
         shown = true;
         break;
       }
