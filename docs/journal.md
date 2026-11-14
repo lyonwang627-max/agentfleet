@@ -770,3 +770,9 @@
 
 - CallMCPTool 错误路径三组（非法引用无斜杠/纯前缀/server 未注册）+ mustJSON map 键序确定性锁（I11 重放匹配的根基——json.Marshal 对 map 键排序）。
 - 10 包 -race 全绿。
+
+## 2026-11-14 B 调研：Temporal Nexus（docs/research/temporal-nexus-handoff.md）
+
+- 三要素（Endpoint/Service contract/Operation）+ 两形态（sync RPC / async handle token 轮询取消）。
+- **与 handoff 对读**：async handle=任务 ID+SSE 轮询形态一致；显式 Service 契约 vs 隐式交接备注（差异点：多平台联邦才需要）；失败语义同构（I1 取消传播）。
+- I10 交叉引用回填（跨域联邦 handoff 若出现，Nexus Endpoint 是参照）。明确不抄：RPC 协议/跨 region 拓扑。
