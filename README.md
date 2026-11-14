@@ -96,7 +96,7 @@ React 管理台 ──/api──> Go 控制面（标准库 ServeMux，零路由�
                         └─ store       Postgres（生产）/ MemStore（演示+测试）双实现
 ```
 
-详细设计（含三篇取舍小节）见 `docs/ARCHITECTURE.md`；API 契约见 `docs/api-contract.md`；剧本引擎手册见 `data/mock-playbook.md`；关键决策记录见 `docs/adr/`。
+详细设计（含三篇取舍小节）见 `docs/ARCHITECTURE.md`；API 契约见 `docs/api-contract.md`；剧本引擎手册见 `data/mock-playbook.md`；关键决策记录见 `docs/adr/`（含记忆架构 ADR-0003）。
 
 ## 为什么这些选型（设计取舍速查）
 

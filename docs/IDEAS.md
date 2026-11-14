@@ -241,6 +241,21 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   结构体六字段 schema）传入 decide 每轮。单测：payload.format 为 schema 对象断言。
   附带修 dispatcher timeNow 包级变量 race（测试互写）→ Dispatcher.timeNow 实例字段。I42 整体 done。
 
+- [ ] **M1 长期记忆数据层+注入** `proposed` `S`（源自 ADR-0003 记忆架构，见 docs/adr/0003-agent-memory.md）
+  动机：Skills=操作性 SOP（怎么做），memories=陈述性事实（知道什么）——agent 缺跨会话
+  陈述性记忆层（Dify conversation.*/LangGraph Store 对读确认缺位）。
+  验收：memories 表（agent_id/scope/kind/content/source_run_id/status）+ 手动 CRUD API +
+  execute 确定性注入（「已知背景」段，条数≤10+字符≤2000 预算上限）+ 单测锁预算与注入形态。
+- [ ] **M2 记忆抽取草稿池+审批闭环** `proposed` `S`（源自 ADR-0003）
+  动机：模型产出的记忆不能未经人审自动生效（原则：写入不静默）——run 完成后 judge 旁路
+  抽取事实草稿 → 人审 approve/reject → active。
+  验收：run 完成 judge 抽取（LLM 一次调用）→ 草稿池 → approve/reject API → active 生效/
+  丢弃；抽取失败不阻塞 run 收尾。
+- [ ] **M3 会话持久变量 KV** `proposed` `S`（源自 ADR-0003 / Dify conversation.* 对读）
+  动机：群聊/试聊的跨轮结构化状态（时间线折叠会丢）。
+  验收：conversations KV API（POST vars）+ I6 折叠注入「已知状态」段；触发条件=实测
+  折叠丢关键状态（可延后）。
+
 ## 已完成（沉淀记录）
 
 - ~~任务级模型路由~~（F18-b，ADR-0002）
