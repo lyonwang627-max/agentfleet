@@ -776,3 +776,8 @@
 - 三要素（Endpoint/Service contract/Operation）+ 两形态（sync RPC / async handle token 轮询取消）。
 - **与 handoff 对读**：async handle=任务 ID+SSE 轮询形态一致；显式 Service 契约 vs 隐式交接备注（差异点：多平台联邦才需要）；失败语义同构（I1 取消传播）。
 - I10 交叉引用回填（跨域联邦 handoff 若出现，Nexus Endpoint 是参照）。明确不抄：RPC 协议/跨 region 拓扑。
+
+## 2026-11-14 A 切片：web 测试第四波（Usage 页渲染）
+
+- Usage 页 mock 测试：统计卡 tokens 合计（fmtNum 4.6k 千位格式）/ 成本 $0.0000（F10）/ 刷新按钮。自纠一处：fmtNum 千位以上格式化为 k 单位（断言 4600→4.6k）。
+- web 累计 9 测试过（4 文件）。
