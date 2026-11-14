@@ -788,3 +788,7 @@
 - **对读结论**：stdio 子进程本地最优（远程接入需 Streamable HTTP）；Elicitation 与审批门同构但**平台侧审批门更符合管控面定位**；Sampling with Tools 标注联邦方向。
 - 升级优先级（若接外部 server）：Streamable HTTP → URL mode elicitation → Sampling。
 - 明确不抄：Tasks 实验性/凭证文档/扩展机制。
+
+## 2026-11-14 用户指令：暂停定时任务
+
+- cron automation-262038e7（每 30 分钟深度组件冲刺）已删除——本轮 runCount 81 次。恢复方式：按原 prompt 重建 cron（深度组件冲刺模式 prompt 在 git 历史与本记录可查），或直接口头发起新一轮迭代。
