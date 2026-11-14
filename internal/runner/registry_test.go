@@ -115,3 +115,33 @@ func TestMockCancelAtEntryAgain(t *testing.T) {
 		t.Fatalf("入口取消应 ErrCanceled: %v", err)
 	}
 }
+
+// CallMCPTool 错误路径补测（非法引用/未注册 server）。
+func TestCallMCPToolErrorPaths(t *testing.T) {
+	// 非法引用（无 /）
+	if _, err := CallMCPTool("mcp:invalid-ref", nil); err == nil ||
+		!strings.Contains(err.Error(), "非法 MCP 工具引用") {
+		t.Fatalf("非法引用应报错: %v", err)
+	}
+	// 纯 "mcp:" 前缀无内容
+	if _, err := CallMCPTool("mcp:", nil); err == nil {
+		t.Fatal("空引用应报错")
+	}
+	// server 未注册
+	if _, err := CallMCPTool("mcp:ghost-xyz/echo", map[string]any{"msg": "hi"}); err == nil ||
+		!strings.Contains(err.Error(), "未注册") {
+		t.Fatalf("未注册 server 应报错: %v", err)
+	}
+}
+
+// mustJSON：map 键序确定性（重放匹配的根基）。
+func TestMustJSONKeyOrder(t *testing.T) {
+	a := mustJSON(map[string]any{"b": 1, "a": 2})
+	b := mustJSON(map[string]any{"a": 2, "b": 1})
+	if a != b {
+		t.Fatalf("map 键序应确定: %q vs %q", a, b)
+	}
+	if !strings.Contains(a, `"a":2`) || !strings.Contains(a, `"b":1`) {
+		t.Fatalf("序列化内容不符: %s", a)
+	}
+}
