@@ -260,12 +260,36 @@ ALTER TABLE webhooks ADD COLUMN IF NOT EXISTS last_delivery_at TIMESTAMPTZ;
 ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS purpose TEXT NOT NULL DEFAULT 'execute';
 ALTER TABLE eval_datasets ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1;
 ALTER TABLE eval_runs ADD COLUMN IF NOT EXISTS dataset_version INT NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS memories (
+  id            BIGSERIAL PRIMARY KEY,
+  agent_id      BIGINT NOT NULL REFERENCES agents(id),
+  scope         TEXT NOT NULL DEFAULT 'agent',
+  kind          TEXT NOT NULL DEFAULT 'fact',
+  content       TEXT NOT NULL,
+  source_run_id BIGINT,
+  status        TEXT NOT NULL DEFAULT 'draft',
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  approved_at   TIMESTAMPTZ
+);
 ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS runtime_note TEXT NOT NULL DEFAULT '';
 ALTER TABLE webhooks ADD COLUMN IF NOT EXISTS last_status TEXT NOT NULL DEFAULT '';
 ALTER TABLE webhooks ADD COLUMN IF NOT EXISTS last_delivery_at TIMESTAMPTZ;
 ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS purpose TEXT NOT NULL DEFAULT 'execute';
 ALTER TABLE eval_datasets ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1;
 ALTER TABLE eval_runs ADD COLUMN IF NOT EXISTS dataset_version INT NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS memories (
+  id            BIGSERIAL PRIMARY KEY,
+  agent_id      BIGINT NOT NULL REFERENCES agents(id),
+  scope         TEXT NOT NULL DEFAULT 'agent',
+  kind          TEXT NOT NULL DEFAULT 'fact',
+  content       TEXT NOT NULL,
+  source_run_id BIGINT,
+  status        TEXT NOT NULL DEFAULT 'draft',
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  approved_at   TIMESTAMPTZ
+);
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS steer_note TEXT NOT NULL DEFAULT '';
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL DEFAULT 'single';
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS agent_name TEXT NOT NULL DEFAULT '';

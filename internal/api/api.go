@@ -147,6 +147,11 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/webhooks", s.listWebhooks)
 	mux.HandleFunc("DELETE /api/v1/webhooks/{id}", s.deleteWebhook)
 	mux.HandleFunc("POST /api/v1/webhooks/{id}/ingest/{token}", s.ingestWebhook) // I37 入站回调
+	mux.HandleFunc("GET /api/v1/agents/{id}/memories", s.listMemories)           // ADR-0003 长期记忆
+	mux.HandleFunc("POST /api/v1/agents/{id}/memories", s.createMemory)
+	mux.HandleFunc("POST /api/v1/memories/{id}/approve", s.approveMemory)
+	mux.HandleFunc("POST /api/v1/memories/{id}/expire", s.expireMemory)
+	mux.HandleFunc("DELETE /api/v1/memories/{id}", s.deleteMemory)
 	mux.HandleFunc("DELETE /api/v1/workspaces/{id}", s.deleteWorkspace)
 	mux.HandleFunc("GET /api/v1/skills", s.listSkills)
 	mux.HandleFunc("POST /api/v1/skills", s.createSkill)
@@ -727,6 +732,79 @@ func (s *Server) serveSSE(w http.ResponseWriter, r *http.Request, since int64) {
 			fl.Flush()
 		}
 	}
+}
+
+// ---- memories（ADR-0003 M1）----
+
+func (s *Server) listMemories(w http.ResponseWriter, r *http.Request) {
+	statuses := []string{}
+	if v := r.URL.Query().Get("status"); v != "" {
+		statuses = strings.Split(v, ",")
+	}
+	items, err := s.Store.ListMemories(r.Context(), pathID(r), statuses)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "total": len(items)})
+}
+
+func (s *Server) createMemory(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Content string `json:"content"`
+		Kind    string `json:"kind"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil || strings.TrimSpace(in.Content) == "" {
+		writeErr(w, http.StatusBadRequest, errors.New("content 必填"))
+		return
+	}
+	kind := in.Kind
+	if kind == "" {
+		kind = "fact"
+	}
+	approvedAt := time.Now()
+	mem := &model.Memory{AgentID: pathID(r), Scope: "agent", Kind: kind,
+		Content: strings.TrimSpace(in.Content), Status: "active", ApprovedAt: &approvedAt}
+	id, err := s.Store.CreateMemory(r.Context(), mem)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err)
+		return
+	}
+	s.publish(r.Context(), "memory.update", map[string]any{"memory_id": id, "agent_id": pathID(r), "action": "created"})
+	writeJSON(w, http.StatusCreated, map[string]any{"id": id, "status": mem.Status})
+}
+
+func (s *Server) memoryAction(action string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		if action == "approve" {
+			err = s.Store.ApproveMemory(r.Context(), pathID(r))
+		} else {
+			err = s.Store.ExpireMemory(r.Context(), pathID(r))
+		}
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err)
+			return
+		}
+		s.publish(r.Context(), "memory.update", map[string]any{"memory_id": pathID(r), "action": action})
+		writeJSON(w, http.StatusOK, map[string]any{"id": pathID(r), "action": action})
+	}
+}
+
+func (s *Server) approveMemory(w http.ResponseWriter, r *http.Request) {
+	s.memoryAction("approve")(w, r)
+}
+
+func (s *Server) expireMemory(w http.ResponseWriter, r *http.Request) {
+	s.memoryAction("expire")(w, r)
+}
+
+func (s *Server) deleteMemory(w http.ResponseWriter, r *http.Request) {
+	if err := s.Store.DeleteMemory(r.Context(), pathID(r)); err != nil {
+		writeErr(w, http.StatusNotFound, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"id": pathID(r), "deleted": true})
 }
 
 // ---- webhooks（I7）----

@@ -17,6 +17,7 @@ type MemStore struct {
 	agents        map[int64]*model.Agent
 	tasks         map[int64]*model.Task
 	webhooks      map[int64]*model.Webhook
+	memories      map[int64]*model.Memory
 	runs          map[int64]*model.Run
 	steps         map[int64][]model.RunStep // run_id -> steps
 	convos        map[int64]*model.Conversation
@@ -47,7 +48,7 @@ func NewMemStore() *MemStore {
 // NewMemStoreWithStrategy 指定认领策略构建（I10）。
 func NewMemStoreWithStrategy(name string) *MemStore {
 	m := &MemStore{
-		agents: map[int64]*model.Agent{}, tasks: map[int64]*model.Task{}, webhooks: map[int64]*model.Webhook{},
+		agents: map[int64]*model.Agent{}, tasks: map[int64]*model.Task{}, webhooks: map[int64]*model.Webhook{}, memories: map[int64]*model.Memory{},
 		claimStrategy: ClaimStrategyByName(name),
 		runs: map[int64]*model.Run{}, steps: map[int64][]model.RunStep{},
 		convos: map[int64]*model.Conversation{}, msgs: map[int64][]model.Message{},

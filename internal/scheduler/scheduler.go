@@ -288,6 +288,28 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 			execPrompt += fmt.Sprintf("\n\n[执行环境] %s（分支 %s，路径 %s）", w.Name, w.Branch, w.RootPath)
 		}
 	}
+	// ADR-0003 M1：长期记忆确定性注入——active 记忆按 created_at 升序（旧事实在前），
+	// 预算 ≤10 条 + ≤2000 字符，超限截断最近的优先（倒序取再反转）
+	var memLines []string
+	if mems, err := s.store.ListMemories(ctx, task.AgentID, []string{"active"}); err == nil && len(mems) > 0 {
+		const memMaxCount, memMaxChars = 10, 2000
+		start := 0
+		if len(mems) > memMaxCount {
+			start = len(mems) - memMaxCount
+		}
+		charBudget := memMaxChars
+		for _, mem := range mems[start:] {
+			line := "- " + mem.Content
+			if len([]rune(line)) > charBudget {
+				break
+			}
+			memLines = append(memLines, line)
+			charBudget -= len([]rune(line))
+		}
+		if len(memLines) > 0 {
+			execPrompt += "\n\n[已知背景（长期记忆）]\n" + strings.Join(memLines, "\n")
+		}
+	}
 	var skills []model.Skill
 	if len(task.SkillIDs) > 0 {
 		var sb strings.Builder

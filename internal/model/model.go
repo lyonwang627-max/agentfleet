@@ -334,6 +334,20 @@ type Webhook struct {
 	CreatedAt      time.Time  `json:"created_at"`
 }
 
+// Memory agent 长期记忆（ADR-0003）：陈述性事实（知道什么）——与 Skills（操作性 SOP）互补。
+// 写入铁律：不静默写入（抽取走草稿+人审）；注入铁律：确定性注入（预算上限，不跑 LLM）。
+type Memory struct {
+	ID           int64      `json:"id"`
+	AgentID      int64      `json:"agent_id"`
+	Scope        string     `json:"scope"`     // agent | global
+	Kind         string     `json:"kind"`      // fact | preference | decision
+	Content      string     `json:"content"`   // 一句话陈述
+	SourceRunID  int64      `json:"source_run_id,omitempty"`
+	Status       string     `json:"status"`    // draft | active | expired
+	CreatedAt    time.Time  `json:"created_at"`
+	ApprovedAt   *time.Time `json:"approved_at,omitempty"`
+}
+
 // SSE 事件
 type Event struct {
 	Seq       int64     `json:"seq"`

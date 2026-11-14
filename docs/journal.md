@@ -797,3 +797,9 @@
 
 - 三层记忆模型（工作=I6 折叠/会话=时间线+M3 KV/长期=memories 表）+ 两条铁律（写入不静默——人审闭环对齐 I29/F17；注入确定性——不跑 LLM 对齐 I6/I21）+ 与 Skills 边界（SOP vs 事实，两通道不混）。
 - 不引入向量（个人规模全量注入+预算；触发条件=单 agent >50 条）。落地排期 M1（数据层+注入）/M2（抽取草稿池+审批闭环）/M3（会话 KV）。
+
+## 2026-11-14 C 切片：M1 长期记忆数据层+注入（ADR-0003 第一落地片）
+
+- memories 表（status=draft/active/expired 生命周期）+ store 六方法（mem/pg 双实现）+ API 五端点（POST 直写 active——手动显式注入；GET/approve/expire/DELETE）。
+- execute 确定性注入：「已知背景（长期记忆）」段——active 记忆倒序取最近 ≤10 条、字符预算 ≤2000 截断、草稿不注入；注入发生在执行副本（不污染任务本体——与 I21/Skills 同原则）。
+- 测试：HTTP 生命周期 6 断言 + 注入预算锁（15 条+草稿场景）——scheduler/api 双包。10 包 -race 全绿。M1 done。

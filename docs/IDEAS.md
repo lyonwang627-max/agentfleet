@@ -241,11 +241,16 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   结构体六字段 schema）传入 decide 每轮。单测：payload.format 为 schema 对象断言。
   附带修 dispatcher timeNow 包级变量 race（测试互写）→ Dispatcher.timeNow 实例字段。I42 整体 done。
 
-- [ ] **M1 长期记忆数据层+注入** `proposed` `S`（源自 ADR-0003 记忆架构，见 docs/adr/0003-agent-memory.md）
+- [x] **M1 长期记忆数据层+注入** `done`（2026-11-14，源自 ADR-0003 记忆架构，见 docs/adr/0003-agent-memory.md）
   动机：Skills=操作性 SOP（怎么做），memories=陈述性事实（知道什么）——agent 缺跨会话
   陈述性记忆层（Dify conversation.*/LangGraph Store 对读确认缺位）。
   验收：memories 表（agent_id/scope/kind/content/source_run_id/status）+ 手动 CRUD API +
   execute 确定性注入（「已知背景」段，条数≤10+字符≤2000 预算上限）+ 单测锁预算与注入形态。
+  实现：memories 表（schema additive，status=draft/active/expired 生命周期）+ store 六方法
+  （mem/pg 双实现）+ API 五端点（POST 直写 active——手动显式注入；GET 列表；approve/expire/
+  DELETE）+ execute 注入段「已知背景（长期记忆）」（草稿不注入、倒序取最近优先、字符预算截断）。
+  测试：HTTP 生命周期（400/201/列表/expire/删除/404）+ 注入预算（15 条长记忆+草稿——≤10 条
+  保留最近、草稿不出现、段≤2100 rune）。M1 done。
 - [ ] **M2 记忆抽取草稿池+审批闭环** `proposed` `S`（源自 ADR-0003）
   动机：模型产出的记忆不能未经人审自动生效（原则：写入不静默）——run 完成后 judge 旁路
   抽取事实草稿 → 人审 approve/reject → active。
