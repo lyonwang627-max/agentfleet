@@ -781,3 +781,10 @@
 
 - Usage 页 mock 测试：统计卡 tokens 合计（fmtNum 4.6k 千位格式）/ 成本 $0.0000（F10）/ 刷新按钮。自纠一处：fmtNum 千位以上格式化为 k 单位（断言 4600→4.6k）。
 - web 累计 9 测试过（4 文件）。
+
+## 2026-11-13 B 调研：MCP 2025 规范演进（docs/research/mcp-2025-spec-evolution.md）
+
+- 新能力四件套：Sampling with Tools（server 借客户端 token 跑 agentic loop）/Elicitation+URL mode（带外凭据收集）/Tasks（SEP-1686 长任务状态跟踪——run_steps+SSE 等价确认）/Streamable HTTP（远程 transport 主形态）。
+- **对读结论**：stdio 子进程本地最优（远程接入需 Streamable HTTP）；Elicitation 与审批门同构但**平台侧审批门更符合管控面定位**；Sampling with Tools 标注联邦方向。
+- 升级优先级（若接外部 server）：Streamable HTTP → URL mode elicitation → Sampling。
+- 明确不抄：Tasks 实验性/凭证文档/扩展机制。

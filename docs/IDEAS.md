@@ -204,7 +204,10 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   race 负载偶发）。I39 done。
   （查询面三重互证：I39 交叉引用——loki-logql 调研确认独立参数在预结构化数据+单租户场景
   是实现成本/表达力最优比，管道解析器动态提取对预结构化字段是冗余——详见
-  docs/research/loki-logql-query.md。）
+  docs/research/loki-logql-query.md。mcp-2025-spec-evolution 调研补充：MCP 新四能力
+  （Sampling with Tools/Elicitation URL mode/Tasks/Streamable HTTP）映射确认——Tasks
+  与 run_steps+SSE 等价、Elicitation 与审批门同构（平台侧更符合管控面）、远程 server
+  接入需 Streamable HTTP transport——详见 docs/research/mcp-2025-spec-evolution.md。）
 
 - [x] **I40 评测数据集版本化** `done`（2026-11-14，1/2 数据层 + 2/2 compare 对齐，源自 langsmith-evaluation 调研，见 docs/research/）
   动机：SaveCases 直接覆盖 cases——数据集变更多次评测间不可比（F18-c compare 按 case_id
