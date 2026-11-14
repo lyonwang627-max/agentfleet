@@ -758,3 +758,10 @@
 ## 2026-11-14 A 切片：web 测试第三波（Evals 页 ds vN 徽章渲染）
 
 - Evals 页 mock 测试：eval run 行 ds v3 版本徽章渲染锁（I40 前端）。web 累计 8 测试过（3 文件）。
+
+## 2026-11-13 B 调研：Grafana Loki LogQL（docs/research/loki-logql-query.md）
+
+- 管道模型（流选择器→行过滤器→解析器→标签过滤器，流式短路）/ 解析器族（json 嵌套扁平化/logfmt/pattern/regexp/unpack）/ `__error__` 容错标签 / 类型自动推断（duration/bytes）。
+- **三重互证结论**（Temporal 表达式/Loki 管道/独立参数）：独立参数在预结构化数据+单租户场景实现成本/表达力最优比——管道解析器动态提取对预结构化字段冗余。I39 交叉引用回填。
+- 设计原则同源确认：`__error__` 容错标签 ↔ I28 幻觉引导（解析失败不丢弃）。
+- 明确不抄：LogQL 表达式语言/动态解析器/Prometheus 聚合面。

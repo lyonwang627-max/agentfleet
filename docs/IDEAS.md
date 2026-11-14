@@ -201,6 +201,9 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   过滤（cutoff 后事件保留）；seq 绝对语义完全兼容。单测五场景（30ms 精确窗口/1h 全命中/
   seq 兼容/非法回退/天单位）。顺带修闸超时测试 flake（事件断言改轮询等待——emit 时序竞态，
   race 负载偶发）。I39 done。
+  （查询面三重互证：I39 交叉引用——loki-logql 调研确认独立参数在预结构化数据+单租户场景
+  是实现成本/表达力最优比，管道解析器动态提取对预结构化字段是冗余——详见
+  docs/research/loki-logql-query.md。）
 
 - [x] **I40 评测数据集版本化** `done`（2026-11-14，1/2 数据层 + 2/2 compare 对齐，源自 langsmith-evaluation 调研，见 docs/research/）
   动机：SaveCases 直接覆盖 cases——数据集变更多次评测间不可比（F18-c compare 按 case_id
