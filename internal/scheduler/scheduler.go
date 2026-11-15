@@ -528,6 +528,9 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 		s.emit(ctx, "task.update", map[string]any{"task_id": task.ID, "status": string(model.TaskDone), "run_id": runID})
 		slog.Info("task done", "task_id", task.ID)
 
+		// ADR-0003 M2：记忆抽取（judge 旁路，异步——不阻塞收尾；失败 fail-open）
+		go s.ExtractMemories(context.WithoutCancel(ctx), agent.ID, runID, task.Title, res.Reply)
+
 		// I30 小队闭环：成员（handoff 过来的）完成 → 自动 re-trigger leader 评估下一步。
 		// 实现轻量版：squad 任务的 handoff 链在成员 done 后，为 leader 建后续评估任务
 		// （带 handoff 上下文，leader 重新决策：继续转派 / 上报 / 收尾）。

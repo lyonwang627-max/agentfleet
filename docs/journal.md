@@ -803,3 +803,9 @@
 - memories 表（status=draft/active/expired 生命周期）+ store 六方法（mem/pg 双实现）+ API 五端点（POST 直写 active——手动显式注入；GET/approve/expire/DELETE）。
 - execute 确定性注入：「已知背景（长期记忆）」段——active 记忆倒序取最近 ≤10 条、字符预算 ≤2000 截断、草稿不注入；注入发生在执行副本（不污染任务本体——与 I21/Skills 同原则）。
 - 测试：HTTP 生命周期 6 断言 + 注入预算锁（15 条+草稿场景）——scheduler/api 双包。10 包 -race 全绿。M1 done。
+
+## 2026-11-16 C 切片：M2 记忆抽取草稿池+审批闭环（ADR-0003 第二落地片）
+
+- ExtractMemories：judge 旁路 ChatJSON 抽取 0-3 条事实（空 content 跳过/非法 kind 回退 fact/上限 3 条防噪音）→ draft 池；done 分支异步接线（context.WithoutCancel 不阻塞收尾）+ memory.extracted 事件留痕 + fail-open（judge 不健康静默跳过）。
+- 人审 approve 复用 M1 API——抽取落草稿、approve 后 active（闭环完成）。
+- 单测 2 组（抽取落草稿含 kind 回退/fail-open 跳过）；10 包 -race 全绿。M2 done——记忆写入闭环（抽取→草稿→人审→生效）全通。

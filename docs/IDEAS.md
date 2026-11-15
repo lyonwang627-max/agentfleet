@@ -251,11 +251,16 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   DELETE）+ execute 注入段「已知背景（长期记忆）」（草稿不注入、倒序取最近优先、字符预算截断）。
   测试：HTTP 生命周期（400/201/列表/expire/删除/404）+ 注入预算（15 条长记忆+草稿——≤10 条
   保留最近、草稿不出现、段≤2100 rune）。M1 done。
-- [ ] **M2 记忆抽取草稿池+审批闭环** `proposed` `S`（源自 ADR-0003）
+- [x] **M2 记忆抽取草稿池+审批闭环** `done`（2026-11-16，源自 ADR-0003）
   动机：模型产出的记忆不能未经人审自动生效（原则：写入不静默）——run 完成后 judge 旁路
   抽取事实草稿 → 人审 approve/reject → active。
   验收：run 完成 judge 抽取（LLM 一次调用）→ 草稿池 → approve/reject API → active 生效/
   丢弃；抽取失败不阻塞 run 收尾。
+  实现：ExtractMemories（judge 旁路 ChatJSON——prompt 要求 0-3 条 fact/preference/decision；
+  空 content 跳过、非法 kind 回退 fact、上限 3 条防噪音）+ done 分支异步接线（context.WithoutCancel
+  ——judge 调用 400ms 不阻塞收尾）+ memory.extracted 事件留痕 + fail-open（judge 不健康静默
+  跳过，与看门狗同款放行语义）。人审 approve 复用 M1 API。单测 2 组（抽取落草稿+kind 回退/
+  fail-open 跳过）。M2 done。
 - [ ] **M3 会话持久变量 KV** `proposed` `S`（源自 ADR-0003 / Dify conversation.* 对读）
   动机：群聊/试聊的跨轮结构化状态（时间线折叠会丢）。
   验收：conversations KV API（POST vars）+ I6 折叠注入「已知状态」段；触发条件=实测
