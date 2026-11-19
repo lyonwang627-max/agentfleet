@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useApi, useHealth } from '../hooks';
 import type { AgentSummary, FleetEvent } from '../types';
-import { Btn, ErrorText, KindBadge, Panel, SkeletonBlock, fmtTime } from '../ui';
+import { Btn, ErrorText, Panel, SkeletonBlock, fmtTime } from '../ui';
 
 export default function Overview() {
   const agents = useApi(() => api.listAgents(), []);
@@ -61,53 +61,50 @@ export default function Overview() {
           </Panel>
         )}
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
+        {/* 名册（去卡片化）：行条 + 信号灯列 + mono 数据列 */}
+        <div className="divide-y divide-[var(--hairline)] rounded-lg border border-[var(--hairline)] bg-panel">
+          <div className="flex items-center gap-3 px-4 py-1.5 text-[10px] lowercase tracking-wide text-muted">
+            <span className="w-2">·</span>
+            <span className="w-36">agent</span>
+            <span className="w-24">model</span>
+            <span className="w-16">runner</span>
+            <span className="w-20 text-right">run / queue</span>
+            <span className="ml-auto">controls</span>
+          </div>
           {items.map((a) => (
-            <div key={a.id} className="rounded-lg border border-border bg-panel p-4 transition-colors hover:border-border/50">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <Link to={`/agents/${a.id}`} className="truncate text-sm font-semibold text-fg hover:text-accent">
-                    {a.name}
-                  </Link>
-                  <div className="truncate text-xs text-muted">{a.role || '—'}</div>
-                </div>
-                <span
-                  className={`inline-flex shrink-0 items-center rounded border px-1.5 py-0.5 text-[11px] ${
-                    a.enabled
-                      ? 'border-ok/40 bg-ok/10 text-ok'
-                      : 'border-border bg-muted/10 text-muted'
-                  }`}
+            <div key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 transition-colors hover:bg-[var(--row-hover-bg)]">
+              {/* 信号灯列 */}
+              <span
+                className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                  !a.enabled ? 'bg-muted' : (a.running ?? 0) > 0 ? 'bg-ok animate-pulse' : 'bg-[var(--hairline)]'
+                }`}
+                aria-hidden
+              />
+              <Link to={`/agents/${a.id}`} className="w-36 truncate text-sm font-medium text-fg hover:text-accent">
+                {a.name}
+              </Link>
+              <span className="w-24 truncate font-mono text-[11px] text-muted">{a.model}</span>
+              <span className="w-16 font-mono text-[11px] text-muted">{a.runner}</span>
+              <span className="w-20 text-right font-mono text-xs tabular-nums">
+                <span className="text-ok">{a.running ?? 0}</span>
+                <span className="text-muted"> / </span>
+                <span className="text-muted">{a.queued ?? 0}</span>
+              </span>
+              <span className="ml-auto flex items-center gap-2">
+                {!a.enabled && (
+                  <span className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted">已停用</span>
+                )}
+                <Btn disabled={busyId === a.id || down} onClick={() => void clone(a)}>
+                  克隆
+                </Btn>
+                <Btn
+                  variant={a.enabled ? 'danger' : 'primary'}
+                  disabled={busyId === a.id || down}
+                  onClick={() => void toggle(a)}
                 >
-                  {a.enabled ? '已启用' : '已停用'}
-                </span>
-              </div>
-              <div className="mt-3 flex items-center gap-3 text-[11px] text-muted">
-                <span className="font-mono">{a.model}</span>
-                <span className="rounded border border-border px-1 py-px font-mono">{a.runner}</span>
-                <span>并发 {a.max_concurrency}</span>
-              </div>
-              <div className="mt-3 flex items-end justify-between">
-                <div className="flex gap-4 text-xs">
-                  <span className="text-accent">
-                    运行 <span className="font-mono text-sm tabular-nums">{a.running ?? 0}</span>
-                  </span>
-                  <span className="text-accent">
-                    排队 <span className="font-mono text-sm tabular-nums">{a.queued ?? 0}</span>
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Btn disabled={busyId === a.id || down} onClick={() => void clone(a)}>
-                    克隆
-                  </Btn>
-                  <Btn
-                    variant={a.enabled ? 'danger' : 'primary'}
-                    disabled={busyId === a.id || down}
-                    onClick={() => void toggle(a)}
-                  >
-                    {busyId === a.id ? '处理中…' : a.enabled ? '停用' : '启用'}
-                  </Btn>
-                </div>
-              </div>
+                  {busyId === a.id ? '…' : a.enabled ? '停用' : '启用'}
+                </Btn>
+              </span>
             </div>
           ))}
         </div>
@@ -119,12 +116,13 @@ export default function Overview() {
   );
 }
 
+// 读数条（去卡片化）：mono 大数字 + 小写标签 + 底 hairline——无框无底色
 function MiniStat({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: boolean }) {
   return (
-    <div className="rounded-lg border border-border bg-panel px-4 py-3">
-      <div className="text-xs text-muted">{label}</div>
-      <div className={`mt-0.5 text-xl font-semibold tabular-nums ${accent ? 'text-accent' : 'text-fg'}`}>{value}</div>
-      {sub && <div className="text-[11px] text-muted">{sub}</div>}
+    <div className="border-b border-[var(--hairline)] pb-2.5">
+      <div className="text-[11px] lowercase tracking-wide text-muted">{label}</div>
+      <div className={`mt-1 font-mono text-2xl font-medium tabular-nums ${accent ? 'text-ok' : 'text-fg'}`}>{value}</div>
+      {sub && <div className="mt-0.5 text-[10px] text-muted">{sub}</div>}
     </div>
   );
 }
@@ -161,9 +159,9 @@ function EventFeed() {
     <Panel
       title={
         <span className="flex items-center gap-2">
-          实时事件流
-          <span className={`inline-flex h-1.5 w-1.5 rounded-full ${connected ? 'bg-ok' : 'bg-muted'}`} />
-          <span className="text-[11px] font-normal text-muted">SSE {connected ? '已连接' : '未连接'}</span>
+          <span className="font-mono text-xs lowercase tracking-wide">event stream</span>
+          <span className={`inline-flex h-1.5 w-1.5 rounded-full ${connected ? 'bg-ok animate-pulse' : 'bg-muted'}`} />
+          <span className="font-mono text-[10px] text-muted">{connected ? 'LIVE' : 'OFFLINE'}</span>
         </span>
       }
       right={
@@ -191,12 +189,15 @@ function EventFeed() {
           </div>
         )}
         {shown.map((e, i) => (
-          <div key={`${e.at}-${i}`} className="border-b border-border/60 px-3 py-2 last:border-b-0">
-            <div className="flex items-center gap-2">
-              <KindBadge kind={e.ev.kind} />
-              <span className="ml-auto font-mono text-[10px] text-muted">{fmtTime(new Date(e.at).toISOString())}</span>
+          <div key={`${e.at}-${i}`} className="border-b border-[var(--hairline)] px-3 py-1.5 last:border-b-0">
+            <div className="flex items-center gap-2 font-mono text-[10px]">
+              <span className="text-muted">{String(MAX_EVENTS - i).padStart(2, '0')}</span>
+              <span className={e.ev.kind.startsWith('task') ? 'text-ok' : e.ev.kind.includes('step') ? 'text-info' : 'text-warn'}>
+                {e.ev.kind}
+              </span>
+              <span className="ml-auto text-muted">{fmtTime(new Date(e.at).toISOString())}</span>
             </div>
-            <div className="mt-1 line-clamp-2 break-all font-mono text-[11px] leading-relaxed text-muted">
+            <div className="mt-0.5 line-clamp-2 break-all font-mono text-[10px] leading-relaxed text-muted">
               {e.ev.data ? JSON.stringify(e.ev.data) : '—'}
             </div>
           </div>

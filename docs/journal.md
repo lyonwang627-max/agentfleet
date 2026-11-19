@@ -809,3 +809,10 @@
 - ExtractMemories：judge 旁路 ChatJSON 抽取 0-3 条事实（空 content 跳过/非法 kind 回退 fact/上限 3 条防噪音）→ draft 池；done 分支异步接线（context.WithoutCancel 不阻塞收尾）+ memory.extracted 事件留痕 + fail-open（judge 不健康静默跳过）。
 - 人审 approve 复用 M1 API——抽取落草稿、approve 后 active（闭环完成）。
 - 单测 2 组（抽取落草稿含 kind 回退/fail-open 跳过）；10 包 -race 全绿。M2 done——记忆写入闭环（抽取→草稿→人审→生效）全通。
+
+## 2026-11-20 C 切片：设计系统 v4 Mission Control（样板页：总览）
+
+- 按 anthropic frontend-design skill 流程：设计计划（token 表/布局概念/原则）→ 通病清单自审（避开单一亮 accent/SaaS 卡片 kit/中点分隔/每卡 hover）→ 实施。
+- token v4：墨绿灰黑底 #0c0e0b（航电暗色绿灰偏移）+ 信号灯语义色接管（GO 绿 #5adc8c 主交互/HOLD 琥珀/STOP 珊瑚红/蓝降饱和为辅）+ 亮色主题同构（纸面航电手册）。旧 token 语义名保留——其余页面自动继承。
+- 总览页结构性重做：读数条去框（mono 大数字+hairline）/ agent 卡片墙 → 名册行条（信号灯列+mono 数据列+hairline 分隔）/ 事件流终端式（行号倒序+kind 着色+LIVE）。
+- 用户确认后其余页面（看板/详情/群聊）按同语言跟随。
