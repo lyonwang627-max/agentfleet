@@ -259,6 +259,30 @@ ALTER TABLE webhooks ADD COLUMN IF NOT EXISTS last_status TEXT NOT NULL DEFAULT 
 ALTER TABLE webhooks ADD COLUMN IF NOT EXISTS last_delivery_at TIMESTAMPTZ;
 ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS purpose TEXT NOT NULL DEFAULT 'execute';
 ALTER TABLE eval_datasets ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1;
+
+CREATE TABLE IF NOT EXISTS knowledge_bases (
+  id          BIGSERIAL PRIMARY KEY,
+  name        TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS kb_docs (
+  id         BIGSERIAL PRIMARY KEY,
+  kb_id      BIGINT NOT NULL REFERENCES knowledge_bases(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  content    TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS kb_chunks (
+  id      BIGSERIAL PRIMARY KEY,
+  doc_id  BIGINT NOT NULL REFERENCES kb_docs(id) ON DELETE CASCADE,
+  kb_id   BIGINT NOT NULL,
+  seq     INT NOT NULL,
+  content TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_kb_chunks_kb ON kb_chunks(kb_id);
 ALTER TABLE eval_runs ADD COLUMN IF NOT EXISTS dataset_version INT NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS memories (
@@ -277,6 +301,30 @@ ALTER TABLE webhooks ADD COLUMN IF NOT EXISTS last_status TEXT NOT NULL DEFAULT 
 ALTER TABLE webhooks ADD COLUMN IF NOT EXISTS last_delivery_at TIMESTAMPTZ;
 ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS purpose TEXT NOT NULL DEFAULT 'execute';
 ALTER TABLE eval_datasets ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1;
+
+CREATE TABLE IF NOT EXISTS knowledge_bases (
+  id          BIGSERIAL PRIMARY KEY,
+  name        TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS kb_docs (
+  id         BIGSERIAL PRIMARY KEY,
+  kb_id      BIGINT NOT NULL REFERENCES knowledge_bases(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  content    TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS kb_chunks (
+  id      BIGSERIAL PRIMARY KEY,
+  doc_id  BIGINT NOT NULL REFERENCES kb_docs(id) ON DELETE CASCADE,
+  kb_id   BIGINT NOT NULL,
+  seq     INT NOT NULL,
+  content TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_kb_chunks_kb ON kb_chunks(kb_id);
 ALTER TABLE eval_runs ADD COLUMN IF NOT EXISTS dataset_version INT NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS memories (

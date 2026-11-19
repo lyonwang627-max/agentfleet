@@ -45,6 +45,15 @@ type Store interface {
 	ListWebhooks(ctx context.Context) ([]model.Webhook, error)
 	DeleteWebhook(ctx context.Context, id int64) error
 	CreateMemory(ctx context.Context, mem *model.Memory) (int64, error)   // ADR-0003：agent 长期记忆
+	CreateKB(ctx context.Context, kb *model.KnowledgeBase) (int64, error) // K 系列：知识库管理+检索
+	ListKB(ctx context.Context) ([]model.KnowledgeBase, error)
+	GetKB(ctx context.Context, id int64) (*model.KnowledgeBase, error)
+	DeleteKB(ctx context.Context, id int64) error
+	SaveKBDoc(ctx context.Context, doc *model.KBDoc) (int64, error)
+	ListKBDocs(ctx context.Context, kbID int64) ([]model.KBDoc, error)
+	GetKBDoc(ctx context.Context, docID int64) (*model.KBDoc, error)
+	DeleteKBDoc(ctx context.Context, docID int64) error
+	SearchKB(ctx context.Context, kbID int64, query string, topK int) ([]model.KBChunk, error)
 	ListMemories(ctx context.Context, agentID int64, statuses []string) ([]model.Memory, error)
 	ApproveMemory(ctx context.Context, id int64) error
 	ExpireMemory(ctx context.Context, id int64) error

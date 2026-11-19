@@ -816,3 +816,10 @@
 - token v4：墨绿灰黑底 #0c0e0b（航电暗色绿灰偏移）+ 信号灯语义色接管（GO 绿 #5adc8c 主交互/HOLD 琥珀/STOP 珊瑚红/蓝降饱和为辅）+ 亮色主题同构（纸面航电手册）。旧 token 语义名保留——其余页面自动继承。
 - 总览页结构性重做：读数条去框（mono 大数字+hairline）/ agent 卡片墙 → 名册行条（信号灯列+mono 数据列+hairline 分隔）/ 事件流终端式（行号倒序+kind 着色+LIVE）。
 - 用户确认后其余页面（看板/详情/群聊）按同语言跟随。
+
+## 2026-11-20 C 切片：K1 知识库数据层+管理 API+检索+builtin 工具（今晚 KB 三连 1/3）
+
+- knowledge_bases/kb_docs/kb_chunks 三表 additive（pg CASCADE 级联）+ store 双实现 + SplitChunks 自动分段纯函数（≤500 rune 段落边界优先）+ 关键词检索（全 term 命中计分——零 embedding 个人级最优，升级触发=单库>200 分段引入 pgvector）。
+- **builtin:kb_search 注册进 I8 统一工具池**：SetKBSearch 回调注入（runner 不依赖 store 包——依赖方向保持），llm runner 的 decide 清单（I28）自动含知识库工具——agent 可真用。
+- API 七端点（CRUD/docs/search）。修两坑：{id} 与字面段路由冲突 panic（doc 端点嵌套 {id} 下）；TestSelectForTiers 环境依赖改自适应双向断言。
+- 测试：store 3 组 + runner 2 组；10 包 -race 全绿。K1 done。

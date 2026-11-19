@@ -9,9 +9,20 @@ func TestSelectForTiers(t *testing.T) {
 	t.Setenv("FLEET_TIER_S", "lfm25:latest")
 	t.Setenv("FLEET_TIER_M", "")
 	t.Setenv("FLEET_TIER_L", "")
-	l := New("qwen3.5") // 本机 ollama：lfm25 已装（ListModels 可发现）
-	if got := l.SelectFor(PurposeJudge); got != "lfm25:latest" {
-		t.Fatalf("judge 应走 S 档 lfm25，得到 %q", got)
+	l := New("qwen3.5")
+	// S 档可用性依赖本机 ollama 已装 lfm25（环境变化敏感——未装时回退 M 档是正确行为）
+	installed := false
+	for _, m := range l.ListModels() {
+		if m.Name == "lfm25:latest" && m.Available {
+			installed = true
+		}
+	}
+	got := l.SelectFor(PurposeJudge)
+	if installed && got != "lfm25:latest" {
+		t.Fatalf("lfm25 已装时应走 S 档: %q", got)
+	}
+	if !installed && got != "qwen3.5" {
+		t.Fatalf("lfm25 未装应回退 M 档: %q", got)
 	}
 	if got := l.SelectFor(PurposeExecute); got != "qwen3.5" {
 		t.Fatalf("execute 应走默认 M 档，得到 %q", got)

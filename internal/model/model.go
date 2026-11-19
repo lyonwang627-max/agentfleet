@@ -334,6 +334,36 @@ type Webhook struct {
 	CreatedAt      time.Time  `json:"created_at"`
 }
 
+// KnowledgeBase 知识库（KB）：文档集管理与检索（K 系列）。
+type KnowledgeBase struct {
+	ID          int64     `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	DocCount    int       `json:"doc_count"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+// KBDoc 知识库文档：原文全文保存，检索时按分段召回。
+type KBDoc struct {
+	ID        int64     `json:"id"`
+	KBID      int64     `json:"kb_id"`
+	Name      string    `json:"name"`
+	Content   string    `json:"content,omitempty"` // 详情带全文，列表不带
+	Chunks    int       `json:"chunks,omitempty"`  // 分段数（列表聚合）
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// KBChunk 检索命中分段。
+type KBChunk struct {
+	ID      int64  `json:"id"`
+	DocID   int64  `json:"doc_id"`
+	KBID    int64  `json:"kb_id"`
+	Seq     int    `json:"seq"`
+	Content string `json:"content"`
+	DocName string `json:"doc_name,omitempty"` // 检索结果联表带出
+	Score   int    `json:"score,omitempty"`    // 关键词命中计分
+}
+
 // Memory agent 长期记忆（ADR-0003）：陈述性事实（知道什么）——与 Skills（操作性 SOP）互补。
 // 写入铁律：不静默写入（抽取走草稿+人审）；注入铁律：确定性注入（预算上限，不跑 LLM）。
 type Memory struct {

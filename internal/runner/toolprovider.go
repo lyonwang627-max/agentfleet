@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -26,7 +27,20 @@ type builtinTool struct {
 var (
 	builtinMu    sync.RWMutex
 	builtinTools = map[string]*builtinTool{}
+	kbSearchFn   func(ctx context.Context, kbID int, query string, topK int) ([]KBHit, error) // K 系列：store 注入（避免 runner→store 依赖）
 )
+
+// KBHit 知识库检索命中（runner 侧视图）。
+type KBHit struct {
+	DocName string
+	Seq     int
+	Content string
+}
+
+// SetKBSearch 注册知识库检索回调（fleetd 启动时由 main 注入 store 实现）。
+func SetKBSearch(fn func(ctx context.Context, kbID int, query string, topK int) ([]KBHit, error)) {
+	kbSearchFn = fn
+}
 
 // RegisterBuiltinTool 注册内置工具（name 不含 scheme；进程内确定性实现）。
 func RegisterBuiltinTool(name, desc string, fn func(args map[string]any) (string, error)) {
@@ -43,6 +57,34 @@ func init() {
 			return "", fmt.Errorf("text_search 需要 query 参数")
 		}
 		return "seed-knowledge: 关于「" + q + "」的要点（内置检索）", nil
+	})
+
+	// K 系列：知识库检索——分段召回 top-3，多段拼接（含来源 doc 名）
+	RegisterBuiltinTool("kb_search", "知识库检索：按关键词从知识库召回相关分段（含来源文档名）", func(args map[string]any) (string, error) {
+		q, _ := args["query"].(string)
+		if q == "" {
+			return "", fmt.Errorf("kb_search 需要 query 参数")
+		}
+		kbID := 0 // 0=跨全部知识库
+		if v, ok := args["kb_id"].(float64); ok && v > 0 {
+			kbID = int(v)
+		}
+		if kbSearchFn == nil {
+			return "知识库未就绪（store 未注入）", nil
+		}
+		hits, err := kbSearchFn(context.Background(), kbID, q, 3)
+		if err != nil {
+			return "", err
+		}
+		if len(hits) == 0 {
+			return "知识库中未找到与「" + q + "」相关的内容", nil
+		}
+		var out strings.Builder
+		out.WriteString(fmt.Sprintf("知识库检索命中 %d 段：\n", len(hits)))
+		for _, h := range hits {
+			fmt.Fprintf(&out, "\n[doc:%s seq:%d]\n%s\n", h.DocName, h.Seq, head(h.Content, 300))
+		}
+		return out.String(), nil
 	})
 }
 

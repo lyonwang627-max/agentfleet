@@ -266,7 +266,15 @@ dispatch（内部再取锁）——Mutex 不可重入死锁，锁纪律改「d.m
   验收：conversations KV API（POST vars）+ I6 折叠注入「已知状态」段；触发条件=实测
   折叠丢关键状态（可延后）。
 
-## 已完成（沉淀记录）
+- [x] **K1 知识库数据层+管理 API+检索+builtin 工具** `done`（2026-11-20，今晚知识库三连 K1）
+  实现：knowledge_bases/kb_docs/kb_chunks 三表（schema additive，pg ON DELETE CASCADE）+
+  store 双实现（CreateKB/ListKB/GetKB/DeleteKB/SaveKBDoc/ListKBDocs/GetKBDoc/DeleteKBDoc/SearchKB）+
+  SplitChunks 自动分段纯函数（≤500 rune/段，段落边界优先+段内行切）+ 关键词检索（全 term 命中计分，
+  mem 内存/pg ILIKE）+ API 七端点（CRUD/docs/search——路由修 {id}/{docId} 冲突：doc 嵌套 {id} 下）+
+  **builtin:kb_search 注册进 I8 统一工具池**（SetKBSearch 回调注入——runner 不依赖 store 包）。
+  测试：store 3 组（自动分段/检索计分/级联删除/kind 幂等）+ runner 2 组（命中/空结果/未注入）。
+  修两坑：{id} 与字面段路由冲突 panic；TestSelectForTiers 环境依赖改自适应（lfm25 装没装双向断言）。
+  K1 done——agent 任务可经 builtin:kb_search 真用知识库。
 
 - ~~任务级模型路由~~（F18-b，ADR-0002）
 - ~~上下文 Spill~~（F11-b）

@@ -147,6 +147,14 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/webhooks", s.listWebhooks)
 	mux.HandleFunc("DELETE /api/v1/webhooks/{id}", s.deleteWebhook)
 	mux.HandleFunc("POST /api/v1/webhooks/{id}/ingest/{token}", s.ingestWebhook) // I37 入站回调
+	mux.HandleFunc("POST /api/v1/kb", s.createKB)                                 // K 系列：知识库管理+检索
+	mux.HandleFunc("GET /api/v1/kb", s.listKB)
+	mux.HandleFunc("DELETE /api/v1/kb/{id}", s.deleteKB)
+	mux.HandleFunc("POST /api/v1/kb/{id}/docs", s.saveKBDoc)
+	mux.HandleFunc("GET /api/v1/kb/{id}/docs", s.listKBDocs)
+	mux.HandleFunc("GET /api/v1/kb/{id}/docs/{docId}", s.getKBDoc)
+	mux.HandleFunc("DELETE /api/v1/kb/{id}/docs/{docId}", s.deleteKBDoc)
+	mux.HandleFunc("GET /api/v1/kb/search", s.searchKB)
 	mux.HandleFunc("GET /api/v1/agents/{id}/memories", s.listMemories)           // ADR-0003 长期记忆
 	mux.HandleFunc("POST /api/v1/agents/{id}/memories", s.createMemory)
 	mux.HandleFunc("POST /api/v1/memories/{id}/approve", s.approveMemory)
@@ -212,6 +220,12 @@ func writeErr(w http.ResponseWriter, code int, err error) {
 func pathID(r *http.Request) int64 {
 	id, _ := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	return id
+}
+
+// pathID2 命名路径参数取整（docId 等多参数路由）。
+func pathID2(r *http.Request, name string) int64 {
+	n, _ := strconv.ParseInt(r.PathValue(name), 10, 64)
+	return n
 }
 
 func queryInt(r *http.Request, key string, def int) int {
