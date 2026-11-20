@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, KanbanSquare, Timer, Wrench, MessagesSquare, Users, FlaskConical, Gauge, FolderKanban, History, Moon, Sun } from 'lucide-react';
+import { LayoutDashboard, KanbanSquare, Timer, Wrench, MessagesSquare, Users, FlaskConical, Gauge, FolderKanban, History, BookOpen, Moon, Sun } from 'lucide-react';
 import { useState } from 'react';
 import { useHealth } from '../hooks';
 import { fmtDuration } from '../ui';
@@ -8,6 +8,7 @@ const NAV = [
   { to: '/', label: '舰队总览', icon: LayoutDashboard },
   { to: '/tasks', label: '任务看板', icon: KanbanSquare },
   { to: '/projects', label: '项目', icon: FolderKanban },
+  { to: '/knowledge', label: '知识库', icon: BookOpen },
   { to: '/automations', label: '自动化', icon: Timer },
   { to: '/studio', label: '工作台', icon: Wrench },
   { to: '/chat', label: '试聊台', icon: MessagesSquare },

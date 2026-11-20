@@ -6,6 +6,7 @@ import Chat from './pages/Chat';
 import Evals from './pages/Evals';
 import Overview from './pages/Overview';
 import Projects from './pages/Projects';
+import Knowledge from './pages/Knowledge';
 import Replays from './pages/Replays';
 import Room from './pages/Room';
 import Studio from './pages/Studio';
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="tasks/:id" element={<TaskDetail />} />
         <Route path="agents/:id" element={<AgentDetail />} />
         <Route path="projects" element={<Projects />} />
+        <Route path="knowledge" element={<Knowledge />} />
         <Route path="automations" element={<Automations />} />
         <Route path="studio" element={<Studio />} />
         <Route path="replays" element={<Replays />} />

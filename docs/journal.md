@@ -830,3 +830,10 @@
 - execute 确定性注入：绑定 KB 的任务按「标题+prompt」检索 → 注入「参考资料（知识库检索）」段（每库 top4、总预算 8 条+3000 字符；KB 已删 fail-open 跳过）——与 M1 记忆注入同模式，不跑 LLM 不改任务本体 prompt。
 - **修 K1 检索真雷：中文 query 必漏检**——strings.Fields 把「发布检查」整段当单 term 子串匹配，chunk 永不含。kbQueryTerms 共享切词（空白切段；ASCII 整词，中文段拆 2-gram / CJK bigram ES 同款）；段间 AND（防单词刷分语义保持）、段内任一 gram 命中即段命中（召回优先，精度靠计分+topK）。mem/pg 两处 SearchKB 语义统一（pg ILIKE 段内 OR 组）。
 - 测试：切词 3 断言（中文命中/ASCII 无回归/无关段不命中）+ scheduler 注入 2 组（命中段内容/本体 prompt 不改写/预算 8 条 3100 字符/KB 删除 fail-open）+ API 校验 2 组；10 包 -race 全绿（含 pg 冒烟 migrate）。
+
+## 2026-11-20 C 切片：K3 前端知识库管理页（今晚 KB 三连 3/3——KB 能力完整交付）
+
+- /knowledge 页（v4 Mission Control 语言，行条+hairline+mono 数据）：库列表行条（文档数/建库时间/删除确认）→ 选中展开文档区（分段数可见/删除）+ 加文档表单（粘贴原文，入库后回报「自动分段 N 段」）+ 检索试测框（Enter 触发，命中段带 doc 名/seq/计分；跨库或单库）。
+- 建库即选中（建后直接进文档流）；空态文案讲清知识库定位（陈述性知识 vs Skills SOP）。
+- types/api 补 KB 契约（TaskCreate 加 kb_ids——任务创建 UI 后续跟随）。修 3 个类名：v4 token 是 @theme CSS 变量（border-[var(--hairline)]/text-bad/text-accent），border-hairline/text-go 非有效类。
+- web build 零报错 + vitest 9/9 过。今晚 KB 三连（K1 数据层+工具 / K2 任务检索增强 / K3 管理页）全部交付。

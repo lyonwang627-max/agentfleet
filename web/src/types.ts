@@ -98,6 +98,7 @@ export interface TaskCreate {
   agent_id: number;
   priority: number;
   depends_on: number[];
+  kb_ids?: number[]; // 绑定知识库（K2：execute 时检索注入）
 }
 export interface TaskCreated {
   id: number;
@@ -349,4 +350,32 @@ export interface Skill {
   source_task?: number;
   created_at: string;
   updated_at: string;
+}
+
+// ---------- 知识库（K 系列） ----------
+export interface KnowledgeBase {
+  id: number;
+  name: string;
+  description: string;
+  doc_count: number;
+  created_at: string;
+}
+
+export interface KBDoc {
+  id: number;
+  kb_id: number;
+  name: string;
+  content?: string;
+  chunks?: number;
+  created_at: string;
+}
+
+export interface KBChunk {
+  id: number;
+  doc_id: number;
+  kb_id: number;
+  seq: number;
+  content: string;
+  doc_name?: string;
+  score?: number;
 }

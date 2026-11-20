@@ -1,4 +1,4 @@
-import type { Project, TaskComment,
+import type { KBChunk, KBDoc, KnowledgeBase, Project, TaskComment,
   AgentDetail,
   TaskDag,
   AgentPatch,
@@ -140,6 +140,20 @@ export const api = {
   rollbackAgent: (id: number, version: number) =>
     post<{ agent_id: number; rolled_back_from: number; new_version: number }>(
       `/agents/${id}/versions/${version}/rollback`),
+
+  // 知识库（K 系列）
+  listKBs: () => request<{ items: KnowledgeBase[]; total: number }>('/kb'),
+  createKB: (body: { name: string; description?: string }) => post<{ id: number }>('/kb', body),
+  deleteKB: (id: number) => request<{ id: number }>(`/kb/${id}`, { method: 'DELETE' }),
+  listKBDocs: (kbId: number) => request<{ items: KBDoc[]; total: number }>(`/kb/${kbId}/docs`),
+  saveKBDoc: (kbId: number, body: { name: string; content: string }) =>
+    post<{ id: number; chunks: number }>(`/kb/${kbId}/docs`, body),
+  deleteKBDoc: (kbId: number, docId: number) =>
+    request<{ id: number }>(`/kb/${kbId}/docs/${docId}`, { method: 'DELETE' }),
+  searchKB: (query: string, kbId = 0, top = 5) =>
+    request<{ items: KBChunk[]; total: number }>(
+      `/kb/search?q=${encodeURIComponent(query)}&kb_id=${kbId}&top=${top}`,
+    ),
 
   // Multica 对标（v1.5）
   listProjects: () => request<Page<Project>>('/projects'),
