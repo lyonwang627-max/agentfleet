@@ -197,6 +197,7 @@ type TaskPatch struct {
 	Error        *string
 	WorkspaceID  *int64
 	SkillIDs     *[]int64
+	KBIDs        *[]int64
 	DependsOn    *[]int64
 	RiskLevel    *string
 	HandoffCount *int

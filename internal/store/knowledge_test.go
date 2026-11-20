@@ -60,3 +60,29 @@ func TestKBDocCRUD(t *testing.T) {
 		t.Fatalf("删除后应剩 1: %d", len(docs))
 	}
 }
+
+// 中文感知切词（K2 修复）：中文段拆 2-gram 可命中，ASCII 段整词无回归，无关词不命中。
+func TestKBQueryTerms(t *testing.T) {
+	grams := kbQueryTerms("发布检查")
+	if len(grams) != 1 || len(grams[0]) != 3 {
+		t.Fatalf("四字中文段应拆 3 个 2-gram: %v", grams)
+	}
+	ascii := kbQueryTerms("db staging")
+	if len(ascii) != 2 || ascii[0][0] != "db" || ascii[1][0] != "staging" {
+		t.Fatalf("ASCII 段应整词保留: %v", ascii)
+	}
+
+	ctx := context.Background()
+	m := NewMemStore()
+	kid, _ := m.CreateKB(ctx, &model.KnowledgeBase{Name: "k"})
+	m.SaveKBDoc(ctx, &model.KBDoc{KBID: kid, Name: "d", Content: "发布前必须检查数据库只读副本状态。"})
+	// 中文整短语（修复前必漏检）现在应命中
+	hits, err := m.SearchKB(ctx, kid, "发布检查", 3)
+	if err != nil || len(hits) == 0 {
+		t.Fatalf("中文短语应命中: %v err=%v", hits, err)
+	}
+	// 段间 AND：任一段完全不相关则不命中
+	if hits2, _ := m.SearchKB(ctx, kid, "发布 kubernetesargtokencustom", 3); len(hits2) != 0 {
+		t.Fatalf("含不相关段不应命中: %d", len(hits2))
+	}
+}

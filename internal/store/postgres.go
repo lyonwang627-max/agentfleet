@@ -182,10 +182,10 @@ func join(parts []string) string {
 
 func (p *PostgresStore) CreateTask(ctx context.Context, t *model.Task) (int64, error) {
 	err := p.pool.QueryRow(ctx,
-		`INSERT INTO tasks(title, prompt, agent_id, priority, status, depends_on, workspace_id, skill_ids, max_handoffs, max_retries, visible_after)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id, created_at`,
+		`INSERT INTO tasks(title, prompt, agent_id, priority, status, depends_on, workspace_id, skill_ids, kb_ids, max_handoffs, max_retries, visible_after)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id, created_at`,
 		t.Title, t.Prompt, t.AgentID, t.Priority, taskStatusOr(t.Status), jsonb(t.DependsOn),
-		t.WorkspaceID, jsonb(t.SkillIDs), t.MaxHandoffs, t.MaxRetries, t.VisibleAfter,
+		t.WorkspaceID, jsonb(t.SkillIDs), jsonb(t.KBIDs), t.MaxHandoffs, t.MaxRetries, t.VisibleAfter,
 	).Scan(&t.ID, &t.CreatedAt)
 	return t.ID, err
 }
@@ -198,17 +198,17 @@ func taskStatusOr(s model.TaskStatus) model.TaskStatus {
 }
 
 const taskCols = `id, title, prompt, agent_id, priority, status, depends_on,
-	COALESCE(workspace_id,0), COALESCE(skill_ids,'[]'::jsonb), COALESCE(risk_level,''),
+	COALESCE(workspace_id,0), COALESCE(skill_ids,'[]'::jsonb), COALESCE(kb_ids,'[]'::jsonb), COALESCE(risk_level,''),
 	COALESCE(project_id,0), COALESCE(labels,'[]'::jsonb), COALESCE(steer_note,''),
 	handoff_count, max_handoffs, retry_count, max_retries, visible_after, result, error, created_at, started_at, finished_at`
 
 func scanTask(row pgx.Row) (*model.Task, error) {
 	t := &model.Task{}
-	var deps, skills []byte
+	var deps, skills, kbs []byte
 	var labels []byte
 	var steer string
 	if err := row.Scan(&t.ID, &t.Title, &t.Prompt, &t.AgentID, &t.Priority, &t.Status, &deps,
-		&t.WorkspaceID, &skills, &t.RiskLevel, &t.ProjectID, &labels, &steer,
+		&t.WorkspaceID, &skills, &kbs, &t.RiskLevel, &t.ProjectID, &labels, &steer,
 		&t.HandoffCount, &t.MaxHandoffs, &t.RetryCount, &t.MaxRetries, &t.VisibleAfter,
 		&t.Result, &t.Error, &t.CreatedAt, &t.StartedAt, &t.FinishedAt); err != nil {
 		return nil, err
@@ -217,6 +217,8 @@ func scanTask(row pgx.Row) (*model.Task, error) {
 	unjsonb(deps, &t.DependsOn)
 	t.SkillIDs = []int64{}
 	unjsonb(skills, &t.SkillIDs)
+	t.KBIDs = []int64{}
+	unjsonb(kbs, &t.KBIDs)
 	t.Labels = []string{}
 	unjsonb(labels, &t.Labels)
 	t.SteerNote = steer
@@ -305,6 +307,9 @@ func (p *PostgresStore) UpdateTask(ctx context.Context, id int64, patch TaskPatc
 	}
 	if patch.SkillIDs != nil {
 		add("skill_ids", jsonb(*patch.SkillIDs))
+	}
+	if patch.KBIDs != nil {
+		add("kb_ids", jsonb(*patch.KBIDs))
 	}
 	if patch.SteerNote != nil {
 		add("steer_note", *patch.SteerNote)

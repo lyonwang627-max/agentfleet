@@ -15,6 +15,47 @@ import (
 // 检索策略：个人规模零 embedding——关键词命中计分（子串出现次数 ×10 聚合），
 // 升级触发（单库 >200 分段或语义检索需求）再引入 pgvector（pg 已有基建零新依赖）。
 
+// kbQueryTerms 中文感知检索切词：空白切段；ASCII 段保持整词，中文段拆 2-gram
+// （CJK bigram，ES 同款惯例）——中文整段做子串匹配几乎必漏检（「发布检查」四字
+// 连成单 term，chunk 永远不含）。返回每段的 token 组：段间全命中（AND——query 的
+// 每个关键词段都须相关，防单词刷分），段内任一 token 命中即段命中（召回优先，
+// 精度靠计分排序 + topK 抑制弱相关）。
+func kbQueryTerms(query string) [][]string {
+	segments := strings.Fields(strings.ToLower(query))
+	out := make([][]string, 0, len(segments))
+	for _, seg := range segments {
+		runes := []rune(seg)
+		hasCJK := false
+		for _, r := range runes {
+			if r >= 0x2E80 {
+				hasCJK = true
+				break
+			}
+		}
+		if !hasCJK || len(runes) <= 2 {
+			out = append(out, []string{seg})
+			continue
+		}
+		grams := make([]string, 0, len(runes)-1)
+		for i := 0; i+1 < len(runes); i++ {
+			grams = append(grams, string(runes[i:i+2]))
+		}
+		out = append(out, grams)
+	}
+	return out
+}
+
+// kbSegmentHit 段内命中计分：返回命中 token 计数聚合（0 = 段未命中）。
+func kbSegmentHit(content string, tokens []string) int {
+	score := 0
+	for _, t := range tokens {
+		if c := strings.Count(content, t); c > 0 {
+			score += c * 10
+		}
+	}
+	return score
+}
+
 // SplitChunks 自动分段：≤500 rune/段，优先按空行（段落）边界切，段内超长按行切。
 func SplitChunks(content string, maxRunes int) []string {
 	content = strings.TrimSpace(content)
@@ -176,12 +217,12 @@ func (m *MemStore) DeleteKBDoc(_ context.Context, docID int64) error {
 	return nil
 }
 
-// SearchKB 关键词检索：全 term 命中计分降序（topK 截断）；跨库（kbID=0）或单库。
+// SearchKB 关键词检索：段间全命中计分降序（topK 截断）；跨库（kbID=0）或单库。
 func (m *MemStore) SearchKB(_ context.Context, kbID int64, query string, topK int) ([]model.KBChunk, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	terms := strings.Fields(strings.ToLower(query))
-	if len(terms) == 0 {
+	termGroups := kbQueryTerms(query)
+	if len(termGroups) == 0 {
 		return nil, nil
 	}
 	type hit struct {
@@ -200,15 +241,17 @@ func (m *MemStore) SearchKB(_ context.Context, kbID int64, query string, topK in
 		for _, ch := range chunks {
 			lower := strings.ToLower(ch.Content)
 			score := 0
-			matched := 0
-			for _, t := range terms {
-				if c := strings.Count(lower, t); c > 0 {
-					score += c * 10
-					matched++
+			allSegs := true
+			for _, toks := range termGroups {
+				seg := kbSegmentHit(lower, toks)
+				if seg == 0 {
+					allSegs = false
+					break
 				}
+				score += seg
 			}
-			// 全部 term 至少出现一次才算命中（避免单词弱相关刷分）
-			if matched == len(terms) {
+			// 每个关键词段都至少命中一个 token 才算命中（避免单词弱相关刷分）
+			if allSegs {
 				hits = append(hits, hit{chunk: model.KBChunk{
 					ID: ch.ID, DocID: ch.DocID, KBID: doc.KBID, Seq: ch.Seq,
 					Content: ch.Content, DocName: doc.Name}, score: score})
@@ -349,18 +392,22 @@ func (p *PostgresStore) DeleteKBDoc(ctx context.Context, docID int64) error {
 
 // SearchKB 关键词检索：ILIKE 全 term 命中计分（pg 侧按命中 term 数 × 出现计数排序）。
 func (p *PostgresStore) SearchKB(ctx context.Context, kbID int64, query string, topK int) ([]model.KBChunk, error) {
-	terms := strings.Fields(strings.ToLower(query))
-	if len(terms) == 0 {
+	termGroups := kbQueryTerms(query)
+	if len(termGroups) == 0 {
 		return nil, nil
 	}
 	sql := `SELECT c.id, c.doc_id, c.kb_id, c.seq, c.content, d.name
 		 FROM kb_chunks c JOIN kb_docs d ON d.id = c.doc_id
 		 WHERE c.kb_id = $1 OR $1 = 0`
 	args := []any{kbID}
-	for i, t := range terms {
-		sql += ` AND c.content ILIKE $` + fmt.Sprint(len(args)+1)
-		args = append(args, "%"+t+"%")
-		_ = i
+	// 段间 AND、段内 token OR 组（与 mem 版计分语义一致——见 kbQueryTerms 注释）
+	for _, toks := range termGroups {
+		conds := make([]string, 0, len(toks))
+		for _, t := range toks {
+			conds = append(conds, "c.content ILIKE $"+fmt.Sprint(len(args)+1))
+			args = append(args, "%"+t+"%")
+		}
+		sql += " AND (" + strings.Join(conds, " OR ") + ")"
 	}
 	rows, err := p.pool.Query(ctx, sql, args...)
 	if err != nil {
@@ -375,8 +422,8 @@ func (p *PostgresStore) SearchKB(ctx context.Context, kbID int64, query string, 
 		}
 		lower := strings.ToLower(ch.Content)
 		score := 0
-		for _, t := range terms {
-			score += strings.Count(lower, t) * 10
+		for _, toks := range termGroups {
+			score += kbSegmentHit(lower, toks)
 		}
 		if exist, ok := scored[ch.ID]; !ok || exist.Score < score {
 			ch.Score = score

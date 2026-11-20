@@ -48,6 +48,7 @@ type Task struct {
 	Labels       []string   `json:"labels,omitempty"`      // 标签（Multica 对标）
 	SteerNote    string     `json:"-"`                     // 运行中插话（Steer，注入后清空）
 	SkillIDs     []int64    `json:"skill_ids,omitempty"`   // 引用的经验（创建时注入 prompt）
+	KBIDs        []int64    `json:"kb_ids,omitempty"`      // 绑定的知识库（K2：execute 时检索注入）
 	RiskLevel    string     `json:"risk_level,omitempty"`   // I29: low|medium|high（审批分级）
 	HandoffCount int        `json:"-"`
 	MaxHandoffs  int        `json:"-"`

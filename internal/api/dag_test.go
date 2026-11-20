@@ -115,3 +115,36 @@ func TestCreateTaskDepValidation(t *testing.T) {
 		t.Fatalf("deps 应去重为 1: %v", got.DependsOn)
 	}
 }
+
+// K2：绑定 KB 存在性校验——缺失 KB 检索静默落空，创建即拒；存在则 201 回读。
+func TestCreateTaskKBValidation(t *testing.T) {
+	st := store.NewMemStore()
+	s := &Server{Store: st, Hub: scheduler.NewHub(st), StartedAt: time.Now()}
+	ts := httptest.NewServer(s.Routes())
+	defer ts.Close()
+	ctx := context.Background()
+	aid, _ := st.CreateAgent(ctx, &model.Agent{Name: "kbv", Model: "mock", Runner: "mock", Enabled: true})
+	kid, _ := st.CreateKB(ctx, &model.KnowledgeBase{Name: "手册"})
+
+	resp, _ := http.Post(ts.URL+"/api/v1/tasks", "application/json",
+		strings.NewReader(`{"title":"x","agent_id":`+strconv.FormatInt(aid, 10)+`,"kb_ids":[99999]}`))
+	if resp.StatusCode != 400 {
+		t.Fatalf("缺失 KB 应 400: %d", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	resp2, _ := http.Post(ts.URL+"/api/v1/tasks", "application/json",
+		strings.NewReader(`{"title":"y","agent_id":`+strconv.FormatInt(aid, 10)+`,"kb_ids":[`+strconv.FormatInt(kid, 10)+`]}`))
+	if resp2.StatusCode != 201 {
+		t.Fatalf("存在 KB 应 201: %d", resp2.StatusCode)
+	}
+	var created struct {
+		ID int64 `json:"id"`
+	}
+	_ = json.NewDecoder(resp2.Body).Decode(&created)
+	resp2.Body.Close()
+	got, _ := st.GetTask(ctx, created.ID)
+	if len(got.KBIDs) != 1 || got.KBIDs[0] != kid {
+		t.Fatalf("kb_ids 未持久化: %v", got.KBIDs)
+	}
+}

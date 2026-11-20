@@ -823,3 +823,10 @@
 - **builtin:kb_search 注册进 I8 统一工具池**：SetKBSearch 回调注入（runner 不依赖 store 包——依赖方向保持），llm runner 的 decide 清单（I28）自动含知识库工具——agent 可真用。
 - API 七端点（CRUD/docs/search）。修两坑：{id} 与字面段路由冲突 panic（doc 端点嵌套 {id} 下）；TestSelectForTiers 环境依赖改自适应双向断言。
 - 测试：store 3 组 + runner 2 组；10 包 -race 全绿。K1 done。
+
+## 2026-11-20 C 切片：K2 任务检索增强（kb_ids 绑定→execute 注入检索段，今晚 KB 三连 2/3）
+
+- tasks.kb_ids additive 列（JSONB）+ model.Task.KBIDs + taskIn 校验（缺失 KB 创建即拒，同 DependsOn 原则；去重保序）——mem/pg 双实现往返。
+- execute 确定性注入：绑定 KB 的任务按「标题+prompt」检索 → 注入「参考资料（知识库检索）」段（每库 top4、总预算 8 条+3000 字符；KB 已删 fail-open 跳过）——与 M1 记忆注入同模式，不跑 LLM 不改任务本体 prompt。
+- **修 K1 检索真雷：中文 query 必漏检**——strings.Fields 把「发布检查」整段当单 term 子串匹配，chunk 永不含。kbQueryTerms 共享切词（空白切段；ASCII 整词，中文段拆 2-gram / CJK bigram ES 同款）；段间 AND（防单词刷分语义保持）、段内任一 gram 命中即段命中（召回优先，精度靠计分+topK）。mem/pg 两处 SearchKB 语义统一（pg ILIKE 段内 OR 组）。
+- 测试：切词 3 断言（中文命中/ASCII 无回归/无关段不命中）+ scheduler 注入 2 组（命中段内容/本体 prompt 不改写/预算 8 条 3100 字符/KB 删除 fail-open）+ API 校验 2 组；10 包 -race 全绿（含 pg 冒烟 migrate）。

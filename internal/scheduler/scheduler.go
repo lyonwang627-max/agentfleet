@@ -322,6 +322,41 @@ func (s *Scheduler) execute(ctx context.Context, task model.Task) {
 		}
 		execPrompt += sb.String()
 	}
+	// K2 任务检索增强：绑定 KB 的任务按标题+prompt 检索 → 注入「知识库检索」段。
+	// 与记忆注入同模式：确定性注入不跑 LLM；每库 top4、总预算 8 条 + 3000 字符
+	// （chunk 比记忆长，预算相应放宽）——防检索膨胀反噬上下文（I6 同款教训）。
+	if len(task.KBIDs) > 0 {
+		const kbMaxChunks, kbMaxChars = 8, 3000
+		query := task.Title + "\n" + task.Prompt
+		var kbLines []string
+		charBudget := kbMaxChars
+	kbLoop:
+		for _, kid := range task.KBIDs {
+			kb, err := s.store.GetKB(ctx, kid)
+			if err != nil {
+				continue // KB 已删：跳过不阻塞执行（fail-open，同记忆注入）
+			}
+			hits, err := s.store.SearchKB(ctx, kid, query, 4)
+			if err != nil || len(hits) == 0 {
+				continue
+			}
+			for _, hit := range hits {
+				doc := hit.DocName
+				if doc == "" {
+					doc = fmt.Sprintf("doc#%d", hit.DocID)
+				}
+				line := fmt.Sprintf("- [%s · %s] %s", kb.Name, doc, hit.Content)
+				if len([]rune(line)) > charBudget {
+					break kbLoop
+				}
+				kbLines = append(kbLines, line)
+				charBudget -= len([]rune(line))
+			}
+		}
+		if len(kbLines) > 0 {
+			execPrompt += "\n\n[参考资料（知识库检索）]\n" + strings.Join(kbLines, "\n")
+		}
+	}
 	// I38 灰度：ramp_pct>0 时按 taskID 分桶——ramping 桶用灰度版本快照覆盖 agent 副本
 	if agent.RampPct > 0 && agent.RampingVersion > 0 {
 		curV := 0

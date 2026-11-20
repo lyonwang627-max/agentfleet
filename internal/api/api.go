@@ -441,6 +441,7 @@ type taskIn struct {
 	DependsOn   []int64  `json:"depends_on"`
 	WorkspaceID int64    `json:"workspace_id"`
 	SkillIDs    []int64  `json:"skill_ids"`
+	KBIDs       []int64  `json:"kb_ids"` // 绑定知识库（K2：execute 时检索注入）
 	SquadID     int64    `json:"squad_id"` // 分给小队（I30）：AgentID 需为该队 leader
 	ProjectID   int64    `json:"project_id"`
 	Labels      []string `json:"labels"`
@@ -491,9 +492,26 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// K2：绑定 KB 存在性校验——缺失 KB 会让检索静默落空（同 DependsOn 创建即拒原则）
+	if len(in.KBIDs) > 0 {
+		seenKB := map[int64]bool{}
+		uniqKB := in.KBIDs[:0]
+		for _, kid := range in.KBIDs {
+			if seenKB[kid] {
+				continue
+			}
+			seenKB[kid] = true
+			if _, err := s.Store.GetKB(r.Context(), kid); err != nil {
+				writeErr(w, http.StatusBadRequest, fmt.Errorf("知识库 %d 不存在", kid))
+				return
+			}
+			uniqKB = append(uniqKB, kid)
+		}
+		in.KBIDs = uniqKB
+	}
 	t := &model.Task{Title: in.Title, Prompt: in.Prompt, AgentID: in.AgentID,
 		Priority: in.Priority, DependsOn: in.DependsOn,
-		WorkspaceID: in.WorkspaceID, SkillIDs: in.SkillIDs, SquadID: in.SquadID,
+		WorkspaceID: in.WorkspaceID, SkillIDs: in.SkillIDs, KBIDs: in.KBIDs, SquadID: in.SquadID,
 		ProjectID: in.ProjectID, Labels: in.Labels}
 	id, err := s.Store.CreateTask(r.Context(), t)
 	if err != nil {
