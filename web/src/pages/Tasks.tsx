@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useApi, useEventSource, useThrottledReload } from '../hooks';
 import type { AgentSummary, TaskStatus, TaskSummary } from '../types';
+import { Database } from 'lucide-react';
 import { Btn, ErrorText, Panel, PriorityBadge, SkeletonBlock, StatusBadge, fmtTime } from '../ui';
 
 const COLS: { key: TaskStatus; label: string }[] = [
@@ -177,6 +178,8 @@ function NewTaskForm({ agents, onCreated }: { agents: AgentSummary[]; onCreated:
   const [agentId, setAgentId] = useState('');
   const [priority, setPriority] = useState(5);
   const [dependsOn, setDependsOn] = useState('');
+  const [kbIds, setKbIds] = useState<number[]>([]);
+  const kbs = useApi(() => api.listKBs(), []);
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const firstAgent = useRef<string>('');
@@ -198,10 +201,18 @@ function NewTaskForm({ agents, onCreated }: { agents: AgentSummary[]; onCreated:
     setSubmitting(true);
     setErr(null);
     try {
-      await api.createTask({ title: title.trim(), prompt: prompt.trim(), agent_id: aid, priority, depends_on: depends });
+      await api.createTask({
+        title: title.trim(),
+        prompt: prompt.trim(),
+        agent_id: aid,
+        priority,
+        depends_on: depends,
+        kb_ids: kbIds,
+      });
       setTitle('');
       setPrompt('');
       setDependsOn('');
+      setKbIds([]);
       onCreated();
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -258,6 +269,29 @@ function NewTaskForm({ agents, onCreated }: { agents: AgentSummary[]; onCreated:
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
           />
+          {(kbs.data?.items.length ?? 0) > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="flex items-center gap-1 text-[11px] text-muted">
+                <Database size={12} /> 知识库（执行时检索注入）
+              </span>
+              {kbs.data?.items.map((k) => {
+                const on = kbIds.includes(k.id);
+                return (
+                  <button
+                    key={k.id}
+                    onClick={() => setKbIds(on ? kbIds.filter((x) => x !== k.id) : [...kbIds, k.id])}
+                    className={`rounded-md border px-2 py-0.5 font-mono text-[11px] transition-colors ${
+                      on
+                        ? 'border-accent-dim bg-accent/10 text-accent'
+                        : 'border-border text-muted hover:text-fg'
+                    }`}
+                  >
+                    {k.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {err && <ErrorText>{err}</ErrorText>}
           <div className="flex justify-end">
             <Btn variant="primary" disabled={submitting} onClick={() => void submit()}>

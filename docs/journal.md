@@ -837,3 +837,9 @@
 - 建库即选中（建后直接进文档流）；空态文案讲清知识库定位（陈述性知识 vs Skills SOP）。
 - types/api 补 KB 契约（TaskCreate 加 kb_ids——任务创建 UI 后续跟随）。修 3 个类名：v4 token 是 @theme CSS 变量（border-[var(--hairline)]/text-bad/text-accent），border-hairline/text-go 非有效类。
 - web build 零报错 + vitest 9/9 过。今晚 KB 三连（K1 数据层+工具 / K2 任务检索增强 / K3 管理页）全部交付。
+
+## 2026-11-20 C 切片：建任务 UI 接通 kb_ids（K 系列前端闭环）
+
+- NewTaskForm 加知识库 chips 多选（有库才显示该行——空库不占版面；点选切换 accent 高亮），提交带 kb_ids，创建后清空。
+- 类型链路已通（K3 时 TaskCreate 加过 kb_ids）；详情页无元数据展示区（skill_ids 同样未展示），保持切片最小不做。
+- web build 零报错。K 系列端到端闭环：管理页建库传文档 → 建任务 chips 绑库 → execute 自动检索注入 / agent kb_search 主动查。
