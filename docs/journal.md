@@ -843,3 +843,9 @@
 - NewTaskForm 加知识库 chips 多选（有库才显示该行——空库不占版面；点选切换 accent 高亮），提交带 kb_ids，创建后清空。
 - 类型链路已通（K3 时 TaskCreate 加过 kb_ids）；详情页无元数据展示区（skill_ids 同样未展示），保持切片最小不做。
 - web build 零报错。K 系列端到端闭环：管理页建库传文档 → 建任务 chips 绑库 → execute 自动检索注入 / agent kb_search 主动查。
+
+## 2026-11-24 维护切片：真机验收 K 系列——抓并修 chunks 回填 bug
+
+- 真机动线（make run-mem + vite :5173）：建库/传文档/中文短语检索（2-gram 修复生效，score 30 命中）/建绑定任务跑 qwen3.5——**结果准确引用 KB 独有内容（5% 流量/P99 十五分钟/慢查询堆积/rollback 脚本），被动 RAG 端到端 ✓**。
+- **真机抓真 bug：saveKBDoc 创建响应 chunks 字段错回 doc.ID**（K1 手误 `"chunks": doc.ID`）且 mem/pg SaveKBDoc 均未回填 doc.Chunks（列表页聚合正常掩蔽了它）——修复双实现回填 + API 用 doc.Chunks + store 测试断言锁死。
+- 观测备注：decide 步 input 只落 model/steps 摘要，注入段不进 trace 是既有设计（I21 渲染后 prompt 只进执行副本）——「decide input 加 prompt_head 观测」列为可选增强。

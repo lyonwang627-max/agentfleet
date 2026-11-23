@@ -176,6 +176,7 @@ func (m *MemStore) SaveKBDoc(_ context.Context, doc *model.KBDoc) (int64, error)
 		models = append(models, model.KBChunk{DocID: doc.ID, KBID: doc.KBID, Seq: i + 1, Content: c})
 	}
 	m.kbChunks[doc.ID] = models
+	doc.Chunks = len(models)
 	return doc.ID, nil
 }
 
@@ -346,6 +347,7 @@ func (p *PostgresStore) SaveKBDoc(ctx context.Context, doc *model.KBDoc) (int64,
 	if err := tx.Commit(ctx); err != nil {
 		return 0, err
 	}
+	doc.Chunks = len(chunks)
 	return doc.ID, nil
 }
 

@@ -15,9 +15,14 @@ func TestKBCRUDAndChunking(t *testing.T) {
 	kid, _ := m.CreateKB(ctx, &model.KnowledgeBase{Name: "运维手册", Description: "db/runbook"})
 	// 长文档 → 自动分段（>500 rune）
 	long := strings.Repeat("第 paragraph 段内容，含 db 连接池与 P99 告警处置。\n\n", 20)
-	docID, err := m.SaveKBDoc(ctx, &model.KBDoc{KBID: kid, Name: "runbook-db", Content: long})
+	kbDoc := &model.KBDoc{KBID: kid, Name: "runbook-db", Content: long}
+	docID, err := m.SaveKBDoc(ctx, kbDoc)
 	if err != nil {
 		t.Fatal(err)
+	}
+	// 创建调用应回填分段数（曾错回 doc.ID——真机冒烟抓出）
+	if kbDoc.Chunks < 2 {
+		t.Fatalf("SaveKBDoc 应回填 Chunks: %d", kbDoc.Chunks)
 	}
 	docs, _ := m.ListKBDocs(ctx, kid)
 	if len(docs) != 1 || docs[0].Chunks < 2 {

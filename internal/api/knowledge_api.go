@@ -64,7 +64,7 @@ func (s *Server) saveKBDoc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.publish(r.Context(), "kb.update", map[string]any{"kb_id": pathID(r), "doc_id": id, "action": "doc_saved"})
-	writeJSON(w, http.StatusCreated, map[string]any{"id": id, "chunks": doc.ID})
+	writeJSON(w, http.StatusCreated, map[string]any{"id": id, "chunks": doc.Chunks})
 }
 
 func (s *Server) listKBDocs(w http.ResponseWriter, r *http.Request) {
