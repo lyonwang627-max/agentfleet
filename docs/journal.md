@@ -849,3 +849,7 @@
 - 真机动线（make run-mem + vite :5173）：建库/传文档/中文短语检索（2-gram 修复生效，score 30 命中）/建绑定任务跑 qwen3.5——**结果准确引用 KB 独有内容（5% 流量/P99 十五分钟/慢查询堆积/rollback 脚本），被动 RAG 端到端 ✓**。
 - **真机抓真 bug：saveKBDoc 创建响应 chunks 字段错回 doc.ID**（K1 手误 `"chunks": doc.ID`）且 mem/pg SaveKBDoc 均未回填 doc.Chunks（列表页聚合正常掩蔽了它）——修复双实现回填 + API 用 doc.Chunks + store 测试断言锁死。
 - 观测备注：decide 步 input 只落 model/steps 摘要，注入段不进 trace 是既有设计（I21 渲染后 prompt 只进执行副本）——「decide input 加 prompt_head 观测」列为可选增强。
+
+## 2026-11-24 维护切片：K 系列浏览器 UI 验收全通过
+
+- /knowledge 页（vite :5173，fleetd --mem + qwen3.5）：导航入口 ✓ / 库行条+文档区（「发布流程 1 段」修复后正确分段数）✓ / 检索试测中文命中（发布检查→seq 1 · 30 分带内容）✓ / 建任务表单 KB chips 出现+点选 accent 高亮（border-accent-dim bg-accent/10 text-accent）✓ / 看板显示绑定任务「发布检查」已完成 ✓ / v4 视觉语言一致（墨绿灰黑+GO 绿激活态+hairline+mono 数据）✓。
